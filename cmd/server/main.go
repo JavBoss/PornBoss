@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"syscall"
 	"time"
 
@@ -78,8 +77,6 @@ func main() {
 				logger.Printf("release lock failed: %v", err)
 			}
 		}()
-
-		clearBundledQuarantine()
 	}
 
 	database, err := db.Open(cfg.DatabasePath)
@@ -171,39 +168,6 @@ func applyProxyPort(ctx context.Context) {
 		return
 	}
 	util.SetProxyPortFromString(cfg["proxy_port"])
-}
-
-func clearBundledQuarantine() {
-	if runtime.GOOS != "darwin" {
-		return
-	}
-
-	var roots []string
-	if wd, err := os.Getwd(); err == nil {
-		roots = append(roots, filepath.Join(wd, "internal", "bin"))
-	}
-	if execPath, err := os.Executable(); err == nil {
-		execDir := filepath.Dir(execPath)
-		roots = append(roots, filepath.Join(execDir, "internal", "bin"))
-	}
-
-	seen := make(map[string]struct{}, len(roots))
-	for _, root := range roots {
-		if _, ok := seen[root]; ok {
-			continue
-		}
-		seen[root] = struct{}{}
-		if _, err := os.Stat(root); err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			logging.Error("stat quarantine root failed: %s: %v", root, err)
-			continue
-		}
-		if err := util.ClearQuarantineRecursive(root); err != nil {
-			logging.Error("clear quarantine failed: %s: %v", root, err)
-		}
-	}
 }
 
 func buildLogger(baseDir string) (*log.Logger, func(), error) {
