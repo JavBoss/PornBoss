@@ -314,6 +314,34 @@ async function copyBundledFfmpeg(choice, outDir) {
   }
 }
 
+async function createMacCommandLauncher(outDir) {
+  const launcherPath = path.join(outDir, "pornboss.command");
+  const launcherContent = [
+    "#!/bin/bash",
+    "set -u",
+    'QUARANTINE_ATTR="com.apple.quarantine"',
+    'SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"',
+    'cd "$SCRIPT_DIR" || exit 1',
+    "",
+    'if command -v xattr >/dev/null 2>&1; then',
+    '  xattr -dr "$QUARANTINE_ATTR" "$SCRIPT_DIR" >/dev/null 2>&1 || true',
+    "fi",
+    "",
+    '"$SCRIPT_DIR/pornboss" "$@"',
+    "status=$?",
+    'if [ "$status" -ne 0 ]; then',
+    '  echo',
+    '  echo "Pornboss exited with status $status."',
+    '  read -r -p "Press Enter to close..." _',
+    "fi",
+    'exit "$status"',
+    "",
+  ].join("\n");
+
+  await fsp.writeFile(launcherPath, launcherContent);
+  await fsp.chmod(launcherPath, 0o755);
+}
+
 async function createZip(outDir, zipPath) {
   const hasZip = await commandExists("zip");
   if (!hasZip) {
@@ -345,6 +373,10 @@ async function runRelease(choice, version) {
   await buildBackendRelease(choice, outDir);
   console.log("[release] 复制 ffmpeg/ffprobe");
   await copyBundledFfmpeg(choice, outDir);
+  if (choice.goos === "darwin") {
+    console.log("[release] 生成 macOS .command 启动器");
+    await createMacCommandLauncher(outDir);
+  }
 
   const zipPath = path.join(
     ROOT_DIR,
