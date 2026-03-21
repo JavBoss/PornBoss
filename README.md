@@ -1,147 +1,213 @@
-# Pornboss 后端
+# Pornboss
 
-一个使用 Go、Gin、GORM 与 SQLite 实现的本地视频文件管理后台。启动时会根据配置文件中的目录同步视频文件，支持标签管理，并提供简单的 HTTP 接口进行查询与播放。
+一个为本地成人视频收藏而生的媒体库，尤其适合管理日本 JAV。
 
-## 快速开始
+Pornboss 不是通用影视管理器。它更懂番号文件、更懂女优维度，也更适合长期维护你硬盘里的成人资源库。普通视频和 JAV 会分开管理，不会把所有内容都粗暴塞进同一套逻辑里。
+
+## 核心功能
+
+- **无需任何复杂繁琐配置**
+  不需要折腾复杂媒体库规则、刮削流程或额外初始化步骤，启动后添加目录就能开始扫描和整理。
+
+- **无需第三方服务依赖**
+  不需要额外部署数据库、媒体服务器或中心化服务，核心数据直接保存在本地，适合个人私有收藏库。
+
+- **自动检测本地代理端口**
+  默认可自动跟随系统代理/本地代理设置；网络受限时也可以在界面里手动指定代理端口。
+
+- **自动识别番号**
+  从文件名提取 `IPX-633`、`SSIS-001`、`ipx633_ch` 这类常见格式，自动识别 JAV 作品。
+
+- **作品自动聚合**
+  同一番号下的多个文件会合并到同一条作品记录里，适合管理分段版、字幕版、不同清晰度版本。
+
+- **女优视角浏览**
+  不只按作品看，还可以按女优聚合浏览，快速进入某位女优的全部作品。
+
+- **自动抓取标题、演员、标签、封面**
+  编号识别成功后，会补全 JAV 标题、发行时间、演员信息、作品标签，并自动下载封面。
+
+- **普通视频与 JAV 分开管理**
+  自拍、合集、无码片段、短视频可以走普通视频库；番号片则进入 JAV 库，结构更清晰。
+
+- **本地目录自动扫描**
+  支持多个资源目录，自动发现新文件、更新文件信息，并持续维护媒体库状态。
+
+- **截图缩略图 + 站内播放**
+  自动生成视频截图，浏览更高效；支持在页面里直接播放，也可以一键打开原文件或所在目录。
+
+- **视频批量打标签和强大的标签管理**
+  支持批量打标签、批量替换标签、按标签筛选查询；普通视频标签和 JAV 标签分开管理，整理大库更高效。
+
+- **标签、搜索、随机、排序**
+  支持按标签、番号、标题、女优、播放次数等多种方式筛选，并支持随机浏览和多种排序。
+
+- **更适合长期整理硬盘**
+  文件移动、目录失效、目录删除时，会尽量保留库内记录和关联关系，而不是直接把数据弄没。
+
+## 快速上手
+
+普通用户推荐直接从 Release 页面下载压缩包使用，不需要自己编译。
+
+### 1. 下载
+
+前往仓库的 **Releases** 页面，下载适合你系统的版本：
+
+- `windows-x86_64`
+- `linux-x86_64`
+- `macos-x86_64`
+- `macos-arm64`
+
+### 2. 解压
+
+把压缩包解压到任意你喜欢的位置。Release 包里已经包含前端页面和运行所需的 `ffmpeg` / `ffprobe`，普通用户通常不需要额外折腾。
+
+### 3. 启动程序
+
+- Windows：双击 `pornboss.exe`
+- macOS / Linux：运行 `pornboss`
+
+启动成功后，程序会自动尝试打开浏览器；如果没有自动打开，就访问终端里显示的本地地址。
+
+### 4. 添加你的资源目录
+
+进入“全局设置” -> “目录管理”，把存放视频的本地文件夹加进去。
+
+### 5. 等待扫描完成
+
+程序会自动扫描目录、识别视频、生成截图，并尝试匹配 JAV 编号、封面、演员和标签。
+
+### 6. 开始使用
+
+- 在视频模式里管理普通成人视频
+- 在 JAV 模式里按番号、作品、女优浏览
+- 给常看内容打上“收藏”“中文字幕”“无码”“必看”等自定义标签
+- 用搜索、随机和排序快速找到想看的内容
+
+## 为什么它对 JAV 特别好用
+
+- 它理解“番号”是核心入口，而不是把 JAV 当普通电影文件。
+- 它有“作品”和“女优”两套浏览方式，看片和整理都更自然。
+- 它能把同番号多个视频归到一起，比按文件散着看舒服很多。
+- 它允许你保留抓取到的官方标签，同时继续加自己的收藏标签。
+- 它本地优先，适合私密硬盘库，不需要把媒体文件上传到别的地方。
+
+## 适合什么样的收藏库
+
+- 你的资源主要放在本地硬盘、移动硬盘、NAS 或挂载目录里。
+- 你既有普通成人视频，也有大量日本 JAV。
+- 你经常靠文件名和番号找片，已经受够了手动翻文件夹。
+- 你希望收藏库越用越整齐，而不是越堆越乱。
+
+## 体验上的实际优势
+
+- 找片更快：按番号、标题、女优、标签、播放次数直接筛。
+- 回看更快：有截图、有封面、有播放记录。
+- 整理更轻松：同一作品不再散落为多个独立文件条目。
+- 长期更省心：目录变化时更容易保住已有整理成果。
+- 更私密：数据库、封面、截图都落在本地。
+
+## 注意事项
+
+- 这是本地媒体库管理工具，不是在线视频站。
+- JAV 元数据、封面和女优资料依赖外部站点可访问性。
+- 网络受限时，可在全局设置中配置代理端口。
+- 首次导入大库时，扫描、封面抓取、资料补全需要一些时间。
+- `data/` 下是运行时数据库和缓存，通常不应提交到版本库。
+
+<details>
+<summary>开发者说明</summary>
+
+### 开发环境依赖
+
+- Go `1.25.1` 或更高版本
+- Node.js 和 npm
+- `ffmpeg` 与 `ffprobe`
+
+`ffmpeg` / `ffprobe` 可通过以下任一方式提供：
+
+- 放到系统 `PATH`
+- 设置环境变量 `FFMPEG_PATH`、`FFPROBE_PATH`
+- 放到仓库 `internal/bin/` 目录
+
+### 开发态 Quick Start
+
+先安装前端依赖：
+
+```bash
+cd web
+npm install
+```
+
+开发模式推荐前后端分开跑：
+
+后端：
 
 ```bash
 go run ./cmd/server -addr :8080
 ```
 
-启动后可访问：
+前端：
 
-- `GET /healthz` 健康检查
-- `GET /videos?limit=100&offset=0` 列出视频
-- `GET /videos?tags=tag1,tag2` 根据标签交集分页查询
-- `GET /videos/{id}` 查看单个视频
-- `GET /videos/{id}/stream` 直接播放视频流
-- `GET /videos/{id}/thumbnail` 获取缩略图
-- `GET /tags` / `POST /tags` / `PATCH /tags/{id}` / `DELETE /tags/{id}` 管理标签
-- `POST /videos/tags/add` / `POST /videos/tags/remove` 传入 `{"video_ids":[...],"tag_id":123}` 批量为视频新增或删除指定标签
-- `POST /sync` 手动触发全量同步https://github.com/JavBoss/pornboss/pull/new/complete_package
+```bash
+cd web
+npm run dev
+```
 
-## 同步与标签
+如果你想直接跑完整页面，也可以先构建前端：
 
-- 启动时自动扫描配置中的目录，将识别出的常见视频格式记录到 SQLite。
-- 每个文件会基于抽样 MD5 指纹，在重命名或移动后仍能识别同一个视频并更新记录。
-- 同步时会刷新文件大小、修改时间，并删除不存在的旧记录。
-- 通过 `POST /sync` 可以手动重新扫描。
-- 标签支持新增、删除、重命名，并可对多个视频批量增删标签，查询接口支持按标签交集过滤。
-- 首次发现新视频或检测到文件变化时会自动生成缩略图，缩略图文件以视频指纹命名并存放在 `thumbnails_dir` 指定的目录下。
+```bash
+cd web
+npm run build
+cd ..
+go run ./cmd/server -addr :8080 -static web/dist
+```
 
-## 运行测试
+### 技术栈
+
+- Backend: Go + Gin + GORM + SQLite
+- Frontend: React + Vite + Tailwind + Zustand
+- 媒体探测: `ffmpeg` / `ffprobe`
+
+### 常用命令
+
+```bash
+scripts/cli.sh dev backend
+scripts/cli.sh dev frontend
+```
+
+### 测试
 
 ```bash
 GOCACHE=$(pwd)/.gocache go test ./...
 ```
 
-## 注意事项
-
-- 默认使用 GORM + `gorm.io/driver/sqlite`（基于 `github.com/mattn/go-sqlite3`），需要 CGO 与 C 编译链。
-- 通过交互式 CLI 下载 ffmpeg/ffprobe 到 `bin/<platform>/`（例如 `bin/windows-x86_64`）。若下载的平台等于当前平台，会同步到 `internal/bin/` 供运行时使用（可通过环境变量 `FFMPEG_PATH` 覆盖）。
-- 数据库文件会自动存放到 `database_path` 指定的位置，缩略图存放在 `thumbnails_dir`。
-- 数据库存储的 `path` 为相对于配置根目录的相对路径，配合 `directory` 字段可还原真实路径。
-
-## Web 前端（React + Tailwind + Zustand）
-
-已在 `web/` 目录集成前端界面，提供视频网格列表、缩略图、分页、标签筛选与批量为视频添加/移除标签，点击视频弹出模态框播放（不跳转）。
-
-开发与自检：
+### 前端检查
 
 ```bash
-# 进入前端目录并安装依赖
 cd web
-npm install
-
-# 本地开发（已配置 Vite 代理到后端 http://localhost:8080）
-npm run dev
-
-# 代码规范检查（ESLint）
 npm run lint
-
-# 生产构建输出到 web/dist
 npm run build
 ```
 
-注意：请先启动后端（默认 :8080），前端开发服务器会通过代理访问后端接口，避免 CORS 问题。
-
-## 开发脚本（交互式 CLI）
-
-使用 Node + Inquirer 的交互式命令行整合 dev/release/download 功能（需先打包生成可发布脚本）：
+### CLI 打包发布
 
 ```bash
-# 首次打包 CLI
-cd scripts/cli
-npm install
-npm run build
-
-# 进入交互菜单（scripts/cli.sh 会在缺少产物时自动构建）
-scripts/cli.sh
-
-# 直接启动后端/前端
-scripts/cli.sh dev backend
-scripts/cli.sh dev frontend
-
-# 下载 ffmpeg/ffprobe
-scripts/cli.sh download linux-x86_64
-
-# 可选环境变量
-#   ADDR=:8080           后端监听端口
-#   WITH_STATIC=1        后端同时托管已构建的前端（指向 STATIC 指定目录，默认 web/dist）
-#   STATIC=web/dist      托管的前端目录
-#   SKIP_NPM_INSTALL=1   启动前端时跳过 npm install
-```
-
-## 生产部署（后端托管前端）
-
-- 构建前端静态资源：
-
-```bash
-cd web && npm run build
-```
-
-- 启动后端并托管前端：
-
-```bash
-go run ./cmd/server -addr :8080 -static web/dist
-```
-
-- 说明：
-  - 后端参数 `-static` 指向前端构建目录（默认 `web/dist`）。
-  - 后端自动托管 `/assets` 与根路径 `/`，并提供 SPA fallback（非 API 路由返回 `index.html`）。
-  - 相对路径配置均相对于当前工作目录解析，适合打包后的独立运行。
-
-## 打包发布
-
-- 通过交互式 CLI 打包（release）：
-
-```bash
-# 进入交互菜单 → release → 选择平台 → 输入版本号
-scripts/cli.sh
-
-# 或直接指定平台与版本号
 scripts/cli.sh release linux-x86_64 v0.1.0
-scripts/cli.sh release windows-x86_64 v0.1.0
-
-# 可选环境变量：
-#   SKIP_WEB_BUILD=1  跳过前端构建（使用现有 web/dist）
 ```
 
-- 发布包内容：
-  - `pornboss` 或 `pornboss.exe`（后端可执行文件）
-  - `web/dist`（前端静态产物）
-  - `internal/bin/ffmpeg(.exe)`、`internal/bin/ffprobe(.exe)`
+### 项目结构
 
-发布包为 `release/pornboss-<version>-<platform>.zip`，解压后运行：
-
-```bash
-# macOS / Linux
-./pornboss -addr :8080 -static web/dist
-
-# Windows
-pornboss.exe -addr :8080 -static web/dist
+```text
+cmd/server             Go 服务入口
+internal/db            数据库读写与查询
+internal/service       目录扫描、JAV 识别、女优资料补全
+internal/server        HTTP API
+internal/manager       封面下载、截图生成
+internal/jav           JAV 元数据抓取
+web/                   React 前端
+scripts/cli            开发/发布辅助 CLI
+data/                  运行期数据库与缓存
 ```
 
-注意事项：
-  - SQLite 依赖 CGO，跨平台构建需准备相应的交叉编译工具链；Windows 目标需要可用的 MinGW（例如 `x86_64-w64-mingw32-gcc`）。
-  - ffmpeg/ffprobe 从 `bin/<platform>/` 打包进入发布包（并复制到包内的 `internal/bin/`）；未找到则回退系统 PATH 或 `FFMPEG_PATH` / `FFPROBE_PATH`。
+</details>
