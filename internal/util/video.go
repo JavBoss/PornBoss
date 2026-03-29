@@ -173,8 +173,7 @@ func ProbeVideo(path string) (*VideoMetadata, error) {
 	cmd := exec.Command(ffprobe,
 		"-v", "error",
 		"-print_format", "json",
-		"-show_entries", "stream=index,codec_type,codec_name,width,height,avg_frame_rate,r_frame_rate,sample_rate,channels,bit_rate",
-		"-show_entries", "format=duration,size,bit_rate",
+		"-show_entries", "stream=index,codec_type,codec_name,width,height,avg_frame_rate,r_frame_rate,sample_rate,channels,bit_rate:format=format_name,duration,size,bit_rate",
 		path,
 	)
 	var stderr bytes.Buffer

@@ -25,27 +25,27 @@ func DetermineBrowserPlayback(path string, meta *VideoMetadata) (string, string)
 }
 
 func DetectBrowserDirectMime(path string, meta *VideoMetadata) string {
-	container := normalizeContainer("", path)
-	videoCodec := ""
-	audioCodec := ""
-	if meta != nil {
-		container = normalizeContainer(meta.Container, path)
-		videoCodec = normalizeVideoCodec(meta.Codec)
-		audioCodec = normalizeAudioCodec(meta.AudioCodec)
+	if meta == nil {
+		switch normalizeContainer("", path) {
+		case "mp4":
+			return "video/mp4"
+		case "webm":
+			return "video/webm"
+		default:
+			return ""
+		}
 	}
+
+	container := normalizeContainer(meta.Container, path)
+	videoCodec := normalizeVideoCodec(meta.Codec)
+	audioCodec := normalizeAudioCodec(meta.AudioCodec)
 
 	switch container {
 	case "mp4":
-		if videoCodec == "" {
-			return "video/mp4"
-		}
 		if videoCodec == "h264" && isOneOf(audioCodec, "", "aac", "mp3", "opus") {
 			return "video/mp4"
 		}
 	case "webm":
-		if videoCodec == "" {
-			return "video/webm"
-		}
 		if isOneOf(videoCodec, "vp8", "vp9") && isOneOf(audioCodec, "", "vorbis", "opus") {
 			return "video/webm"
 		}
@@ -67,6 +67,10 @@ func normalizeContainer(raw, path string) string {
 			return "avi"
 		case "mpegts":
 			return "mpegts"
+		case "flv":
+			return "flv"
+		case "asf":
+			return "wmv"
 		}
 	}
 
