@@ -33,7 +33,6 @@ const (
 	hlsPollInterval = 200 * time.Millisecond
 	hlsSegmentSecs  = 4
 	hlsBufferCount  = 8
-	hlsRestartGap   = 2
 )
 
 var hlsSegmentNamePattern = regexp.MustCompile(`^\d+\.ts$`)
@@ -60,6 +59,7 @@ type hlsSession struct {
 
 type hlsProcess struct {
 	startSegment int
+	endSegment   int
 	done         chan struct{}
 	cancel       context.CancelFunc
 	err          error
@@ -155,7 +155,7 @@ func streamVideoSegment(c *gin.Context) {
 
 	segmentIndex, _ := strconv.Atoi(strings.TrimSuffix(segment, ".ts"))
 	segmentPath := filepath.Join(session.dir, segment)
-	if err := session.ensureSegment(segmentIndex, segmentPath, hlsWaitTimeout); err != nil {
+	if err := session.ensureSegment(c.Request.Context(), segmentIndex, segmentPath, hlsWaitTimeout); err != nil {
 		writeHLSError(c, err)
 		return
 	}
@@ -228,9 +228,14 @@ func buildHLSCacheKey(fullPath string, info os.FileInfo) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func (s *hlsSession) ensureSegment(segmentIndex int, path string, timeout time.Duration) error {
+func (s *hlsSession) ensureSegment(ctx context.Context, segmentIndex int, path string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	for {
+		if ctx != nil {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+		}
 		if fileExists(path) {
 			return nil
 		}
@@ -238,30 +243,51 @@ func (s *hlsSession) ensureSegment(segmentIndex int, path string, timeout time.D
 			return fmt.Errorf("timeout waiting for hls output: %s", filepath.Base(path))
 		}
 
-		proc, err := s.ensureProcessForSegment(segmentIndex)
+		proc, err := s.ensureProcessForSegment(ctx, segmentIndex)
 		if err != nil {
 			return err
 		}
 
+		timer := time.NewTimer(hlsPollInterval)
 		select {
+		case <-ctx.Done():
+			if !timer.Stop() {
+				<-timer.C
+			}
+			return ctx.Err()
 		case <-proc.done:
+			if !timer.Stop() {
+				<-timer.C
+			}
 			if fileExists(path) {
 				return nil
 			}
 			if proc.err != nil {
 				return proc.err
 			}
-		case <-time.After(hlsPollInterval):
+		case <-timer.C:
 		}
 	}
 }
 
-func (s *hlsSession) ensureProcessForSegment(segmentIndex int) (*hlsProcess, error) {
+func (s *hlsSession) ensureProcessForSegment(ctx context.Context, segmentIndex int) (*hlsProcess, error) {
+	if ctx != nil {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if ctx != nil {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+	}
+
 	if s.process != nil {
-		if segmentIndex >= s.process.startSegment && segmentIndex <= s.process.startSegment+hlsRestartGap {
+		if s.process.coversSegment(segmentIndex) {
 			return s.process, nil
 		}
 		s.process.cancel()
@@ -278,8 +304,18 @@ func (s *hlsSession) ensureProcessForSegment(segmentIndex int) (*hlsProcess, err
 
 func (s *hlsSession) startProcessLocked(segmentIndex int) (*hlsProcess, error) {
 	ctx, cancel := context.WithCancel(context.Background())
+	bufferSeconds := (hlsBufferCount + 1) * hlsSegmentSecs
+	if s.durationSec > 0 {
+		startOffset := segmentIndex * hlsSegmentSecs
+		remaining := int(s.durationSec) - startOffset
+		if remaining > 0 && remaining < bufferSeconds {
+			bufferSeconds = remaining
+		}
+	}
+
 	proc := &hlsProcess{
 		startSegment: segmentIndex,
+		endSegment:   segmentIndex + hlsSegmentWindowSize(bufferSeconds) - 1,
 		done:         make(chan struct{}),
 		cancel:       cancel,
 	}
@@ -291,13 +327,6 @@ func (s *hlsSession) startProcessLocked(segmentIndex int) (*hlsProcess, error) {
 	}
 
 	startOffset := segmentIndex * hlsSegmentSecs
-	bufferSeconds := (hlsBufferCount + 1) * hlsSegmentSecs
-	if s.durationSec > 0 {
-		remaining := int(s.durationSec) - startOffset
-		if remaining > 0 && remaining < bufferSeconds {
-			bufferSeconds = remaining
-		}
-	}
 
 	args := []string{
 		"-hide_banner",
@@ -352,12 +381,30 @@ func (s *hlsSession) startProcessLocked(segmentIndex int) (*hlsProcess, error) {
 	return proc, nil
 }
 
+func (p *hlsProcess) coversSegment(segmentIndex int) bool {
+	if p == nil {
+		return false
+	}
+	return segmentIndex >= p.startSegment && segmentIndex <= p.endSegment
+}
+
+func hlsSegmentWindowSize(bufferSeconds int) int {
+	if bufferSeconds <= 0 {
+		return 1
+	}
+	windowSize := int(math.Ceil(float64(bufferSeconds) / float64(hlsSegmentSecs)))
+	if windowSize < 1 {
+		return 1
+	}
+	return windowSize
+}
+
 func buildStaticHLSManifest(durationSec int64) (string, error) {
 	if durationSec <= 0 {
 		return "", errors.New("invalid video duration")
 	}
 
-	segmentCount := int(math.Ceil(float64(durationSec) / 4.0))
+	segmentCount := int(math.Ceil(float64(durationSec) / float64(hlsSegmentSecs)))
 	if segmentCount < 1 {
 		segmentCount = 1
 	}
@@ -389,6 +436,9 @@ func buildStaticHLSManifest(durationSec int64) (string, error) {
 }
 
 func writeHLSError(c *gin.Context, err error) {
+	if errors.Is(err, context.Canceled) {
+		return
+	}
 	logging.Error("serve hls error: %v", err)
 	if errors.Is(err, os.ErrNotExist) {
 		c.Status(http.StatusNotFound)
