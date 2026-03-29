@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -92,9 +93,9 @@ func getVideoPlayback(c *gin.Context) {
 		}
 	}
 
-	src := fmt.Sprintf("/videos/%d/stream", video.ID)
+	src := streamURLWithVideo(video, fmt.Sprintf("/videos/%d/stream", video.ID))
 	if mode == util.BrowserPlaybackModeHLS {
-		src = fmt.Sprintf("/videos/%d/stream.m3u8", video.ID)
+		src = streamURLWithVideo(video, fmt.Sprintf("/videos/%d/stream.m3u8", video.ID))
 	}
 
 	c.JSON(http.StatusOK, playbackResponse{
@@ -105,7 +106,7 @@ func getVideoPlayback(c *gin.Context) {
 }
 
 func streamVideoManifest(c *gin.Context) {
-	video, fullPath, ok := loadVideoByID(c)
+	fullPath, durationSec, ok := resolvePlaybackStreamTarget(c)
 	if !ok {
 		return
 	}
@@ -113,13 +114,13 @@ func streamVideoManifest(c *gin.Context) {
 		return
 	}
 
-	if _, err := videoHLSManager.sessionForFile(fullPath, video.DurationSec); err != nil {
+	if _, err := videoHLSManager.sessionForFile(fullPath, durationSec); err != nil {
 		logging.Error("prepare hls session error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "prepare hls stream failed"})
 		return
 	}
 
-	manifest, err := buildStaticHLSManifest(video.DurationSec)
+	manifest, err := buildStaticHLSManifest(durationSec, c.Request.URL.RawQuery)
 	if err != nil {
 		logging.Error("build hls manifest error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "build hls manifest failed"})
@@ -132,7 +133,7 @@ func streamVideoManifest(c *gin.Context) {
 }
 
 func streamVideoSegment(c *gin.Context) {
-	video, fullPath, ok := loadVideoByID(c)
+	fullPath, durationSec, ok := resolvePlaybackStreamTarget(c)
 	if !ok {
 		return
 	}
@@ -146,7 +147,7 @@ func streamVideoSegment(c *gin.Context) {
 		return
 	}
 
-	session, err := videoHLSManager.sessionForFile(fullPath, video.DurationSec)
+	session, err := videoHLSManager.sessionForFile(fullPath, durationSec)
 	if err != nil {
 		logging.Error("prepare hls session error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "prepare hls stream failed"})
@@ -163,6 +164,46 @@ func streamVideoSegment(c *gin.Context) {
 	c.Header("Content-Type", hlsSegmentMime)
 	c.Header("Cache-Control", "public, max-age=300")
 	c.File(segmentPath)
+}
+
+func streamURLWithVideo(video *models.Video, base string) string {
+	if video == nil {
+		return base
+	}
+
+	params := url.Values{}
+	if strings.TrimSpace(video.Path) != "" {
+		params.Set("path", video.Path)
+	}
+	if strings.TrimSpace(video.DirectoryRef.Path) != "" {
+		params.Set("dir_path", video.DirectoryRef.Path)
+	}
+	if video.DurationSec > 0 {
+		params.Set("duration_sec", strconv.FormatInt(video.DurationSec, 10))
+	}
+	if len(params) == 0 {
+		return base
+	}
+	return base + "?" + params.Encode()
+}
+
+func resolvePlaybackStreamTarget(c *gin.Context) (string, int64, bool) {
+	if rawPath := strings.TrimSpace(c.Query("path")); rawPath != "" {
+		fullPath, err := resolveStreamPathFromQuery(c)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return "", 0, false
+		}
+
+		durationSec := int64(queryInt(c, "duration_sec", 0))
+		return fullPath, durationSec, true
+	}
+
+	video, fullPath, ok := loadVideoByID(c)
+	if !ok {
+		return "", 0, false
+	}
+	return fullPath, video.DurationSec, true
 }
 
 func loadVideoByID(c *gin.Context) (*models.Video, string, bool) {
@@ -399,7 +440,7 @@ func hlsSegmentWindowSize(bufferSeconds int) int {
 	return windowSize
 }
 
-func buildStaticHLSManifest(durationSec int64) (string, error) {
+func buildStaticHLSManifest(durationSec int64, rawQuery string) (string, error) {
 	if durationSec <= 0 {
 		return "", errors.New("invalid video duration")
 	}
@@ -417,6 +458,10 @@ func buildStaticHLSManifest(durationSec int64) (string, error) {
 	buf.WriteString("#EXT-X-MEDIA-SEQUENCE:0\n")
 
 	remaining := float64(durationSec)
+	urlSuffix := ""
+	if strings.TrimSpace(rawQuery) != "" {
+		urlSuffix = "?" + rawQuery
+	}
 	for i := 0; i < segmentCount; i++ {
 		segmentDuration := float64(hlsSegmentSecs)
 		if remaining > 0 && remaining < segmentDuration {
@@ -427,7 +472,7 @@ func buildStaticHLSManifest(durationSec int64) (string, error) {
 		}
 
 		buf.WriteString(fmt.Sprintf("#EXTINF:%.3f,\n", segmentDuration))
-		buf.WriteString(fmt.Sprintf("stream.m3u8/%06d.ts\n", i))
+		buf.WriteString(fmt.Sprintf("stream.m3u8/%06d.ts%s\n", i, urlSuffix))
 		remaining -= segmentDuration
 	}
 
