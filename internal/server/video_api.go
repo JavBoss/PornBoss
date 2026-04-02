@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -126,7 +127,7 @@ func getVideoStreams(c *gin.Context) {
 		info.PreferredKind = "direct"
 		info.Sources = append(info.Sources, playbackSource{
 			Kind:     "direct",
-			Src:      "/videos/" + strconv.FormatInt(video.ID, 10) + "/stream",
+			Src:      buildDirectStreamURL(video),
 			MimeType: directMimeType(probe.Container),
 			Label:    "Direct",
 		})
@@ -142,10 +143,13 @@ func getVideoStreams(c *gin.Context) {
 }
 
 func streamVideo(c *gin.Context) {
-	_, fullPath, err := resolveVideoStreamTarget(c)
+	fullPath, err := resolveStreamPathFromQuery(c)
 	if err != nil {
-		respondPlaybackError(c, err)
-		return
+		_, fullPath, err = resolveVideoStreamTarget(c)
+		if err != nil {
+			respondPlaybackError(c, err)
+			return
+		}
 	}
 	serveVideoFile(c, fullPath)
 }
@@ -249,6 +253,24 @@ func directMimeType(container string) string {
 	default:
 		return "video/mp4"
 	}
+}
+
+func buildDirectStreamURL(video *models.Video) string {
+	if video == nil {
+		return ""
+	}
+	base := "/videos/" + strconv.FormatInt(video.ID, 10) + "/stream"
+	values := url.Values{}
+	if path := strings.TrimSpace(video.Path); path != "" {
+		values.Set("path", path)
+	}
+	if dirPath := strings.TrimSpace(video.DirectoryRef.Path); dirPath != "" {
+		values.Set("dir_path", dirPath)
+	}
+	if len(values) == 0 {
+		return base
+	}
+	return base + "?" + values.Encode()
 }
 
 func serveVideoFile(c *gin.Context, fullPath string) {
