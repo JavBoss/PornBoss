@@ -1,0 +1,101 @@
+name: release-draft
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Git tag to create or reuse for the draft release"
+        required: true
+      version:
+        description: "Release version"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - windows-x86_64
+          - linux-x86_64
+          - macos-x86_64
+          - macos-arm64
+    runs-on: ${{ fromJson('{"windows-x86_64":"ubuntu-latest","linux-x86_64":"ubuntu-latest","macos-x86_64":"macos-15-intel","macos-arm64":"macos-14"}')[matrix.platform] }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install build deps (Windows target)
+        if: ${{ matrix.platform == 'windows-x86_64' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64 zip unzip
+
+      - name: Install build deps (Linux target)
+        if: ${{ matrix.platform == 'linux-x86_64' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zip unzip
+
+      - name: Build CLI bundle
+        run: |
+          cd scripts/cli
+          npm install
+          npm run build
+
+      - name: Download ffmpeg/ffprobe
+        run: bash scripts/cli.sh download "${{ matrix.platform }}"
+
+      - name: Build release
+        run: bash scripts/cli.sh release "${{ matrix.platform }}" "${{ inputs.version }}"
+
+      - name: Upload release asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: pornboss-${{ inputs.version }}-${{ matrix.platform }}-zip
+          path: release/pornboss-${{ inputs.version }}-${{ matrix.platform }}.zip
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Publish draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ inputs.tag }}" >/dev/null 2>&1; then
+            echo "release for tag '${{ inputs.tag }}' already exists" >&2
+            exit 1
+          fi
+
+          mapfile -t assets < <(find release-artifacts -type f -name "*.zip" | sort)
+          if [[ "${#assets[@]}" -eq 0 ]]; then
+            echo "no release assets found" >&2
+            exit 1
+          fi
+
+          gh release create "${{ inputs.tag }}" "${assets[@]}" \
+            --target "${{ github.sha }}" \
+            --draft \
+            --title "pornboss ${{ inputs.version }}" \
+            --generate-notes
