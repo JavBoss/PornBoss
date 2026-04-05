@@ -1,3 +1,5 @@
+import { zh } from '@/utils/i18n'
+
 export default function TagBar({ tags, onToggle, multiSelect, selectedIds, onSelect }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -32,7 +34,7 @@ export default function TagBar({ tags, onToggle, multiSelect, selectedIds, onSel
             className="rounded px-2 py-1 text-sm text-slate-700 transition hover:bg-slate-100"
             onClick={() => onToggle(t.name)}
             title={t.name}
-            aria-label={`筛选标签 ${t.name}`}
+            aria-label={zh(`筛选标签 ${t.name}`, `Filter tag ${t.name}`)}
           >
             <span className="inline-flex items-center gap-1">
               {t.name}

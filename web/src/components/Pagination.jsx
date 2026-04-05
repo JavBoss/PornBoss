@@ -1,5 +1,6 @@
 import { Popover } from '@mui/material'
 import { useState } from 'react'
+import { zh } from '@/utils/i18n'
 
 export default function Pagination({
   page,
@@ -50,9 +51,9 @@ export default function Pagination({
           }}
           className={`rounded border px-2 py-0.5 ${!hasPrev ? 'pointer-events-none opacity-50' : ''}`}
           aria-disabled={!hasPrev}
-          aria-label="首页"
+          aria-label={zh('首页', 'First page')}
         >
-          « 首页
+          {zh('« 首页', '« First')}
         </a>
         <a
           href={buildPageUrl ? buildPageUrl({ page: page - 1 }) : '#'}
@@ -63,9 +64,9 @@ export default function Pagination({
           }}
           className={`rounded border px-2 py-0.5 ${!hasPrev ? 'pointer-events-none opacity-50' : ''}`}
           aria-disabled={!hasPrev}
-          aria-label="上一页"
+          aria-label={zh('上一页', 'Previous page')}
         >
-          ‹ 上一页
+          {zh('‹ 上一页', '‹ Prev')}
         </a>
 
         {pages.map((p) => (
@@ -93,9 +94,9 @@ export default function Pagination({
           }}
           className={`rounded border px-2 py-0.5 ${!hasNext ? 'pointer-events-none opacity-50' : ''}`}
           aria-disabled={!hasNext}
-          aria-label="下一页"
+          aria-label={zh('下一页', 'Next page')}
         >
-          下一页 ›
+          {zh('下一页 ›', 'Next ›')}
         </a>
         <a
           href={buildPageUrl ? buildPageUrl({ page: lastPage }) : '#'}
@@ -106,9 +107,9 @@ export default function Pagination({
           }}
           className={`rounded border px-2 py-0.5 ${!hasNext ? 'pointer-events-none opacity-50' : ''}`}
           aria-disabled={!hasNext}
-          aria-label="末页"
+          aria-label={zh('末页', 'Last page')}
         >
-          末页 »
+          {zh('末页 »', 'Last »')}
         </a>
         <button
           type="button"
@@ -117,9 +118,9 @@ export default function Pagination({
           disabled={!canJump}
           aria-haspopup="dialog"
           aria-expanded={Boolean(jumpAnchorEl)}
-          aria-label="跳转到指定页码"
+          aria-label={zh('跳转到指定页码', 'Jump to page')}
         >
-          跳转
+          {zh('跳转', 'Jump')}
         </button>
         <Popover
           open={Boolean(jumpAnchorEl)}
@@ -130,7 +131,7 @@ export default function Pagination({
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         >
           <div className="flex max-w-[560px] flex-col gap-3 p-3" style={{ width: jumpPanelWidth }}>
-            <div className="text-xs text-gray-500">选择页码</div>
+            <div className="text-xs text-gray-500">{zh('选择页码', 'Select page')}</div>
             <div
               className="grid max-h-72 gap-2 overflow-y-auto pr-2"
               style={{ gridTemplateColumns: `repeat(${jumpColumnCount}, minmax(0, 1fr))` }}

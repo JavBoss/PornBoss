@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined'
 
 import TagBar from '@/components/TagBar'
+import { isUserJavTag } from '@/constants/jav'
+import { zh } from '@/utils/i18n'
 
 export default function JavTagModal({
   open,
@@ -56,7 +58,7 @@ export default function JavTagModal({
   }, [open])
 
   const handleStartRename = (tag) => {
-    if (!tag?.is_user) return
+    if (!isUserJavTag(tag)) return
     setRenameOpen(true)
     setRenameTagId(tag.id)
     setRenameOriginalName(tag.name || '')
@@ -88,8 +90,8 @@ export default function JavTagModal({
     })
   }, [tags])
 
-  const userTags = useMemo(() => displayTags.filter((tag) => tag?.is_user), [displayTags])
-  const scrapedTags = useMemo(() => displayTags.filter((tag) => !tag?.is_user), [displayTags])
+  const userTags = useMemo(() => displayTags.filter((tag) => isUserJavTag(tag)), [displayTags])
+  const scrapedTags = useMemo(() => displayTags.filter((tag) => !isUserJavTag(tag)), [displayTags])
 
   const selectedIds = useMemo(() => {
     if (selectedTagIds.length === 0) return []
@@ -123,7 +125,7 @@ export default function JavTagModal({
       <div className="flex flex-wrap gap-2">
         {group.map((t) => {
           const count = Number.isFinite(t.count) ? t.count : null
-          const canRename = Boolean(t?.is_user)
+          const canRename = isUserJavTag(t)
           const showRenameHint = editMode && hoverTagId === t.id && canRename
           const showDelete = editMode && hoverTagId === t.id && canRename
           return (
@@ -155,24 +157,31 @@ export default function JavTagModal({
                     {count}
                   </span>
                 )}
-                {showRenameHint && <span className="text-[10px] text-slate-400">单击重命名</span>}
+                {showRenameHint && (
+                  <span className="text-[10px] text-slate-400">
+                    {zh('单击重命名', 'Click to rename')}
+                  </span>
+                )}
               </button>
               {showDelete && (
                 <button
                   type="button"
-                  aria-label="删除标签"
+                  aria-label={zh('删除标签', 'Delete tag')}
                   disabled={deletingId === t.id}
                   onClick={async (event) => {
                     event.preventDefault()
                     event.stopPropagation()
                     if (deletingId === t.id) return
-                    if (!window.confirm(`确定删除标签“${t.name}”吗？`)) return
+                    if (
+                      !window.confirm(zh(`确定删除标签“${t.name}”吗？`, `Delete tag "${t.name}"?`))
+                    )
+                      return
                     setDeletingId(t.id)
                     setBatchError('')
                     try {
                       await onDeleteTag?.(t)
                     } catch (err) {
-                      setBatchError(err.message || '删除失败')
+                      setBatchError(err.message || zh('删除失败', 'Delete failed'))
                     } finally {
                       setDeletingId(null)
                     }
@@ -193,13 +202,15 @@ export default function JavTagModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
       <div className="mx-4 w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200/70">
         <div className="flex items-center justify-between border-b border-slate-200/70 bg-slate-50/80 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">标签管理</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {zh('标签管理', 'Tag Management')}
+          </h2>
           <button
             onClick={onClose}
             className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-200"
-            aria-label="关闭"
+            aria-label={zh('关闭', 'Close')}
           >
-            关闭
+            {zh('关闭', 'Close')}
           </button>
         </div>
         <div className="space-y-6 p-6">
@@ -208,12 +219,12 @@ export default function JavTagModal({
               <div className="space-y-6">
                 <div className="space-y-2">
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                    我创建的标签
+                    {zh('我创建的标签', 'My tags')}
                   </div>
                   {userTags.length > 0 ? (
                     renderTagGroup(userTags)
                   ) : (
-                    <div className="text-xs text-slate-400">暂无</div>
+                    <div className="text-xs text-slate-400">{zh('暂无', 'None')}</div>
                   )}
                   {!multiSelect && (
                     <div className="flex flex-wrap items-center gap-2">
@@ -221,7 +232,7 @@ export default function JavTagModal({
                         onClick={handleToggleEditMode}
                         className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
                       >
-                        {editMode ? '退出编辑' : '编辑'}
+                        {editMode ? zh('退出编辑', 'Exit edit') : zh('编辑', 'Edit')}
                       </button>
                       {!editMode && (
                         <button
@@ -232,7 +243,7 @@ export default function JavTagModal({
                           }}
                           className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
                         >
-                          新增标签
+                          {zh('新增标签', 'New tag')}
                         </button>
                       )}
                     </div>
@@ -240,12 +251,12 @@ export default function JavTagModal({
                 </div>
                 <div className="space-y-2">
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                    抓取标签
+                    {zh('抓取标签', 'Scraped tags')}
                   </div>
                   {scrapedTags.length > 0 ? (
                     renderTagGroup(scrapedTags)
                   ) : (
-                    <div className="text-xs text-slate-400">暂无</div>
+                    <div className="text-xs text-slate-400">{zh('暂无', 'None')}</div>
                   )}
                 </div>
               </div>
@@ -262,7 +273,7 @@ export default function JavTagModal({
                     }}
                     className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
                   >
-                    {multiSelect ? '退出多选' : '多选'}
+                    {multiSelect ? zh('退出多选', 'Exit multi-select') : zh('多选', 'Multi-select')}
                   </button>
                 )}
                 {multiSelect && (
@@ -275,7 +286,7 @@ export default function JavTagModal({
                     disabled={selectedIds.length === 0}
                     className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
                   >
-                    查找视频
+                    {zh('查找视频', 'Find videos')}
                   </button>
                 )}
               </div>
@@ -288,11 +299,13 @@ export default function JavTagModal({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-base font-semibold text-slate-900">新增标签</h3>
+              <h3 className="text-base font-semibold text-slate-900">
+                {zh('新增标签', 'New tag')}
+              </h3>
               <button
                 onClick={() => setCreateOpen(false)}
                 className="rounded px-2 py-1 text-sm text-slate-500 hover:bg-slate-100"
-                aria-label="关闭新增标签"
+                aria-label={zh('关闭新增标签', 'Close new tag')}
               >
                 ✕
               </button>
@@ -301,7 +314,7 @@ export default function JavTagModal({
               <input
                 value={newTagName}
                 onChange={(e) => setNewTagName(e.target.value)}
-                placeholder="请输入标签名"
+                placeholder={zh('请输入标签名', 'Enter tag name')}
                 className="w-full rounded-lg border px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
               {createError && <div className="text-sm text-red-600">{createError}</div>}
@@ -311,13 +324,13 @@ export default function JavTagModal({
                 onClick={() => setCreateOpen(false)}
                 className="rounded border px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
               >
-                取消
+                {zh('取消', 'Cancel')}
               </button>
               <button
                 onClick={async () => {
                   const trimmed = newTagName.trim()
                   if (!trimmed) {
-                    setCreateError('标签名不能为空')
+                    setCreateError(zh('标签名不能为空', 'Tag name cannot be empty'))
                     return
                   }
                   setCreating(true)
@@ -327,7 +340,7 @@ export default function JavTagModal({
                     setCreateOpen(false)
                     setNewTagName('')
                   } catch (err) {
-                    setCreateError(err.message || '创建失败')
+                    setCreateError(err.message || zh('创建失败', 'Create failed'))
                   } finally {
                     setCreating(false)
                   }
@@ -335,7 +348,7 @@ export default function JavTagModal({
                 disabled={creating}
                 className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
               >
-                {creating ? '创建中…' : '创建'}
+                {creating ? zh('创建中…', 'Creating...') : zh('创建', 'Create')}
               </button>
             </div>
           </div>
@@ -345,11 +358,13 @@ export default function JavTagModal({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-base font-semibold text-slate-900">重命名标签</h3>
+              <h3 className="text-base font-semibold text-slate-900">
+                {zh('重命名标签', 'Rename tag')}
+              </h3>
               <button
                 onClick={handleCloseRename}
                 className="rounded px-2 py-1 text-sm text-slate-500 hover:bg-slate-100"
-                aria-label="关闭重命名"
+                aria-label={zh('关闭重命名', 'Close rename')}
               >
                 ✕
               </button>
@@ -358,7 +373,7 @@ export default function JavTagModal({
               <input
                 value={renameTagName}
                 onChange={(e) => setRenameTagName(e.target.value)}
-                placeholder="请输入新的标签名"
+                placeholder={zh('请输入新的标签名', 'Enter a new tag name')}
                 className="w-full rounded-lg border px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 onKeyDown={(event) => {
                   if (event.key === 'Escape') {
@@ -373,17 +388,17 @@ export default function JavTagModal({
                 onClick={handleCloseRename}
                 className="rounded border px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
               >
-                取消
+                {zh('取消', 'Cancel')}
               </button>
               <button
                 onClick={async () => {
                   const trimmed = renameTagName.trim()
                   if (!trimmed) {
-                    setRenameError('标签名不能为空')
+                    setRenameError(zh('标签名不能为空', 'Tag name cannot be empty'))
                     return
                   }
                   if (!renameTagId) {
-                    setRenameError('标签不存在')
+                    setRenameError(zh('标签不存在', 'Tag not found'))
                     return
                   }
                   if (trimmed === renameOriginalName) {
@@ -396,7 +411,7 @@ export default function JavTagModal({
                     await onRenameTag?.(renameTagId, trimmed)
                     handleCloseRename()
                   } catch (err) {
-                    setRenameError(err.message || '重命名失败')
+                    setRenameError(err.message || zh('重命名失败', 'Rename failed'))
                   } finally {
                     setRenaming(false)
                   }
@@ -404,7 +419,7 @@ export default function JavTagModal({
                 disabled={renaming}
                 className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
               >
-                {renaming ? '保存中…' : '保存'}
+                {renaming ? zh('保存中…', 'Saving...') : zh('保存', 'Save')}
               </button>
             </div>
           </div>

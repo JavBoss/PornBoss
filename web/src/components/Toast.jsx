@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { zh } from '@/utils/i18n'
 
 export default function Toast({ open, message, onClose, duration = 6000 }) {
   useEffect(() => {
@@ -22,7 +23,7 @@ export default function Toast({ open, message, onClose, duration = 6000 }) {
             onClick={() => onClose?.()}
             className="shrink-0 rounded px-1.5 py-0.5 text-xs text-gray-500 hover:bg-gray-100"
           >
-            关闭
+            {zh('关闭', 'Close')}
           </button>
         </div>
       </div>

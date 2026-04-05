@@ -1,8 +1,9 @@
-package jav
+package util_test
 
 import (
-	"pornboss/internal/util"
 	"testing"
+
+	"pornboss/internal/util"
 )
 
 func TestExtractCodeFromName(t *testing.T) {

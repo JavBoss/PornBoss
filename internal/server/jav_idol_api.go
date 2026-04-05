@@ -31,6 +31,11 @@ func listJavIdols(c *gin.Context) {
 		coverDir = cfg.JavCoverDir
 	}
 	for i := range items {
+		items[i].Name = strings.TrimSpace(items[i].Name)
+		items[i].RomanName = strings.TrimSpace(items[i].RomanName)
+		items[i].JapaneseName = strings.TrimSpace(items[i].JapaneseName)
+		items[i].ChineseName = strings.TrimSpace(items[i].ChineseName)
+
 		// If current sample cover not present, try another code preferring solo works.
 		if coverDir == "" {
 			continue

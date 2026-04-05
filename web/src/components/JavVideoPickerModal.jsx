@@ -1,3 +1,5 @@
+import { zh } from '@/utils/i18n'
+
 export default function JavVideoPickerModal({
   open,
   title,
@@ -22,14 +24,14 @@ export default function JavVideoPickerModal({
           <button
             onClick={onClose}
             className="rounded px-2 py-1 text-gray-500 hover:bg-gray-100"
-            aria-label="关闭选择"
+            aria-label={zh('关闭选择', 'Close picker')}
           >
             ✕
           </button>
         </div>
         {item && (
           <div className="mb-2 text-xs text-gray-500">
-            {item.code || '未知番号'}
+            {item.code || zh('未知番号', 'Unknown code')}
             {item.title ? ` · ${item.title}` : ''}
           </div>
         )}
@@ -39,7 +41,8 @@ export default function JavVideoPickerModal({
           ) : (
             list.map((video) => {
               const fullPath = buildVideoFullPath ? buildVideoFullPath(video) : ''
-              const label = fullPath || video?.filename || video?.path || '未命名文件'
+              const label =
+                fullPath || video?.filename || video?.path || zh('未命名文件', 'Untitled file')
               const canSelect = action === 'play' ? true : isVideoOpenable?.(video)
               return (
                 <button
@@ -60,7 +63,7 @@ export default function JavVideoPickerModal({
         </div>
         <div className="mt-3 flex justify-end">
           <button onClick={onClose} className="rounded border px-3 py-1.5 text-sm hover:bg-gray-50">
-            关闭
+            {zh('关闭', 'Close')}
           </button>
         </div>
       </div>

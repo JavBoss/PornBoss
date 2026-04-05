@@ -1,6 +1,7 @@
 import { Button } from '@mui/material'
 import Pagination from '@/components/Pagination'
 import VideoGrid from '@/components/VideoGrid'
+import { zh } from '@/utils/i18n'
 
 export default function VideoView({
   selectedCount,
@@ -35,7 +36,7 @@ export default function VideoView({
           {hasSelection && (
             <>
               <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium leading-5 text-sky-700">
-                已选 {selectedCount} 项
+                {zh(`已选 ${selectedCount} 项`, `${selectedCount} selected`)}
               </span>
               <Button
                 variant="outlined"
@@ -44,7 +45,7 @@ export default function VideoView({
                 disabled={!pageSelectable}
                 className="!min-h-0 !min-w-0 !px-2 !py-0.5 !text-xs !leading-5"
               >
-                {pageAllSelected ? '取消本页' : '全选本页'}
+                {pageAllSelected ? zh('取消本页', 'Unselect page') : zh('全选本页', 'Select page')}
               </Button>
               <Button
                 variant="outlined"
@@ -53,7 +54,7 @@ export default function VideoView({
                 disabled={selectedCount === 0}
                 className="!min-h-0 !min-w-0 !px-2 !py-0.5 !text-xs !leading-5"
               >
-                操作
+                {zh('操作', 'Actions')}
               </Button>
               <Button
                 variant="text"
@@ -61,7 +62,7 @@ export default function VideoView({
                 onClick={clearSelection}
                 className="!min-h-0 !min-w-0 !px-2 !py-0.5 !text-xs !leading-5"
               >
-                清空
+                {zh('清空', 'Clear')}
               </Button>
             </>
           )}
@@ -95,28 +96,28 @@ export default function VideoView({
           {hasSelection && (
             <>
               <span className="rounded-full px-2 py-0.5 text-xs font-medium leading-5">
-                已选 {selectedCount} 项
+                {zh(`已选 ${selectedCount} 项`, `${selectedCount} selected`)}
               </span>
               <Button
                 variant="outlined"
                 size="small"
                 className="!min-h-0 !min-w-0 !px-2 !py-0.5 !text-xs !leading-5"
               >
-                {pageAllSelected ? '取消本页' : '全选本页'}
+                {pageAllSelected ? zh('取消本页', 'Unselect page') : zh('全选本页', 'Select page')}
               </Button>
               <Button
                 variant="outlined"
                 size="small"
                 className="!min-h-0 !min-w-0 !px-2 !py-0.5 !text-xs !leading-5"
               >
-                操作
+                {zh('操作', 'Actions')}
               </Button>
               <Button
                 variant="text"
                 size="small"
                 className="!min-h-0 !min-w-0 !px-2 !py-0.5 !text-xs !leading-5"
               >
-                清空
+                {zh('清空', 'Clear')}
               </Button>
             </>
           )}
@@ -124,7 +125,7 @@ export default function VideoView({
       </div>
       {loading ? (
         <div className="mt-4 flex min-h-[200px] items-center justify-center rounded border border-dashed border-gray-200 text-gray-500">
-          加载中…
+          {zh('加载中…', 'Loading...')}
         </div>
       ) : (
         <VideoGrid

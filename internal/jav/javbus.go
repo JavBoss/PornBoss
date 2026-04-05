@@ -146,6 +146,7 @@ func parseDocument(doc *html.Node) *Info {
 		DurationMin: duration,
 		Tags:        tags,
 		Actors:      actors,
+		Provider:    ProviderJavBus,
 	}
 }
 

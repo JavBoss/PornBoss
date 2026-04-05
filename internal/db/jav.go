@@ -17,10 +17,20 @@ import (
 
 // JavTagCount represents a JAV tag with associated work count.
 type JavTagCount struct {
-	ID     int64  `json:"id"`
-	Name   string `json:"name"`
-	IsUser bool   `json:"is_user"`
-	Count  int64  `json:"count"`
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	Provider int    `json:"provider"`
+	Count    int64  `json:"count"`
+}
+
+// JavScanVideo contains the fields the scanner needs to resolve or refresh JAV metadata.
+type JavScanVideo struct {
+	ID          int64     `gorm:"column:id"`
+	Filename    string    `gorm:"column:filename"`
+	JavID       *int64    `gorm:"column:jav_id"`
+	JavProvider int       `gorm:"column:jav_provider"`
+	UpdatedAt   time.Time `gorm:"column:updated_at"`
+	DurationSec int64     `gorm:"column:duration_sec"`
 }
 
 // SearchJav lists Jav metadata filtered by actors/tag IDs/search with pagination and sorting.
@@ -73,8 +83,9 @@ func SearchJav(ctx context.Context, actors []string, tagIDs []int64, search, sor
 	default:
 		// ignore unknown values
 	}
+	visibleTagProviders := visibleJavTagProviders()
 	query := filtered.
-		Preload("Tags").
+		Preload("Tags", "provider IN ?", visibleTagProviders).
 		Preload("Idols").
 		Preload("Videos", "COALESCE(hidden, 0) = 0").
 		Preload("Videos.DirectoryRef").
@@ -94,27 +105,37 @@ func SearchJav(ctx context.Context, actors []string, tagIDs []int64, search, sor
 // ListJavTags returns JAV tags with the number of works for each tag.
 func ListJavTags(ctx context.Context) ([]JavTagCount, error) {
 	var tags []JavTagCount
+	visibleProviders := visibleJavTagProviders()
 	if err := common.DB.WithContext(ctx).
 		Table("jav_tag jt").
-		Select("jt.id, jt.name, jt.is_user, COUNT(DISTINCT CASE WHEN COALESCE(v.hidden, 0) = 0 THEN jtm.jav_id END) AS count").
+		Select("jt.id, jt.name, jt.provider, COUNT(DISTINCT CASE WHEN COALESCE(v.hidden, 0) = 0 THEN jtm.jav_id END) AS count").
 		Joins("LEFT JOIN jav_tag_map jtm ON jtm.jav_tag_id = jt.id").
 		Joins("LEFT JOIN video v ON v.jav_id = jtm.jav_id").
-		Group("jt.id, jt.name, jt.is_user").
-		Order("jt.name, jt.is_user").
+		Where("jt.provider IN ?", visibleProviders).
+		Group("jt.id, jt.name, jt.provider").
+		Order("jt.name, jt.provider").
 		Scan(&tags).Error; err != nil {
 		return nil, fmt.Errorf("list jav tags: %w", err)
 	}
 	return tags, nil
 }
 
-// CreateJavTag creates a JAV tag with the requested source type.
-func CreateJavTag(ctx context.Context, name string, isUser bool) (*models.JavTag, error) {
+func visibleJavTagProviders() []int {
+	current := int(jav.PreferredProvider())
+	if current <= 0 {
+		current = int(jav.ProviderJavBus)
+	}
+	return []int{current, int(jav.ProviderUser)}
+}
+
+// CreateJavTag creates a user-defined JAV tag.
+func CreateJavTag(ctx context.Context, name string) (*models.JavTag, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, errors.New("tag name cannot be empty")
 	}
 
-	tag := models.JavTag{Name: name, IsUser: isUser}
+	tag := models.JavTag{Name: name, Provider: int(jav.ProviderUser)}
 	if err := common.DB.WithContext(ctx).Create(&tag).Error; err != nil {
 		return nil, fmt.Errorf("create jav tag %q: %w", name, err)
 	}
@@ -135,13 +156,13 @@ func RenameJavTag(ctx context.Context, id int64, newName string) error {
 	if err := common.DB.WithContext(ctx).First(&tag, id).Error; err != nil {
 		return fmt.Errorf("find jav tag: %w", err)
 	}
-	if !tag.IsUser {
+	if !isUserJavTagProvider(tag.Provider) {
 		return errors.New("tag is not user-defined")
 	}
 
 	if err := common.DB.WithContext(ctx).
 		Model(&models.JavTag{}).
-		Where("id = ? AND is_user = ?", id, true).
+		Where("id = ? AND provider = ?", id, int(jav.ProviderUser)).
 		Update("name", newName).Error; err != nil {
 		return fmt.Errorf("rename jav tag: %w", err)
 	}
@@ -158,7 +179,7 @@ func DeleteJavTag(ctx context.Context, id int64) error {
 	if err := common.DB.WithContext(ctx).First(&tag, id).Error; err != nil {
 		return fmt.Errorf("find jav tag: %w", err)
 	}
-	if !tag.IsUser {
+	if !isUserJavTagProvider(tag.Provider) {
 		return errors.New("tag is not user-defined")
 	}
 
@@ -183,7 +204,7 @@ func DeleteJavTags(ctx context.Context, ids []int64) error {
 	var count int64
 	if err := common.DB.WithContext(ctx).
 		Model(&models.JavTag{}).
-		Where("id IN ? AND is_user = ?", cleanIDs, true).
+		Where("id IN ? AND provider = ?", cleanIDs, int(jav.ProviderUser)).
 		Count(&count).Error; err != nil {
 		return fmt.Errorf("find jav tags: %w", err)
 	}
@@ -217,7 +238,7 @@ func AddJavTagToJavs(ctx context.Context, tagID int64, javIDs []int64) error {
 		if err := tx.First(&tag, tagID).Error; err != nil {
 			return fmt.Errorf("find jav tag: %w", err)
 		}
-		if !tag.IsUser {
+		if !isUserJavTagProvider(tag.Provider) {
 			return errors.New("tag is not user-defined")
 		}
 
@@ -250,7 +271,7 @@ func RemoveJavTagFromJavs(ctx context.Context, tagID int64, javIDs []int64) erro
 	if err := common.DB.WithContext(ctx).First(&tag, tagID).Error; err != nil {
 		return fmt.Errorf("find jav tag: %w", err)
 	}
-	if !tag.IsUser {
+	if !isUserJavTagProvider(tag.Provider) {
 		return errors.New("tag is not user-defined")
 	}
 
@@ -274,7 +295,7 @@ func ReplaceJavUserTags(ctx context.Context, javIDs, tagIDs []int64) error {
 		var count int64
 		if err := common.DB.WithContext(ctx).
 			Model(&models.JavTag{}).
-			Where("id IN ? AND is_user = ?", cleanTagIDs, true).
+			Where("id IN ? AND provider = ?", cleanTagIDs, int(jav.ProviderUser)).
 			Count(&count).Error; err != nil {
 			return fmt.Errorf("find jav tags: %w", err)
 		}
@@ -285,7 +306,7 @@ func ReplaceJavUserTags(ctx context.Context, javIDs, tagIDs []int64) error {
 
 	return common.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.
-			Where("jav_id IN ? AND jav_tag_id IN (SELECT id FROM jav_tag WHERE is_user = 1)", cleanJavIDs).
+			Where("jav_id IN ? AND jav_tag_id IN (SELECT id FROM jav_tag WHERE provider = ?)", cleanJavIDs, int(jav.ProviderUser)).
 			Delete(&models.JavTagMap{}).Error; err != nil {
 			return fmt.Errorf("delete jav tag map: %w", err)
 		}
@@ -308,6 +329,7 @@ func ReplaceJavUserTags(ctx context.Context, javIDs, tagIDs []int64) error {
 
 func buildJavFilter(ctx context.Context, actors []string, tagIDs []int64, search string) *gorm.DB {
 	q := common.DB.WithContext(ctx).Model(&models.Jav{})
+	visibleTagProviders := visibleJavTagProviders()
 	// Only include JAV entries that have at least one visible video.
 	validVideo := common.DB.WithContext(ctx).
 		Table("video v").
@@ -322,6 +344,8 @@ func buildJavFilter(ctx context.Context, actors []string, tagIDs []int64, search
 	if len(tagIDs) > 0 {
 		q = q.
 			Joins("JOIN jav_tag_map jtm ON jtm.jav_id = jav.id").
+			Joins("JOIN jav_tag jt ON jt.id = jtm.jav_tag_id").
+			Where("jt.provider IN ?", visibleTagProviders).
 			Where("jtm.jav_tag_id IN ?", tagIDs).
 			Group("jav.id").
 			Having("COUNT(DISTINCT jtm.jav_tag_id) = ?", len(tagIDs))
@@ -339,18 +363,19 @@ func buildJavFilter(ctx context.Context, actors []string, tagIDs []int64, search
 
 // JavIdolSummary represents idol info with aggregated work count and a sample code for cover lookup.
 type JavIdolSummary struct {
-	ID          int64      `json:"id"`
-	Name        string     `json:"name"`
-	RomanName   string     `json:"roman_name"`
-	ChineseName string     `json:"chinese_name"`
-	HeightCM    *int       `json:"height_cm"`
-	BirthDate   *time.Time `json:"birth_date"`
-	Bust        *int       `json:"bust"`
-	Waist       *int       `json:"waist"`
-	Hips        *int       `json:"hips"`
-	Cup         *int       `json:"cup"`
-	WorkCount   int64      `json:"work_count"`
-	SampleCode  string     `json:"sample_code"`
+	ID           int64      `json:"id"`
+	Name         string     `json:"name"`
+	RomanName    string     `json:"roman_name"`
+	JapaneseName string     `json:"japanese_name"`
+	ChineseName  string     `json:"chinese_name"`
+	HeightCM     *int       `json:"height_cm"`
+	BirthDate    *time.Time `json:"birth_date"`
+	Bust         *int       `json:"bust"`
+	Waist        *int       `json:"waist"`
+	Hips         *int       `json:"hips"`
+	Cup          *int       `json:"cup"`
+	WorkCount    int64      `json:"work_count"`
+	SampleCode   string     `json:"sample_code"`
 }
 
 // ListJavIdols returns idols ordered by selected sort with pagination.
@@ -373,7 +398,13 @@ func ListJavIdols(ctx context.Context, search, sort string, limit, offset int) (
 
 	if search != "" {
 		like := fmt.Sprintf("%%%s%%", search)
-		base = base.Where("ji.name LIKE ?", like)
+		base = base.Where(
+			"ji.name LIKE ? OR ji.japanese_name LIKE ? OR ji.roman_name LIKE ? OR ji.chinese_name LIKE ?",
+			like,
+			like,
+			like,
+			like,
+		)
 	}
 
 	var total int64
@@ -419,8 +450,8 @@ COALESCE(
 		// ignore unknown values
 	}
 	if err := base.
-		Select("ji.id, ji.name, ji.roman_name, ji.chinese_name, ji.height_cm, ji.birth_date, ji.bust, ji.waist, ji.hips, ji.cup, COUNT(DISTINCT j.id) AS work_count, " + soloCode).
-		Group("ji.id, ji.name, ji.roman_name, ji.chinese_name, ji.height_cm, ji.birth_date, ji.bust, ji.waist, ji.hips, ji.cup").
+		Select("ji.id, ji.name, ji.roman_name, ji.japanese_name, ji.chinese_name, ji.height_cm, ji.birth_date, ji.bust, ji.waist, ji.hips, ji.cup, COUNT(DISTINCT j.id) AS work_count, " + soloCode).
+		Group("ji.id, ji.name, ji.roman_name, ji.japanese_name, ji.chinese_name, ji.height_cm, ji.birth_date, ji.bust, ji.waist, ji.hips, ji.cup").
 		Order(order).
 		Limit(limit).
 		Offset(offset).
@@ -501,6 +532,7 @@ func ListIdolsMissingProfile(ctx context.Context) ([]models.JavIdol, error) {
 	if err := common.DB.WithContext(ctx).
 		Where(`
 (
+  japanese_name IS NULL OR japanese_name = '' OR
   roman_name IS NULL OR roman_name = '' OR
   chinese_name IS NULL OR chinese_name = '' OR
   height_cm IS NULL OR
@@ -526,6 +558,9 @@ func UpdateIdolProfile(ctx context.Context, idolID int64, info *jav.ActressInfo)
 		return errors.New("actress info is nil")
 	}
 	updates := make(map[string]any)
+	if name := strings.TrimSpace(info.JapaneseName); name != "" {
+		updates["japanese_name"] = gorm.Expr("CASE WHEN japanese_name IS NULL OR japanese_name = '' THEN ? ELSE japanese_name END", name)
+	}
 	if name := strings.TrimSpace(info.RomanName); name != "" {
 		updates["roman_name"] = gorm.Expr("CASE WHEN roman_name IS NULL OR roman_name = '' THEN ? ELSE roman_name END", name)
 	}
@@ -563,12 +598,13 @@ func UpdateIdolProfile(ctx context.Context, idolID int64, info *jav.ActressInfo)
 }
 
 // ListVideosForJavScan loads fields used by the jav scanner.
-func ListVideosForJavScan(ctx context.Context) ([]models.Video, error) {
-	var videos []models.Video
+func ListVideosForJavScan(ctx context.Context) ([]JavScanVideo, error) {
+	var videos []JavScanVideo
 	if err := common.DB.WithContext(ctx).
-		Model(&models.Video{}).
+		Table("video").
+		Joins("LEFT JOIN jav ON jav.id = video.jav_id").
 		Where("COALESCE(hidden, 0) = 0").
-		Select("video.id, video.filename, video.jav_id, video.updated_at, video.duration_sec").
+		Select("video.id, video.filename, video.jav_id, video.updated_at, video.duration_sec, COALESCE(jav.provider, 0) AS jav_provider").
 		Find(&videos).Error; err != nil {
 		return nil, fmt.Errorf("list videos for jav scan: %w", err)
 	}
@@ -672,12 +708,13 @@ func saveJavInfoTx(tx *gorm.DB, info *jav.Info, now ...time.Time) (*models.Jav, 
 	javRec.Title = info.Title
 	javRec.ReleaseUnix = info.ReleaseUnix
 	javRec.DurationMin = info.DurationMin
+	javRec.Provider = int(jav.ParseProvider(int(info.Provider)))
 	javRec.FetchedAt = ts
 	if err := tx.Save(javRec).Error; err != nil {
 		return nil, fmt.Errorf("save jav: %w", err)
 	}
 
-	tags, err := ensureJavTagsTx(tx, info.Tags)
+	tags, err := ensureJavTagsTx(tx, info.Tags, info.Provider)
 	if err != nil {
 		return nil, err
 	}
@@ -706,20 +743,28 @@ func lockJavByCodeTx(tx *gorm.DB, code string) (*models.Jav, error) {
 	return &javRec, nil
 }
 
-func ensureJavTagsTx(tx *gorm.DB, names []string) ([]models.JavTag, error) {
+func ensureJavTagsTx(tx *gorm.DB, names []string, provider jav.Provider) ([]models.JavTag, error) {
 	unique := normalizeNames(names)
 	if len(unique) == 0 {
 		return nil, nil
 	}
+	provider = jav.ParseProvider(int(provider))
+	if provider == jav.ProviderUnknown {
+		provider = jav.ProviderJavBus
+	}
 	var tags []models.JavTag
 	for _, name := range unique {
-		tag := models.JavTag{Name: name, IsUser: false}
-		if err := tx.Where("name = ? AND is_user = ?", name, false).FirstOrCreate(&tag).Error; err != nil {
+		tag := models.JavTag{Name: name, Provider: int(provider)}
+		if err := tx.Where("name = ? AND provider = ?", name, int(provider)).FirstOrCreate(&tag).Error; err != nil {
 			return nil, fmt.Errorf("ensure jav tag %q: %w", name, err)
 		}
 		tags = append(tags, tag)
 	}
 	return tags, nil
+}
+
+func isUserJavTagProvider(provider int) bool {
+	return jav.ParseProvider(provider) == jav.ProviderUser
 }
 
 func ensureJavIdolsTx(tx *gorm.DB, names []string) ([]models.JavIdol, error) {

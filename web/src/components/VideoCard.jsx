@@ -4,6 +4,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import { openVideoFile, revealVideoLocation } from '@/api'
 import { formatBytes, getVideoDisplayName, parseVideoFingerprint } from '@/utils/display'
+import { zh } from '@/utils/i18n'
 
 export default function VideoCard({
   video,
@@ -35,7 +36,7 @@ export default function VideoCard({
     try {
       await openVideoFile({ path: videoPath, dirPath: directoryPath })
     } catch (err) {
-      console.error('打开文件失败', err)
+      console.error(zh('打开文件失败', 'Open file failed'), err)
     }
   }
 
@@ -45,7 +46,7 @@ export default function VideoCard({
     try {
       await revealVideoLocation({ path: videoPath, dirPath: directoryPath })
     } catch (err) {
-      console.error('打开所在位置失败', err)
+      console.error(zh('打开所在位置失败', 'Reveal file failed'), err)
     }
   }
   return (
@@ -65,7 +66,7 @@ export default function VideoCard({
           onPointerUp={(e) => {
             e.currentTarget.blur()
           }}
-          aria-label={`选择 ${displayName}`}
+          aria-label={zh(`选择 ${displayName}`, `Select ${displayName}`)}
         />
       </div>
       <div className="aspect-video w-full overflow-hidden bg-gray-200">
@@ -91,7 +92,9 @@ export default function VideoCard({
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-1">
           <span className="inline-flex h-4 items-center rounded bg-gray-100 px-1 text-[10px] font-medium text-gray-700">
-            {durationMinutes ? `${durationMinutes} 分钟` : '时长未知'}
+            {durationMinutes
+              ? zh(`${durationMinutes} 分钟`, `${durationMinutes} min`)
+              : zh('时长未知', 'Unknown duration')}
           </span>
           {resolution ? (
             <span className="inline-flex h-4 items-center rounded bg-gray-100 px-1 text-[10px] font-medium text-gray-700">
@@ -120,36 +123,36 @@ export default function VideoCard({
                 </button>
               ))
             : null}
-          <Tooltip title="修改标签">
+          <Tooltip title={zh('修改标签', 'Edit tags')}>
             <IconButton
               size="small"
               onClick={(e) => {
                 e.stopPropagation()
                 onOpenTagPicker()
               }}
-              aria-label="修改标签"
+              aria-label={zh('修改标签', 'Edit tags')}
               className="h-6 w-6"
             >
               <LocalOfferOutlinedIcon fontSize="inherit" />
             </IconButton>
           </Tooltip>
-          <Tooltip title="用默认程序打开">
+          <Tooltip title={zh('用默认程序打开', 'Open with default app')}>
             <IconButton
               size="small"
               onClick={handleOpenFile}
               disabled={!canOpen}
-              aria-label="打开文件"
+              aria-label={zh('打开文件', 'Open file')}
               className="h-6 w-6"
             >
               <OpenInNewIcon fontSize="inherit" />
             </IconButton>
           </Tooltip>
-          <Tooltip title="打开所在位置">
+          <Tooltip title={zh('打开所在位置', 'Reveal in folder')}>
             <IconButton
               size="small"
               onClick={handleRevealFile}
               disabled={!canOpen}
-              aria-label="打开所在位置"
+              aria-label={zh('打开所在位置', 'Reveal in folder')}
               className="h-6 w-6"
             >
               <FolderOpenIcon fontSize="inherit" />
@@ -165,8 +168,8 @@ export default function VideoCard({
             onPlay(video)
           }}
           className="pointer-events-auto rounded-full bg-black/60 p-3 hover:bg-black/80"
-          aria-label="播放"
-          title="播放"
+          aria-label={zh('播放', 'Play')}
+          title={zh('播放', 'Play')}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

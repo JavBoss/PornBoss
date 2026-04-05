@@ -1,11 +1,67 @@
 package jav
 
-import "errors"
+import (
+	"errors"
+
+	"pornboss/internal/util"
+)
 
 // ResourceNotFonud indicates the requested resource is not available.
 var ResourceNotFonud = errors.New("jav: resource not found")
 
-// Info holds basic metadata extracted from a JavBus detail page.
+// Provider identifies where JAV metadata or tags came from.
+type Provider int
+
+const (
+	ProviderUnknown Provider = iota
+	ProviderJavBus
+	ProviderJavDatabase
+	ProviderUser
+)
+
+func (p Provider) String() string {
+	switch p {
+	case ProviderJavBus:
+		return "javbus"
+	case ProviderJavDatabase:
+		return "javdatabase"
+	case ProviderUser:
+		return "user"
+	default:
+		return "unknown"
+	}
+}
+
+// ParseProvider converts a persisted numeric provider to a known enum.
+func ParseProvider(value int) Provider {
+	p := Provider(value)
+	switch p {
+	case ProviderJavBus, ProviderJavDatabase, ProviderUser:
+		return p
+	default:
+		return ProviderUnknown
+	}
+}
+
+// PreferredProvider chooses the metadata source based on the system language.
+func PreferredProvider() Provider {
+	if util.SystemPrefersChinese() {
+		return ProviderJavBus
+	}
+	return ProviderJavDatabase
+}
+
+// PreferredLookupProvider returns the scraper that matches the current system language.
+func PreferredLookupProvider() JavLookupProvider {
+	switch PreferredProvider() {
+	case ProviderJavDatabase:
+		return JavDatabaseProvider
+	default:
+		return JavBusProvider
+	}
+}
+
+// Info holds basic metadata extracted from a JAV metadata provider.
 type Info struct {
 	Title       string
 	Code        string
@@ -13,13 +69,14 @@ type Info struct {
 	DurationMin int
 	Tags        []string
 	Actors      []string
+	Provider    Provider
 }
 
 // ActressInfo describes basic actress profile fields from JavDatabase.
 type ActressInfo struct {
 	RomanName    string
 	JapaneseName string
-	ChineseName string
+	ChineseName  string
 	HeightCM     int
 	Bust         int
 	Waist        int

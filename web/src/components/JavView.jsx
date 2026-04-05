@@ -1,5 +1,6 @@
 import JavGrid from '@/components/JavGrid'
 import Pagination from '@/components/Pagination'
+import { zh } from '@/utils/i18n'
 
 export default function JavView({
   javPage,
@@ -46,7 +47,7 @@ export default function JavView({
         <div
           className={`${contentClass} flex min-h-[200px] items-center justify-center rounded border border-dashed border-gray-200 text-gray-500`}
         >
-          加载中…
+          {zh('加载中…', 'Loading...')}
         </div>
       ) : (
         <div className={contentClass}>

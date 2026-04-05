@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { pickDirectory } from '@/api'
+import { zh } from '@/utils/i18n'
 
 export default function DirectoryManager({ open, directories, onCreate, onUpdate, onDelete }) {
   const [path, setPath] = useState('')
@@ -35,14 +36,14 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
       const data = await pickDirectory()
       const picked = data?.path?.trim()
       if (!picked) {
-        throw new Error('未获取到目录路径')
+        throw new Error(zh('未获取到目录路径', 'No directory path returned'))
       }
       setValue?.(picked)
     } catch (err) {
       if (setErr) {
-        setErr(err.message || '选择目录失败')
+        setErr(err.message || zh('选择目录失败', 'Directory selection failed'))
       } else {
-        setError(err.message || '选择目录失败')
+        setError(err.message || zh('选择目录失败', 'Directory selection failed'))
       }
       if (setRowId) {
         setRowId()
@@ -56,7 +57,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
     e.preventDefault()
     setError('')
     if (!path.trim()) {
-      setError('路径不能为空')
+      setError(zh('路径不能为空', 'Path cannot be empty'))
       return
     }
     setSubmitting(true)
@@ -65,7 +66,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
       setPath('')
       setAdding(false)
     } catch (err) {
-      setError(err.message || '创建失败')
+      setError(err.message || zh('创建失败', 'Create failed'))
     } finally {
       setSubmitting(false)
     }
@@ -91,7 +92,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
     const trimmed = editPath.trim()
     if (!trimmed) {
       setRowErrorId(editId)
-      setRowErrorMsg('路径不能为空')
+      setRowErrorMsg(zh('路径不能为空', 'Path cannot be empty'))
       return
     }
     setSavingId(editId)
@@ -102,7 +103,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
       cancelEdit()
     } catch (err) {
       setRowErrorId(editId)
-      setRowErrorMsg(err.message || '更新失败')
+      setRowErrorMsg(err.message || zh('更新失败', 'Update failed'))
     } finally {
       setSavingId(null)
     }
@@ -110,7 +111,12 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
 
   const handleDelete = async (dir) => {
     if (!dir?.id || dir.is_delete) return
-    const ok = window.confirm('删除后将不再扫描该目录，已关联的视频会被隐藏。确认删除？')
+    const ok = window.confirm(
+      zh(
+        '删除后将不再扫描该目录，已关联的视频会被隐藏。确认删除？',
+        'This directory will no longer be scanned and linked videos will be hidden. Delete it?'
+      )
+    )
     if (!ok) return
     setRowErrorId(null)
     setRowErrorMsg('')
@@ -122,7 +128,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
       }
     } catch (err) {
       setRowErrorId(dir.id)
-      setRowErrorMsg(err.message || '删除失败')
+      setRowErrorMsg(err.message || zh('删除失败', 'Delete failed'))
     } finally {
       setDeletingId(null)
     }
@@ -131,7 +137,9 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
   return (
     <div className="space-y-3">
       <div className="divide-y rounded border">
-        {directories.length === 0 && <div className="p-3 text-sm text-gray-500">暂无目录</div>}
+        {directories.length === 0 && (
+          <div className="p-3 text-sm text-gray-500">{zh('暂无目录', 'No directories')}</div>
+        )}
         {directories.map((d) => {
           const isEditing = editId === d.id
           const working = savingId === d.id || deletingId === d.id
@@ -168,7 +176,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
                         disabled={picking || working}
                         className="rounded border px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-60"
                       >
-                        {picking ? '选择中…' : '选择目录'}
+                        {picking ? zh('选择中…', 'Picking...') : zh('选择目录', 'Choose directory')}
                       </button>
                     </div>
                   </form>
@@ -176,12 +184,12 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
                 <div className="flex flex-wrap items-center gap-2">
                   {d.missing && (
                     <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
-                      目录缺失
+                      {zh('目录缺失', 'Missing')}
                     </span>
                   )}
                   {d.is_delete && (
                     <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-                      已删除
+                      {zh('已删除', 'Deleted')}
                     </span>
                   )}
                 </div>
@@ -198,7 +206,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
                       disabled={d.is_delete || working}
                       className="rounded border px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                     >
-                      编辑
+                      {zh('编辑', 'Edit')}
                     </button>
                     <button
                       type="button"
@@ -206,7 +214,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
                       disabled={d.is_delete || working}
                       className="rounded border px-3 py-1.5 text-xs text-red-700 hover:bg-red-50 disabled:opacity-60"
                     >
-                      {deletingId === d.id ? '删除中…' : '删除'}
+                      {deletingId === d.id ? zh('删除中…', 'Deleting...') : zh('删除', 'Delete')}
                     </button>
                   </>
                 ) : (
@@ -217,7 +225,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
                       disabled={working}
                       className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white disabled:opacity-60"
                     >
-                      {savingId === d.id ? '保存中…' : '保存'}
+                      {savingId === d.id ? zh('保存中…', 'Saving...') : zh('保存', 'Save')}
                     </button>
                     <button
                       type="button"
@@ -225,7 +233,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
                       disabled={working}
                       className="rounded border px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                     >
-                      取消
+                      {zh('取消', 'Cancel')}
                     </button>
                   </>
                 )}
@@ -250,7 +258,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
               disabled={picking || submitting}
               className="rounded border px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-60"
             >
-              {picking ? '选择中…' : '选择目录'}
+              {picking ? zh('选择中…', 'Picking...') : zh('选择目录', 'Choose directory')}
             </button>
           </div>
           {error && <div className="text-sm text-red-600">{error}</div>}
@@ -264,14 +272,14 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
               }}
               className="rounded border px-3 py-1.5 text-sm hover:bg-gray-50"
             >
-              取消
+              {zh('取消', 'Cancel')}
             </button>
             <button
               type="submit"
               disabled={submitting || picking}
               className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-60"
             >
-              {submitting ? '创建中…' : '保存'}
+              {submitting ? zh('创建中…', 'Creating...') : zh('保存', 'Save')}
             </button>
           </div>
         </form>
@@ -286,7 +294,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
             }}
             className="rounded border px-3 py-1.5 text-sm hover:bg-gray-50"
           >
-            添加目录
+            {zh('添加目录', 'Add Directory')}
           </button>
         </div>
       )}

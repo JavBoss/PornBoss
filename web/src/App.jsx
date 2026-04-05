@@ -33,6 +33,8 @@ import TopBar from '@/components/TopBar'
 import VideoSettingsModal from '@/components/VideoSettingsModal'
 import VideoTagModal from '@/components/VideoTagModal'
 import VideoView from '@/components/VideoView'
+import { isUserJavTag } from '@/constants/jav'
+import { isChineseLocale, zh } from '@/utils/i18n'
 import { useStore } from '@/store'
 import { parsePlayerHotkeys } from '@/utils/playerHotkeys'
 
@@ -201,7 +203,9 @@ export default function App() {
       openPlayer(video)
       const id = Number(video?.id)
       if (Number.isFinite(id) && id > 0) {
-        incrementVideoPlayCount(id).catch((err) => console.error('增加播放次数失败', err))
+        incrementVideoPlayCount(id).catch((err) =>
+          console.error(zh('增加播放次数失败', 'Failed to increment play count'), err)
+        )
       }
     },
     [openPlayer]
@@ -251,7 +255,7 @@ export default function App() {
       const target = video && isVideoOpenable(video) ? video : videos.find(isVideoOpenable)
       if (!target) return
       openVideoFile({ path: getVideoRelPath(target), dirPath: getVideoDirPath(target) }).catch(
-        (err) => console.error('打开文件失败', err)
+        (err) => console.error(zh('打开文件失败', 'Failed to open file'), err)
       )
     },
     [getVideoDirPath, getVideoRelPath, isVideoOpenable]
@@ -271,7 +275,7 @@ export default function App() {
       revealVideoLocation({
         path: getVideoRelPath(target),
         dirPath: getVideoDirPath(target),
-      }).catch((err) => console.error('打开所在位置失败', err))
+      }).catch((err) => console.error(zh('打开所在位置失败', 'Failed to reveal file'), err))
     },
     [getVideoDirPath, getVideoRelPath, isVideoOpenable]
   )
@@ -293,7 +297,12 @@ export default function App() {
           await revealVideoLocation(payload)
         }
       } catch (err) {
-        console.error(javVideoPickerAction === 'open' ? '打开文件失败' : '打开所在位置失败', err)
+        console.error(
+          javVideoPickerAction === 'open'
+            ? zh('打开文件失败', 'Failed to open file')
+            : zh('打开所在位置失败', 'Failed to reveal file'),
+          err
+        )
       } finally {
         closeJavVideoPicker()
       }
@@ -700,7 +709,7 @@ export default function App() {
     [javTagOptions]
   )
   const javUserTagOptions = useMemo(
-    () => (javTagOptions || []).filter((tag) => tag.is_user),
+    () => (javTagOptions || []).filter((tag) => isUserJavTag(tag)),
     [javTagOptions]
   )
   const searchHref = buildVideoUrl({ search: searchInput, page: 1, random: false, tagIds: [] })
@@ -751,32 +760,35 @@ export default function App() {
   const filterSummary = useMemo(() => {
     const formatList = (items, max = 3) => {
       if (!items || items.length === 0) return ''
-      if (items.length <= max) return items.join('、')
-      return `${items.slice(0, max).join('、')} 等${items.length}个`
+      const separator = isChineseLocale() ? '、' : ', '
+      if (items.length <= max) return items.join(separator)
+      return isChineseLocale()
+        ? `${items.slice(0, max).join(separator)} 等${items.length}个`
+        : `${items.slice(0, max).join(separator)} +${items.length - max} more`
     }
     if (isJavMode) {
       const parts = []
       if (javTab === 'list') {
         const actorsLabel = formatList(javActors)
-        if (actorsLabel) parts.push(`女优: ${actorsLabel}`)
+        if (actorsLabel) parts.push(zh(`女优: ${actorsLabel}`, `Idols: ${actorsLabel}`))
         const tagNames = javTags.map((id) => javTagNameMap.get(id)).filter(Boolean)
         const tagsLabel = formatList(tagNames)
-        if (tagsLabel) parts.push(`标签: ${tagsLabel}`)
-        if (javRandomMode) parts.push('随机')
+        if (tagsLabel) parts.push(zh(`标签: ${tagsLabel}`, `Tags: ${tagsLabel}`))
+        if (javRandomMode) parts.push(zh('随机', 'Random'))
       }
       const searchLabel = (javSearchTerm || '').trim()
-      if (searchLabel) parts.push(`搜索: ${searchLabel}`)
-      return parts.length ? parts.join('；') : '无'
+      if (searchLabel) parts.push(zh(`搜索: ${searchLabel}`, `Search: ${searchLabel}`))
+      return parts.length ? parts.join(isChineseLocale() ? '；' : '; ') : zh('无', 'None')
     }
     const parts = []
     const tagsLabel = formatList(selectedTags)
-    if (tagsLabel) parts.push(`标签: ${tagsLabel}`)
+    if (tagsLabel) parts.push(zh(`标签: ${tagsLabel}`, `Tags: ${tagsLabel}`))
     const searchLabel = (searchTerm || '').trim()
-    if (searchLabel) parts.push(`搜索: ${searchLabel}`)
+    if (searchLabel) parts.push(zh(`搜索: ${searchLabel}`, `Search: ${searchLabel}`))
     if (randomMode) {
-      parts.push('随机')
+      parts.push(zh('随机', 'Random'))
     }
-    return parts.length ? parts.join('；') : '无'
+    return parts.length ? parts.join(isChineseLocale() ? '；' : '; ') : zh('无', 'None')
   }, [
     isJavMode,
     javTab,
@@ -843,7 +855,7 @@ export default function App() {
       })
       setVideoSettingsOpen(false)
     } catch (err) {
-      alert(err.message || '保存失败')
+      alert(err.message || zh('保存失败', 'Save failed'))
     }
   }
 
@@ -895,7 +907,7 @@ export default function App() {
       })
       setJavSettingsOpen(false)
     } catch (err) {
-      alert(err.message || '保存失败')
+      alert(err.message || zh('保存失败', 'Save failed'))
     }
   }
 
@@ -937,7 +949,7 @@ export default function App() {
     (item) => {
       if (!item) return
       const initial = Array.isArray(item?.tags)
-        ? item.tags.filter((tag) => tag?.is_user).map((tag) => String(tag.id))
+        ? item.tags.filter((tag) => isUserJavTag(tag)).map((tag) => String(tag.id))
         : []
       setJavTagPickerItem(item)
       setJavTagPickerSelected(initial)
@@ -966,7 +978,7 @@ export default function App() {
   const javTagPickerExisting = useMemo(() => {
     if (!javTagPickerItem) return []
     return Array.isArray(javTagPickerItem?.tags)
-      ? javTagPickerItem.tags.filter((tag) => tag?.is_user).map((tag) => String(tag.id))
+      ? javTagPickerItem.tags.filter((tag) => isUserJavTag(tag)).map((tag) => String(tag.id))
       : []
   }, [javTagPickerItem])
 
@@ -1040,12 +1052,12 @@ export default function App() {
           if (item.id !== javId) return item
           const existingTags = Array.isArray(item.tags) ? item.tags : []
           for (const tag of existingTags) {
-            if (tag?.is_user && !userTagMap.has(tag.id)) {
+            if (isUserJavTag(tag) && !userTagMap.has(tag.id)) {
               userTagMap.set(tag.id, tag)
             }
           }
           const nextUserTags = selectedIds.map((id) => userTagMap.get(id)).filter(Boolean)
-          const nonUserTags = existingTags.filter((tag) => !tag?.is_user)
+          const nonUserTags = existingTags.filter((tag) => !isUserJavTag(tag))
           return { ...item, tags: [...nonUserTags, ...nextUserTags] }
         })
         return { javItems: next }
@@ -1294,12 +1306,14 @@ export default function App() {
   const activeJavLoading = javTab === 'idol' ? idolLoading : javLoading
   const javVideoPickerTitle =
     javVideoPickerAction === 'open'
-      ? '选择打开文件'
+      ? zh('选择打开文件', 'Choose a file to open')
       : javVideoPickerAction === 'reveal'
-        ? '选择定位文件'
-        : '选择播放文件'
+        ? zh('选择定位文件', 'Choose a file to reveal')
+        : zh('选择播放文件', 'Choose a file to play')
   const javVideoPickerEmptyText =
-    javVideoPickerAction === 'play' ? '暂无可播放文件' : '暂无可用文件'
+    javVideoPickerAction === 'play'
+      ? zh('暂无可播放文件', 'No playable files')
+      : zh('暂无可用文件', 'No available files')
 
   return (
     <div className="min-h-screen">
@@ -1345,9 +1359,14 @@ export default function App() {
           <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <div className="text-sm font-semibold">还没有可用的视频目录</div>
+                <div className="text-sm font-semibold">
+                  {zh('还没有可用的视频目录', 'No video directories available yet')}
+                </div>
                 <div className="mt-1 text-sm text-blue-800">
-                  请点击右上角“全局设置”，然后在“目录管理”里添加目录。
+                  {zh(
+                    '请点击右上角“全局设置”，然后在“目录管理”里添加目录。',
+                    'Open Global Settings in the top-right corner, then add a directory in Directory Management.'
+                  )}
                 </div>
               </div>
               <button
@@ -1355,7 +1374,7 @@ export default function App() {
                 onClick={() => setGlobalSettingsOpen(true)}
                 className="rounded border border-blue-300 bg-white px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-100"
               >
-                打开全局设置
+                {zh('打开全局设置', 'Open Global Settings')}
               </button>
             </div>
           </div>
@@ -1622,7 +1641,10 @@ export default function App() {
           const created = await createDirectory(payload)
           await loadDirectories()
           showToast(
-            '目录添加成功，首次扫描目录里的视频需要一定时间，请耐心等待，您可手动刷新页面查看扫描进度'
+            zh(
+              '目录添加成功，首次扫描目录里的视频需要一定时间，请耐心等待，您可手动刷新页面查看扫描进度',
+              'Directory added. The first scan may take some time. You can refresh manually to check progress.'
+            )
           )
           return created
         }}

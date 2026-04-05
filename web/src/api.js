@@ -1,3 +1,5 @@
+import { zh } from '@/utils/i18n'
+
 const jsonHeaders = { 'Content-Type': 'application/json' }
 
 export async function fetchVideos({
@@ -16,7 +18,7 @@ export async function fetchVideos({
   if (sort) params.set('sort', sort)
   if (seed != null) params.set('seed', String(seed))
   const res = await fetch(`/videos?${params.toString()}`)
-  if (!res.ok) throw new Error('加载视频失败')
+  if (!res.ok) throw new Error(zh('加载视频失败', 'Failed to load videos'))
   const data = await res.json()
   // Support both new shape {items,total} and legacy array for backward compatibility
   if (Array.isArray(data)) {
@@ -27,7 +29,7 @@ export async function fetchVideos({
 
 export async function fetchTags() {
   const res = await fetch('/tags')
-  if (!res.ok) throw new Error('加载标签失败')
+  if (!res.ok) throw new Error(zh('加载标签失败', 'Failed to load tags'))
   return res.json()
 }
 
@@ -39,14 +41,14 @@ export async function createTag(name) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '创建标签失败')
+    throw new Error(err.error || zh('创建标签失败', 'Failed to create tag'))
   }
   return res.json()
 }
 
 export async function fetchConfig() {
   const res = await fetch('/config')
-  if (!res.ok) throw new Error('加载配置失败')
+  if (!res.ok) throw new Error(zh('加载配置失败', 'Failed to load config'))
   return res.json()
 }
 
@@ -58,7 +60,7 @@ export async function updateConfig(payload) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '更新配置失败')
+    throw new Error(err.error || zh('更新配置失败', 'Failed to update config'))
   }
   return res.json()
 }
@@ -67,7 +69,7 @@ export async function deleteTag(id) {
   const res = await fetch(`/tags/${id}`, { method: 'DELETE' })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '删除标签失败')
+    throw new Error(err.error || zh('删除标签失败', 'Failed to delete tag'))
   }
 }
 
@@ -79,7 +81,7 @@ export async function deleteTagsBatch(tagIds) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '批量删除标签失败')
+    throw new Error(err.error || zh('批量删除标签失败', 'Failed to delete tags'))
   }
 }
 
@@ -91,7 +93,7 @@ export async function renameTag(id, name) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '重命名标签失败')
+    throw new Error(err.error || zh('重命名标签失败', 'Failed to rename tag'))
   }
 }
 
@@ -103,7 +105,7 @@ export async function addTagToVideos(tagId, videoIds) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '添加标签到视频失败')
+    throw new Error(err.error || zh('添加标签到视频失败', 'Failed to add tag to videos'))
   }
 }
 
@@ -115,7 +117,7 @@ export async function removeTagFromVideos(tagId, videoIds) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '从视频移除标签失败')
+    throw new Error(err.error || zh('从视频移除标签失败', 'Failed to remove tag from videos'))
   }
 }
 
@@ -127,7 +129,7 @@ export async function replaceTagsForVideos(videoIds, tagIds) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '更新视频标签失败')
+    throw new Error(err.error || zh('更新视频标签失败', 'Failed to update video tags'))
   }
 }
 
@@ -139,7 +141,7 @@ export async function openVideoFile({ path, dirPath }) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '打开文件失败')
+    throw new Error(err.error || zh('打开文件失败', 'Failed to open file'))
   }
 }
 
@@ -151,7 +153,7 @@ export async function revealVideoLocation({ path, dirPath }) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '打开所在位置失败')
+    throw new Error(err.error || zh('打开所在位置失败', 'Failed to reveal file'))
   }
 }
 
@@ -159,7 +161,7 @@ export async function incrementVideoPlayCount(id) {
   const res = await fetch(`/videos/${id}/play`, { method: 'POST' })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '增加播放次数失败')
+    throw new Error(err.error || zh('增加播放次数失败', 'Failed to increment play count'))
   }
 }
 
@@ -167,7 +169,7 @@ export async function fetchPlaybackInfo(id) {
   const res = await fetch(`/videos/${id}/streams`)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '加载播放信息失败')
+    throw new Error(err.error || zh('加载播放信息失败', 'Failed to load playback info'))
   }
   return res.json()
 }
@@ -175,10 +177,13 @@ export async function fetchPlaybackInfo(id) {
 // Directories
 export async function fetchDirectories() {
   const res = await fetch('/directories')
-  if (!res.ok) throw new Error('加载目录失败')
+  if (!res.ok) throw new Error(zh('加载目录失败', 'Failed to load directories'))
   const ct = res.headers.get('content-type') || ''
   if (!ct.includes('application/json')) {
-    console.warn('目录接口返回非 JSON，响应类型:', ct)
+    console.warn(
+      zh('目录接口返回非 JSON，响应类型:', 'Directory API returned non-JSON content type:'),
+      ct
+    )
     return []
   }
   return res.json()
@@ -192,7 +197,7 @@ export async function createDirectory({ path }) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '创建目录失败')
+    throw new Error(err.error || zh('创建目录失败', 'Failed to create directory'))
   }
   return res.json()
 }
@@ -203,7 +208,7 @@ export async function pickDirectory() {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '选择目录失败')
+    throw new Error(err.error || zh('选择目录失败', 'Failed to choose directory'))
   }
   return res.json()
 }
@@ -216,7 +221,7 @@ export async function updateDirectory(id, payload) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '更新目录失败')
+    throw new Error(err.error || zh('更新目录失败', 'Failed to update directory'))
   }
   return res.json()
 }
@@ -245,7 +250,7 @@ export async function fetchJavs({
   const res = await fetch(`/jav?${params.toString()}`)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '加载 JAV 失败')
+    throw new Error(err.error || zh('加载 JAV 失败', 'Failed to load JAV'))
   }
   return res.json()
 }
@@ -254,7 +259,7 @@ export async function fetchJavTags() {
   const res = await fetch('/jav/tags')
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '加载 JAV 标签失败')
+    throw new Error(err.error || zh('加载 JAV 标签失败', 'Failed to load JAV tags'))
   }
   return res.json()
 }
@@ -267,7 +272,7 @@ export async function createJavTag(name) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '创建 JAV 标签失败')
+    throw new Error(err.error || zh('创建 JAV 标签失败', 'Failed to create JAV tag'))
   }
   return res.json()
 }
@@ -280,7 +285,7 @@ export async function renameJavTag(id, name) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '重命名 JAV 标签失败')
+    throw new Error(err.error || zh('重命名 JAV 标签失败', 'Failed to rename JAV tag'))
   }
 }
 
@@ -288,7 +293,7 @@ export async function deleteJavTag(id) {
   const res = await fetch(`/jav/tags/${id}`, { method: 'DELETE' })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '删除 JAV 标签失败')
+    throw new Error(err.error || zh('删除 JAV 标签失败', 'Failed to delete JAV tag'))
   }
 }
 
@@ -300,7 +305,7 @@ export async function deleteJavTagsBatch(tagIds) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '批量删除 JAV 标签失败')
+    throw new Error(err.error || zh('批量删除 JAV 标签失败', 'Failed to delete JAV tags'))
   }
 }
 
@@ -312,7 +317,7 @@ export async function replaceJavTagsForItems(javIds, tagIds) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '更新 JAV 标签失败')
+    throw new Error(err.error || zh('更新 JAV 标签失败', 'Failed to update JAV tags'))
   }
 }
 
@@ -324,7 +329,7 @@ export async function addJavTagToJavs(tagId, javIds) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '添加 JAV 标签失败')
+    throw new Error(err.error || zh('添加 JAV 标签失败', 'Failed to add JAV tag'))
   }
 }
 
@@ -336,7 +341,7 @@ export async function removeJavTagFromJavs(tagId, javIds) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '移除 JAV 标签失败')
+    throw new Error(err.error || zh('移除 JAV 标签失败', 'Failed to remove JAV tag'))
   }
 }
 
@@ -349,7 +354,7 @@ export async function fetchJavIdols({ limit = 25, offset = 0, search = '', sort 
   const res = await fetch(`/jav/idols?${params.toString()}`)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || '加载女优失败')
+    throw new Error(err.error || zh('加载女优失败', 'Failed to load idols'))
   }
   return res.json()
 }

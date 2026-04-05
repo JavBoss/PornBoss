@@ -1,3 +1,5 @@
+import { zh } from '@/utils/i18n'
+
 export default function JavSettingsModal({
   open,
   onClose,
@@ -17,18 +19,18 @@ export default function JavSettingsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
       <div className="w-full max-w-sm rounded-lg bg-white p-3 shadow-xl">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-base font-semibold">JAV 设置</h2>
+          <h2 className="text-base font-semibold">{zh('JAV 设置', 'JAV Settings')}</h2>
           <button
             onClick={onClose}
             className="rounded px-2 py-1 text-gray-500 hover:bg-gray-100"
-            aria-label="关闭设置"
+            aria-label={zh('关闭设置', 'Close settings')}
           >
             ✕
           </button>
         </div>
         <div className="space-y-2">
           <label className="flex items-center justify-between gap-3 text-sm font-medium text-gray-700">
-            <span>每页 JAV 数量</span>
+            <span>{zh('每页 JAV 数量', 'JAVs per page')}</span>
             <input
               type="number"
               min="1"
@@ -38,7 +40,7 @@ export default function JavSettingsModal({
             />
           </label>
           <label className="flex items-center justify-between gap-3 text-sm font-medium text-gray-700">
-            <span>每页 女优 数量</span>
+            <span>{zh('每页 女优 数量', 'Idols per page')}</span>
             <input
               type="number"
               min="1"
@@ -47,11 +49,11 @@ export default function JavSettingsModal({
               className="w-24 rounded border px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </label>
-          <div className="text-sm font-medium text-gray-700">作品排序</div>
+          <div className="text-sm font-medium text-gray-700">{zh('作品排序', 'Title sorting')}</div>
           <label
             htmlFor="jav-sort-recent"
             className="flex cursor-pointer items-center gap-3 rounded border px-3 py-1.5 hover:border-blue-500"
-            aria-label="按加入时间排序"
+            aria-label={zh('按加入时间排序', 'Sort by import time')}
           >
             <input
               id="jav-sort-recent"
@@ -62,14 +64,16 @@ export default function JavSettingsModal({
               onChange={() => onJavSortChange?.('recent')}
             />
             <div className="text-sm font-semibold">
-              加入时间（默认）
-              <span className="ml-2 text-xs font-normal text-gray-500">最近入库的 JAV 优先</span>
+              {zh('加入时间（默认）', 'Added time (default)')}
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                {zh('最近入库的 JAV 优先', 'Recently imported first')}
+              </span>
             </div>
           </label>
           <label
             htmlFor="jav-sort-code"
             className="flex cursor-pointer items-center gap-3 rounded border px-3 py-1.5 hover:border-blue-500"
-            aria-label="按番号排序"
+            aria-label={zh('按番号排序', 'Sort by code')}
           >
             <input
               id="jav-sort-code"
@@ -80,14 +84,16 @@ export default function JavSettingsModal({
               onChange={() => onJavSortChange?.('code')}
             />
             <div className="text-sm font-semibold">
-              番号
-              <span className="ml-2 text-xs font-normal text-gray-500">按番号字母顺序</span>
+              {zh('番号', 'Code')}
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                {zh('按番号字母顺序', 'Alphabetical by code')}
+              </span>
             </div>
           </label>
           <label
             htmlFor="jav-sort-release"
             className="flex cursor-pointer items-center gap-3 rounded border px-3 py-1.5 hover:border-blue-500"
-            aria-label="按发行时间排序"
+            aria-label={zh('按发行时间排序', 'Sort by release date')}
           >
             <input
               id="jav-sort-release"
@@ -98,14 +104,16 @@ export default function JavSettingsModal({
               onChange={() => onJavSortChange?.('release')}
             />
             <div className="text-sm font-semibold">
-              发行时间
-              <span className="ml-2 text-xs font-normal text-gray-500">最新发行优先</span>
+              {zh('发行时间', 'Release date')}
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                {zh('最新发行优先', 'Newest releases first')}
+              </span>
             </div>
           </label>
           <label
             htmlFor="jav-sort-play-count"
             className="flex cursor-pointer items-center gap-3 rounded border px-3 py-1.5 hover:border-blue-500"
-            aria-label="按播放次数排序"
+            aria-label={zh('按播放次数排序', 'Sort by play count')}
           >
             <input
               id="jav-sort-play-count"
@@ -116,15 +124,17 @@ export default function JavSettingsModal({
               onChange={() => onJavSortChange?.('play_count')}
             />
             <div className="text-sm font-semibold">
-              播放次数（多→少）
-              <span className="ml-2 text-xs font-normal text-gray-500">按作品累计播放次数</span>
+              {zh('播放次数（多→少）', 'Play count (high to low)')}
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                {zh('按作品累计播放次数', 'By total plays across files')}
+              </span>
             </div>
           </label>
-          <div className="text-sm font-medium text-gray-700">女优排序</div>
+          <div className="text-sm font-medium text-gray-700">{zh('女优排序', 'Idol sorting')}</div>
           <label
             htmlFor="idol-sort-work"
             className="flex cursor-pointer items-center gap-3 rounded border px-3 py-1.5 hover:border-blue-500"
-            aria-label="按作品数量排序"
+            aria-label={zh('按作品数量排序', 'Sort by work count')}
           >
             <input
               id="idol-sort-work"
@@ -135,14 +145,16 @@ export default function JavSettingsModal({
               onChange={() => onIdolSortChange?.('work')}
             />
             <div className="text-sm font-semibold">
-              作品数量（默认）
-              <span className="ml-2 text-xs font-normal text-gray-500">作品越多越靠前</span>
+              {zh('作品数量（默认）', 'Work count (default)')}
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                {zh('作品越多越靠前', 'More works first')}
+              </span>
             </div>
           </label>
           <label
             htmlFor="idol-sort-birth"
             className="flex cursor-pointer items-center gap-3 rounded border px-3 py-1.5 hover:border-blue-500"
-            aria-label="按出生日期排序"
+            aria-label={zh('按出生日期排序', 'Sort by birth date')}
           >
             <input
               id="idol-sort-birth"
@@ -153,14 +165,16 @@ export default function JavSettingsModal({
               onChange={() => onIdolSortChange?.('birth')}
             />
             <div className="text-sm font-semibold">
-              年龄
-              <span className="ml-2 text-xs font-normal text-gray-500">由小到大（更年轻优先）</span>
+              {zh('年龄', 'Age')}
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                {zh('由小到大（更年轻优先）', 'Younger first')}
+              </span>
             </div>
           </label>
           <label
             htmlFor="idol-sort-height"
             className="flex cursor-pointer items-center gap-3 rounded border px-3 py-1.5 hover:border-blue-500"
-            aria-label="按身高排序"
+            aria-label={zh('按身高排序', 'Sort by height')}
           >
             <input
               id="idol-sort-height"
@@ -171,14 +185,16 @@ export default function JavSettingsModal({
               onChange={() => onIdolSortChange?.('height')}
             />
             <div className="text-sm font-semibold">
-              身高
-              <span className="ml-2 text-xs font-normal text-gray-500">由低到高</span>
+              {zh('身高', 'Height')}
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                {zh('由低到高', 'Low to high')}
+              </span>
             </div>
           </label>
           <label
             htmlFor="idol-sort-bust"
             className="flex cursor-pointer items-center gap-3 rounded border px-3 py-1.5 hover:border-blue-500"
-            aria-label="按胸围排序"
+            aria-label={zh('按胸围排序', 'Sort by bust')}
           >
             <input
               id="idol-sort-bust"
@@ -189,14 +205,16 @@ export default function JavSettingsModal({
               onChange={() => onIdolSortChange?.('bust')}
             />
             <div className="text-sm font-semibold">
-              胸围
-              <span className="ml-2 text-xs font-normal text-gray-500">由大到小</span>
+              {zh('胸围', 'Bust')}
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                {zh('由大到小', 'High to low')}
+              </span>
             </div>
           </label>
           <label
             htmlFor="idol-sort-hips"
             className="flex cursor-pointer items-center gap-3 rounded border px-3 py-1.5 hover:border-blue-500"
-            aria-label="按臀围排序"
+            aria-label={zh('按臀围排序', 'Sort by hips')}
           >
             <input
               id="idol-sort-hips"
@@ -207,14 +225,16 @@ export default function JavSettingsModal({
               onChange={() => onIdolSortChange?.('hips')}
             />
             <div className="text-sm font-semibold">
-              臀围
-              <span className="ml-2 text-xs font-normal text-gray-500">由大到小</span>
+              {zh('臀围', 'Hips')}
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                {zh('由大到小', 'High to low')}
+              </span>
             </div>
           </label>
           <label
             htmlFor="idol-sort-waist"
             className="flex cursor-pointer items-center gap-3 rounded border px-3 py-1.5 hover:border-blue-500"
-            aria-label="按腰围排序"
+            aria-label={zh('按腰围排序', 'Sort by waist')}
           >
             <input
               id="idol-sort-waist"
@@ -225,14 +245,16 @@ export default function JavSettingsModal({
               onChange={() => onIdolSortChange?.('waist')}
             />
             <div className="text-sm font-semibold">
-              腰围
-              <span className="ml-2 text-xs font-normal text-gray-500">由小到大</span>
+              {zh('腰围', 'Waist')}
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                {zh('由小到大', 'Low to high')}
+              </span>
             </div>
           </label>
           <label
             htmlFor="idol-sort-cup"
             className="flex cursor-pointer items-center gap-3 rounded border px-3 py-1.5 hover:border-blue-500"
-            aria-label="按罩杯排序"
+            aria-label={zh('按罩杯排序', 'Sort by cup')}
           >
             <input
               id="idol-sort-cup"
@@ -243,20 +265,22 @@ export default function JavSettingsModal({
               onChange={() => onIdolSortChange?.('cup')}
             />
             <div className="text-sm font-semibold">
-              罩杯
-              <span className="ml-2 text-xs font-normal text-gray-500">由大到小</span>
+              {zh('罩杯', 'Cup')}
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                {zh('由大到小', 'High to low')}
+              </span>
             </div>
           </label>
         </div>
         <div className="mt-3 flex justify-end">
           <button onClick={onClose} className="rounded border px-3 py-1 text-sm hover:bg-gray-50">
-            取消
+            {zh('取消', 'Cancel')}
           </button>
           <button
             onClick={onSave}
             className="ml-2 rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
           >
-            保存
+            {zh('保存', 'Save')}
           </button>
         </div>
       </div>

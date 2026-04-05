@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"pornboss/internal/common/logging"
@@ -36,34 +37,38 @@ func ScanIdolProfiles(ctx context.Context) error {
 		return err
 	}
 	logging.Info("found %d idols missing profile info", len(idols))
-	dbLookup := jav.JavDatabaseProvider
-	modelLookup := jav.JavModelProvider
+	javDatabaseLookup := jav.JavDatabaseProvider
+	javModelLookup := jav.JavModelProvider
 	for _, idol := range idols {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
+		lookupName := strings.TrimSpace(idol.JapaneseName)
+		if lookupName == "" {
+			lookupName = strings.TrimSpace(idol.Name)
+		}
 		var (
-			dbInfo    *jav.ActressInfo
-			modelInfo *jav.ActressInfo
-			code      string
+			javDatabaseInfo *jav.ActressInfo
+			javModelInfo    *jav.ActressInfo
+			code            string
 		)
 		code, err = db.FindIdolSoloCode(ctx, idol.ID)
 		if err != nil {
 			logging.Error("find solo code failed idol=%s err=%v", idol.Name, err)
 		}
 		if code != "" {
-			dbInfo, err = dbLookup.LookupActressByCode(code)
+			javDatabaseInfo, err = javDatabaseLookup.LookupActressByCode(code)
 			if err != nil && !errors.Is(err, jav.ResourceNotFonud) {
 				logging.Error("lookup actress failed idol=%s code=%s err=%v", idol.Name, code, err)
 			}
 		}
 
-		modelInfo, err = modelLookup.LookupActressByJapaneseName(idol.Name)
+		javModelInfo, err = javModelLookup.LookupActressByJapaneseName(lookupName)
 		if err != nil && !errors.Is(err, jav.ResourceNotFonud) {
-			logging.Error("lookup actress (javmodel) failed idol=%d name=%s err=%v", idol.ID, idol.Name, err)
+			logging.Error("lookup actress (javmodel) failed idol=%d name=%s err=%v", idol.ID, lookupName, err)
 		}
 
-		info := mergeActressInfo(dbInfo, modelInfo)
+		info := mergeActressInfo(javDatabaseInfo, javModelInfo)
 		if info == nil {
 			continue
 		}

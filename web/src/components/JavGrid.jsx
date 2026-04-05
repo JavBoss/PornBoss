@@ -6,6 +6,9 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import LanguageIcon from '@mui/icons-material/Language'
 
+import { isUserJavTag } from '@/constants/jav'
+import { zh } from '@/utils/i18n'
+
 export default function JavGrid({
   items,
   onPlay,
@@ -19,7 +22,7 @@ export default function JavGrid({
   if (!hasItems) {
     return (
       <div className="mt-4 flex min-h-[200px] items-center justify-center rounded border border-dashed border-gray-200 text-gray-500">
-        暂无 JAV 数据
+        {zh('暂无 JAV 数据', 'No JAV data')}
       </div>
     )
   }
@@ -50,9 +53,13 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
     item?.release_unix && Number.isFinite(item.release_unix)
       ? new Date(item.release_unix * 1000)
       : null
-  const releaseText = release ? release.toISOString().slice(0, 10) : '未知'
-  const durationText = item?.duration_min ? `${item.duration_min} 分钟` : ''
-  const titleText = [item?.code, item?.title || item?.code || '未知标题'].filter(Boolean).join(' ')
+  const releaseText = release ? release.toISOString().slice(0, 10) : zh('未知', 'Unknown')
+  const durationText = item?.duration_min
+    ? zh(`${item.duration_min} 分钟`, `${item.duration_min} min`)
+    : ''
+  const titleText = [item?.code, item?.title || item?.code || zh('未知标题', 'Untitled')]
+    .filter(Boolean)
+    .join(' ')
   const videos = item?.videos || []
   const openableVideos = videos.filter((video) =>
     Boolean(video?.path && (video?.directory?.path || video?.directory_path))
@@ -109,7 +116,7 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
           <img src={cover} alt={item?.code} className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-lg font-semibold text-gray-600">
-            {item?.code || '未知番号'}
+            {item?.code || zh('未知番号', 'Unknown code')}
           </div>
         )}
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition-opacity group-hover:opacity-100">
@@ -119,8 +126,8 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
             className={`pointer-events-auto rounded-full p-3 ${
               canPlay ? 'bg-black/60 hover:bg-black/80' : 'cursor-not-allowed bg-black/30'
             }`}
-            aria-label="播放"
-            title="播放"
+            aria-label={zh('播放', 'Play')}
+            title={zh('播放', 'Play')}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -138,7 +145,7 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
           {titleText}
         </div>
         <div className="text-xs text-gray-600">
-          {durationText || '时长未知'}
+          {durationText || zh('时长未知', 'Unknown duration')}
           {releaseText ? ` · ${releaseText}` : ''}
         </div>
         {Array.isArray(item?.idols) && item.idols.length > 0 && (
@@ -158,7 +165,7 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
         {tags.length > 0 && (
           <div className="flex flex-wrap items-center gap-1">
             {tags.map((tag) => {
-              const isUser = Boolean(tag?.is_user)
+              const isUser = isUserJavTag(tag)
               const tagClass = isUser
                 ? 'bg-emerald-500 hover:bg-emerald-600'
                 : 'bg-orange-500 hover:bg-orange-600'
@@ -177,13 +184,15 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
         )}
         <div className="flex flex-wrap items-center gap-2">
           {Array.isArray(item?.videos) && item.videos.length > 1 && (
-            <span className="text-xs text-gray-500">共 {item.videos.length} 个视频</span>
+            <span className="text-xs text-gray-500">
+              {zh(`共 ${item.videos.length} 个视频`, `${item.videos.length} video files`)}
+            </span>
           )}
           {externalLinks.length > 0 && (
             <div className="group relative flex items-center">
               <IconButton
                 size="small"
-                aria-label="外部站点"
+                aria-label={zh('外部站点', 'External links')}
                 className="h-6 w-6"
                 onClick={(event) => event.stopPropagation()}
               >
@@ -193,7 +202,7 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
                 {externalLinks.map((site) => (
                   <Tooltip
                     key={site.key}
-                    title={`在 ${site.name} 中打开`}
+                    title={zh(`在 ${site.name} 中打开`, `Open in ${site.name}`)}
                     placement="top"
                     arrow
                     TransitionComponent={Fade}
@@ -204,7 +213,7 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 transition hover:bg-gray-200"
-                      aria-label={`在 ${site.name} 中打开`}
+                      aria-label={zh(`在 ${site.name} 中打开`, `Open in ${site.name}`)}
                       onClick={(event) => event.stopPropagation()}
                     >
                       <img src={site.icon} alt={site.name} className="h-4 w-4" loading="lazy" />
@@ -214,34 +223,34 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
               </div>
             </div>
           )}
-          <Tooltip title="用默认程序打开">
+          <Tooltip title={zh('用默认程序打开', 'Open with default app')}>
             <IconButton
               size="small"
               onClick={handleOpenFile}
               disabled={!canOpen}
-              aria-label="打开文件"
+              aria-label={zh('打开文件', 'Open file')}
               className="h-6 w-6"
             >
               <OpenInNewIcon fontSize="inherit" />
             </IconButton>
           </Tooltip>
-          <Tooltip title="打开所在位置">
+          <Tooltip title={zh('打开所在位置', 'Reveal in folder')}>
             <IconButton
               size="small"
               onClick={handleRevealFile}
               disabled={!canOpen}
-              aria-label="打开所在位置"
+              aria-label={zh('打开所在位置', 'Reveal in folder')}
               className="h-6 w-6"
             >
               <FolderOpenIcon fontSize="inherit" />
             </IconButton>
           </Tooltip>
           {showEditTags && (
-            <Tooltip title="编辑标签">
+            <Tooltip title={zh('编辑标签', 'Edit tags')}>
               <IconButton
                 size="small"
                 onClick={handleEditTags}
-                aria-label="编辑标签"
+                aria-label={zh('编辑标签', 'Edit tags')}
                 className="h-6 w-6"
               >
                 <EditIcon fontSize="inherit" />

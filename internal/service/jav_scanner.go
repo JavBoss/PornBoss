@@ -23,13 +23,15 @@ func ScanAll(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	lookup := jav.JavBusProvider
+	preferredProvider := jav.PreferredProvider()
+	lookup := jav.PreferredLookupProvider()
+	logging.Info("jav scan provider=%s", preferredProvider.String())
 
 	for _, v := range videos {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if v.JavID != nil {
+		if v.JavID != nil && jav.ParseProvider(v.JavProvider) == preferredProvider {
 			continue
 		}
 		if v.DurationSec > 0 && v.DurationSec < 3600 {
@@ -44,6 +46,9 @@ func ScanAll(ctx context.Context) error {
 		linked := false
 		for _, code := range possibleCodes {
 			if existJav, err := db.GetJavByCode(ctx, code); err == nil && existJav != nil {
+				if jav.ParseProvider(existJav.Provider) != preferredProvider {
+					continue
+				}
 				if err := db.SetVideoJavID(ctx, v.ID, existJav.ID, v.UpdatedAt); err != nil {
 					logging.Error("set video jav failed video=%d code=%s err=%v", v.ID, code, err)
 				} else {

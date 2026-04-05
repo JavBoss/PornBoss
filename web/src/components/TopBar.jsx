@@ -5,6 +5,7 @@ import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined'
 import ShuffleOutlinedIcon from '@mui/icons-material/ShuffleOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
+import { zh } from '@/utils/i18n'
 
 export default function TopBar({
   onHome,
@@ -81,13 +82,13 @@ export default function TopBar({
                     variant={javTab === 'list' ? 'contained' : 'outlined'}
                     onClick={() => onSwitchJavTab('list')}
                   >
-                    作品
+                    {zh('作品', 'Titles')}
                   </Button>
                   <Button
                     variant={javTab === 'idol' ? 'contained' : 'outlined'}
                     onClick={() => onSwitchJavTab('idol')}
                   >
-                    女优
+                    {zh('女优', 'Idols')}
                   </Button>
                   <form
                     onSubmit={onSubmitJavSearch}
@@ -96,9 +97,13 @@ export default function TopBar({
                     <input
                       value={javSearchInput}
                       onChange={(e) => onJavSearchInputChange(e.target.value)}
-                      placeholder={javTab === 'idol' ? '搜索女优名称' : '搜索番号或标题'}
+                      placeholder={
+                        javTab === 'idol'
+                          ? zh('搜索女优名称', 'Search idol name')
+                          : zh('搜索番号或标题', 'Search code or title')
+                      }
                       className="h-10 flex-1 border-0 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      aria-label="搜索JAV"
+                      aria-label={zh('搜索JAV', 'Search JAV')}
                     />
                     <Button
                       component="a"
@@ -118,7 +123,7 @@ export default function TopBar({
                         px: 2.5,
                       }}
                     >
-                      搜索
+                      {zh('搜索', 'Search')}
                     </Button>
                   </form>
                   <Button
@@ -132,14 +137,14 @@ export default function TopBar({
                       onJavRandomClick?.()
                     }}
                   >
-                    随机
+                    {zh('随机', 'Random')}
                   </Button>
                   <Button
                     startIcon={<LocalOfferOutlinedIcon fontSize="small" />}
                     variant="outlined"
                     onClick={onOpenJavTagModal}
                   >
-                    标签
+                    {zh('标签', 'Tags')}
                   </Button>
                 </div>
               ) : (
@@ -151,9 +156,9 @@ export default function TopBar({
                     <input
                       value={videoSearchInput}
                       onChange={(e) => onVideoSearchInputChange(e.target.value)}
-                      placeholder="搜索文件名"
+                      placeholder={zh('搜索文件名', 'Search filename')}
                       className="h-10 flex-1 border-0 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      aria-label="搜索视频"
+                      aria-label={zh('搜索视频', 'Search videos')}
                     />
                     <Button
                       component="a"
@@ -173,7 +178,7 @@ export default function TopBar({
                         px: 2.5,
                       }}
                     >
-                      搜索
+                      {zh('搜索', 'Search')}
                     </Button>
                   </form>
                   <div className="flex items-center gap-2">
@@ -188,7 +193,7 @@ export default function TopBar({
                         onRandomClick()
                       }}
                     >
-                      随机
+                      {zh('随机', 'Random')}
                     </Button>
                   </div>
                   <Button
@@ -196,7 +201,7 @@ export default function TopBar({
                     variant="outlined"
                     onClick={onOpenTagModal}
                   >
-                    标签
+                    {zh('标签', 'Tags')}
                   </Button>
                 </>
               )}
@@ -205,13 +210,15 @@ export default function TopBar({
                 startIcon={<SettingsOutlinedIcon fontSize="small" />}
                 variant="outlined"
                 onClick={handleSettingsClick}
-                title="全局设置"
+                title={zh('全局设置', 'Global settings')}
               >
-                设置
+                {zh('设置', 'Settings')}
               </Button>
               <span className="ml-1 max-w-[280px] truncate text-xs text-gray-500">
-                筛选条件：
-                <span className="font-semibold text-gray-700">{filterSummary || '无'}</span>
+                {zh('筛选条件：', 'Filters:')}
+                <span className="font-semibold text-gray-700">
+                  {filterSummary || zh('无', 'None')}
+                </span>
               </span>
             </div>
           </div>
@@ -221,9 +228,9 @@ export default function TopBar({
               startIcon={<SettingsOutlinedIcon fontSize="small" />}
               variant="outlined"
               onClick={onOpenGlobalSettings}
-              title="全局设置"
+              title={zh('全局设置', 'Global settings')}
             >
-              全局设置
+              {zh('全局设置', 'Global Settings')}
             </Button>
             <Button
               variant="contained"
@@ -231,7 +238,7 @@ export default function TopBar({
               startIcon={<SwapHorizOutlinedIcon fontSize="small" />}
               onClick={onToggleMode}
             >
-              {isJavMode ? '切换到视频' : '切换到 JAV'}
+              {isJavMode ? zh('切换到视频', 'Switch to Videos') : zh('切换到 JAV', 'Switch to JAV')}
             </Button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { Button } from '@mui/material'
+import { zh } from '@/utils/i18n'
 
 export default function SelectionTagsModal({
   open,
@@ -15,8 +16,8 @@ export default function SelectionTagsModal({
   const list = Array.isArray(tags) ? tags : []
   const selected = Array.isArray(selectedChoices) ? selectedChoices : []
   const isRemove = action === 'remove'
-  const title = isRemove ? '移除标签' : '添加标签'
-  const confirmLabel = isRemove ? '移除' : '添加'
+  const title = isRemove ? zh('移除标签', 'Remove Tags') : zh('添加标签', 'Add Tags')
+  const confirmLabel = isRemove ? zh('移除', 'Remove') : zh('添加', 'Add')
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
@@ -26,14 +27,14 @@ export default function SelectionTagsModal({
           <button
             onClick={onClose}
             className="rounded px-2 py-1 text-gray-500 hover:bg-gray-100"
-            aria-label="关闭标签选择"
+            aria-label={zh('关闭标签选择', 'Close Tag Picker')}
           >
             ✕
           </button>
         </div>
         <div className="max-h-64 space-y-1 overflow-y-auto rounded border p-2">
           {list.length === 0 ? (
-            <div className="px-2 py-1 text-sm text-gray-500">暂无标签</div>
+            <div className="px-2 py-1 text-sm text-gray-500">{zh('暂无标签', 'No tags')}</div>
           ) : (
             list.map((tag) => {
               const checked = selected.includes(String(tag.id))
@@ -55,7 +56,7 @@ export default function SelectionTagsModal({
         </div>
         <div className="mt-3 flex justify-end gap-2">
           <Button variant="outlined" size="small" onClick={onClose}>
-            取消
+            {zh('取消', 'Cancel')}
           </Button>
           <Button variant="contained" size="small" onClick={onConfirm} disabled={confirmDisabled}>
             {confirmLabel}

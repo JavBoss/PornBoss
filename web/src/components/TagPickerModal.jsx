@@ -1,3 +1,5 @@
+import { zh } from '@/utils/i18n'
+
 export default function TagPickerModal({
   open,
   tags,
@@ -16,11 +18,11 @@ export default function TagPickerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
       <div className="w-full max-w-xs rounded-lg bg-white p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-semibold">选择标签</h2>
+          <h2 className="text-base font-semibold">{zh('选择标签', 'Choose Tags')}</h2>
           <button
             onClick={onClose}
             className="rounded px-2 py-1 text-gray-500 hover:bg-gray-100"
-            aria-label="关闭标签选择"
+            aria-label={zh('关闭标签选择', 'Close Tag Picker')}
           >
             ✕
           </button>
@@ -45,14 +47,14 @@ export default function TagPickerModal({
         </div>
         <div className="mt-3 flex justify-end gap-2">
           <button onClick={onClose} className="rounded border px-3 py-1.5 text-sm hover:bg-gray-50">
-            取消
+            {zh('取消', 'Cancel')}
           </button>
           <button
             onClick={onSave}
             className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
             disabled={saveDisabled}
           >
-            保存
+            {zh('保存', 'Save')}
           </button>
         </div>
       </div>

@@ -8,6 +8,7 @@ import {
   normalizePlayerHotkeyKey,
   normalizePlayerHotkeysList,
 } from '@/utils/playerHotkeys'
+import { zh } from '@/utils/i18n'
 
 const VOLUME_STORAGE_KEY = 'pornboss.player.volume'
 
@@ -51,7 +52,11 @@ export default function PlayerModal({ video, onClose, hotkeys = [] }) {
       })
       .catch((err) => {
         if (cancelled) return
-        setPlaybackError(err instanceof Error ? err.message : '加载播放信息失败')
+        setPlaybackError(
+          err instanceof Error
+            ? err.message
+            : zh('加载播放信息失败', 'Failed to load playback info')
+        )
       })
       .finally(() => {
         if (cancelled) return
@@ -195,7 +200,7 @@ export default function PlayerModal({ video, onClose, hotkeys = [] }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
       <div className="relative mx-4 w-full max-w-6xl rounded-lg bg-white shadow-lg">
         <button
-          aria-label="关闭"
+          aria-label={zh('关闭', 'Close')}
           onClick={onClose}
           className="absolute right-3 top-3 rounded-full bg-black/60 px-2 py-1 text-sm text-white hover:bg-black/80"
         >
@@ -208,7 +213,7 @@ export default function PlayerModal({ video, onClose, hotkeys = [] }) {
           <div className="player-shell relative w-full bg-black">
             {loadingPlayback ? (
               <div className="flex aspect-video items-center justify-center text-sm text-white">
-                加载播放信息中…
+                {zh('加载播放信息中…', 'Loading playback info...')}
               </div>
             ) : playbackError ? (
               <div className="flex aspect-video items-center justify-center px-6 text-center text-sm text-red-200">

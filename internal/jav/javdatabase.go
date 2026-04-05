@@ -42,7 +42,36 @@ func (JavDatabase) LookupActressByCode(code string) (*ActressInfo, error) {
 
 // LookupJavByCode fetches metadata for a given code.
 func (JavDatabase) LookupJavByCode(code string) (*Info, error) {
-	return nil, errors.New("javdatabase: lookup jav not supported")
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return nil, ResourceNotFonud
+	}
+
+	base := "https://www.javdatabase.com"
+	movieURL := fmt.Sprintf("%s/movies/%s/", base, code)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	doc, status, err := fetchJavDatabaseHTML(ctx, movieURL, base)
+	if err != nil {
+		if isRetryableJavDatabaseErr(err) {
+			return nil, err
+		}
+		return nil, ResourceNotFonud
+	}
+	if status == http.StatusNotFound || doc == nil {
+		return nil, ResourceNotFonud
+	}
+
+	info := parseJavDatabaseMovieInfo(doc)
+	if info == nil {
+		return nil, ResourceNotFonud
+	}
+	if info.Code == "" {
+		info.Code = code
+	}
+	return info, nil
 }
 
 func isNoActressLinkCached(url string) bool {
@@ -468,6 +497,155 @@ func parseJavDatabaseActressInfo(root *html.Node) *ActressInfo {
 	return info
 }
 
+func parseJavDatabaseMovieInfo(root *html.Node) *Info {
+	scope := findJavDatabaseMovieInfoColumn(root)
+	if scope == nil {
+		return nil
+	}
+
+	fields := extractJavDatabaseMovieFields(scope)
+	title := strings.TrimSpace(fields.Title)
+	if title == "" {
+		title = cleanJavDatabaseMoviePageTitle(strings.TrimSpace(firstTextByTag(root, "title")))
+	}
+
+	info := &Info{
+		Title:       title,
+		Code:        strings.TrimSpace(fields.Code),
+		ReleaseUnix: parseDateUnix(fields.ReleaseDate),
+		DurationMin: parseRuntimeMinutes(fields.Runtime),
+		Tags:        dedupeNonEmpty(fields.Tags),
+		Actors:      dedupeNonEmpty(fields.Actors),
+		Provider:    ProviderJavDatabase,
+	}
+	if info.Title == "" && info.Code == "" && info.ReleaseUnix == 0 && info.DurationMin == 0 && len(info.Tags) == 0 && len(info.Actors) == 0 {
+		return nil
+	}
+	return info
+}
+
+type javDatabaseMovieFields struct {
+	Title       string
+	Code        string
+	ReleaseDate string
+	Runtime     string
+	Tags        []string
+	Actors      []string
+}
+
+func findJavDatabaseMovieInfoColumn(root *html.Node) *html.Node {
+	if root == nil {
+		return nil
+	}
+
+	var found *html.Node
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if found != nil {
+			return
+		}
+		if n.Type == html.ElementNode && n.Data == "div" && hasClass(n, "movietable") {
+			if column := findDescendantMovieInfoColumn(n); column != nil {
+				found = column
+				return
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(root)
+	if found != nil {
+		return found
+	}
+	return findDescendantMovieInfoColumn(root)
+}
+
+func findDescendantMovieInfoColumn(root *html.Node) *html.Node {
+	var found *html.Node
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if found != nil {
+			return
+		}
+		if n.Type == html.ElementNode && n.Data == "div" &&
+			hasClass(n, "col-md-10") &&
+			hasClass(n, "col-lg-10") &&
+			hasClass(n, "col-xxl-10") &&
+			hasClass(n, "col-8") {
+			found = n
+			return
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(root)
+	return found
+}
+
+func extractJavDatabaseMovieFields(root *html.Node) javDatabaseMovieFields {
+	var out javDatabaseMovieFields
+	if root == nil {
+		return out
+	}
+
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "p" && hasClass(n, "mb-1") {
+			if bold := firstChildElementByTag(n, "b"); bold != nil {
+				label := strings.TrimSpace(flattenText(bold))
+				label = strings.TrimSuffix(label, ":")
+				label = strings.TrimSuffix(label, "：")
+				assignJavDatabaseMovieField(&out, label, n, bold)
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(root)
+	return out
+}
+
+func assignJavDatabaseMovieField(out *javDatabaseMovieFields, label string, line, bold *html.Node) {
+	if out == nil {
+		return
+	}
+
+	label = normalizeLabel(label)
+	if label == "" {
+		return
+	}
+
+	switch {
+	case labelHasAny(label, []string{"title"}):
+		if out.Title == "" {
+			out.Title = strings.TrimSpace(collectValueAfterBold(bold))
+		}
+	case labelHasAny(label, []string{"dvd id", "code", "movie id"}):
+		if out.Code == "" {
+			out.Code = strings.TrimSpace(collectValueAfterBold(bold))
+		}
+	case labelHasAny(label, []string{"release date", "released", "date"}):
+		if out.ReleaseDate == "" {
+			out.ReleaseDate = strings.TrimSpace(collectValueAfterBold(bold))
+		}
+	case labelHasAny(label, []string{"runtime", "duration"}):
+		if out.Runtime == "" {
+			out.Runtime = strings.TrimSpace(collectValueAfterBold(bold))
+		}
+	case labelHasAny(label, []string{"genre", "genres"}):
+		if len(out.Tags) == 0 {
+			out.Tags = collectAnchorTexts(line)
+		}
+	case labelHasAny(label, []string{"idol actress", "idol s actress es", "actress", "actresses", "idol", "idols"}):
+		if len(out.Actors) == 0 {
+			out.Actors = collectAnchorTexts(line)
+		}
+	}
+}
+
 type javDatabaseProfileFields struct {
 	JapaneseName string
 	Height       string
@@ -558,19 +736,47 @@ func labelHasAny(label string, tokens []string) bool {
 	return false
 }
 
-func parseBirthDateUnix(value string) int {
+func parseDateUnix(value string) int64 {
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return 0
 	}
 	re := regexp.MustCompile(`\d{4}[-/]\d{2}[-/]\d{2}`)
-	if match := re.FindString(value); match != "" {
-		match = strings.ReplaceAll(match, "/", "-")
-		if t, err := time.Parse("2006-01-02", match); err == nil {
-			return int(t.Unix())
-		}
+	match := re.FindString(value)
+	if match == "" {
+		return 0
 	}
-	return 0
+	match = strings.ReplaceAll(match, "/", "-")
+	t, err := time.Parse("2006-01-02", match)
+	if err != nil {
+		return 0
+	}
+	return t.Unix()
+}
+
+func parseBirthDateUnix(value string) int {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0
+	}
+	return int(parseDateUnix(value))
+}
+
+func parseRuntimeMinutes(value string) int {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0
+	}
+	re := regexp.MustCompile(`\d+`)
+	match := re.FindString(value)
+	if match == "" {
+		return 0
+	}
+	minutes, err := strconv.Atoi(match)
+	if err != nil {
+		return 0
+	}
+	return minutes
 }
 
 func extractCupFromMeasurements(measurements string) int {
@@ -752,6 +958,58 @@ func collectValueAfterBold(b *html.Node) string {
 	return value
 }
 
+func firstChildElementByTag(root *html.Node, tag string) *html.Node {
+	for c := root.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type == html.ElementNode && c.Data == tag {
+			return c
+		}
+	}
+	return nil
+}
+
+func collectAnchorTexts(root *html.Node) []string {
+	if root == nil {
+		return nil
+	}
+
+	seen := make(map[string]struct{})
+	var texts []string
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "a" {
+			text := strings.TrimSpace(flattenText(n))
+			if text != "" {
+				if _, ok := seen[text]; !ok {
+					seen[text] = struct{}{}
+					texts = append(texts, text)
+				}
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(root)
+	return texts
+}
+
+func dedupeNonEmpty(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
+}
+
 func firstAnchorText(root *html.Node) string {
 	if root == nil {
 		return ""
@@ -825,6 +1083,20 @@ func cleanJavDatabaseTitle(title string) string {
 		title = strings.TrimSuffix(title, suffix)
 	}
 	return strings.TrimSpace(title)
+}
+
+func cleanJavDatabaseMoviePageTitle(title string) string {
+	title = cleanJavDatabaseTitle(title)
+	if title == "" {
+		return ""
+	}
+	if idx := strings.LastIndex(title, " - "); idx >= 0 {
+		title = strings.TrimSpace(title[idx+3:])
+	}
+	if strings.EqualFold(title, "JAV Database") {
+		return ""
+	}
+	return title
 }
 
 func resolveURL(baseURL, href string) string {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import DirectoryManager from '@/components/DirectoryManager'
 import PlayerSettingsModal from '@/components/PlayerSettingsModal'
+import { zh } from '@/utils/i18n'
 
 export default function GlobalSettingsModal({
   open,
@@ -40,12 +41,12 @@ export default function GlobalSettingsModal({
     let port = 0
     if (proxyEnabledInput) {
       if (raw === '') {
-        setProxyError('请输入 1-65535 的端口号')
+        setProxyError(zh('请输入 1-65535 的端口号', 'Enter a port between 1 and 65535'))
         return
       }
       const parsed = parseInt(raw, 10)
       if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 65535) {
-        setProxyError('请输入 1-65535 的端口号')
+        setProxyError(zh('请输入 1-65535 的端口号', 'Enter a port between 1 and 65535'))
         return
       }
       port = parsed
@@ -54,7 +55,7 @@ export default function GlobalSettingsModal({
     try {
       await onSaveProxyPort?.(port)
     } catch (err) {
-      setProxyError(err.message || '保存失败')
+      setProxyError(err.message || zh('保存失败', 'Save failed'))
     } finally {
       setSavingProxy(false)
     }
@@ -70,20 +71,24 @@ export default function GlobalSettingsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
       <div className="w-full max-w-4xl rounded-lg bg-white p-6 shadow-lg">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">全局设置</h2>
+          <h2 className="text-lg font-semibold">{zh('全局设置', 'Global Settings')}</h2>
           <button onClick={onClose} className="rounded px-3 py-1 text-gray-600 hover:bg-gray-100">
-            关闭
+            {zh('关闭', 'Close')}
           </button>
         </div>
 
         <div className="mt-4 grid gap-6">
           <section className="rounded-lg border p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold text-gray-700">代理端口</h3>
+              <h3 className="text-sm font-semibold text-gray-700">
+                {zh('代理端口', 'Proxy Port')}
+              </h3>
               {!proxyEditing ? (
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-gray-500">
-                    {proxyPort ? `端口：${proxyPort}` : '自动检测'}
+                    {proxyPort
+                      ? zh(`端口：${proxyPort}`, `Port: ${proxyPort}`)
+                      : zh('自动检测', 'Auto-detect')}
                   </span>
                   <button
                     type="button"
@@ -93,13 +98,13 @@ export default function GlobalSettingsModal({
                     }}
                     className="rounded border px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
                   >
-                    设置
+                    {zh('设置', 'Edit')}
                   </button>
                 </div>
               ) : (
                 <div className="flex flex-wrap items-center gap-2">
                   <label className="flex items-center gap-1 text-xs text-gray-600">
-                    <span>手动设置端口</span>
+                    <span>{zh('手动设置端口', 'Set port manually')}</span>
                     <input
                       type="checkbox"
                       checked={proxyEnabledInput}
@@ -114,7 +119,7 @@ export default function GlobalSettingsModal({
                     <input
                       value={proxyInput}
                       onChange={(e) => setProxyInput(e.target.value)}
-                      placeholder="端口号"
+                      placeholder={zh('端口号', 'Port')}
                       inputMode="numeric"
                       className="w-24 rounded border px-3 py-1.5 text-sm"
                     />
@@ -125,7 +130,7 @@ export default function GlobalSettingsModal({
                     disabled={savingProxy || proxyUnchanged || proxyInputMissing}
                     className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white disabled:opacity-60"
                   >
-                    {savingProxy ? '保存中…' : '保存'}
+                    {savingProxy ? zh('保存中…', 'Saving...') : zh('保存', 'Save')}
                   </button>
                   <button
                     type="button"
@@ -137,7 +142,7 @@ export default function GlobalSettingsModal({
                     }}
                     className="rounded border px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
                   >
-                    取消
+                    {zh('取消', 'Cancel')}
                   </button>
                 </div>
               )}
@@ -150,9 +155,14 @@ export default function GlobalSettingsModal({
           <section className="rounded-lg border p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-gray-700">播放器设置</h3>
+                <h3 className="text-sm font-semibold text-gray-700">
+                  {zh('播放器设置', 'Player Settings')}
+                </h3>
                 <p className="mt-1 text-xs text-gray-500">
-                  当前已配置 {Array.isArray(playerHotkeys) ? playerHotkeys.length : 0} 个快捷键
+                  {zh(
+                    `当前已配置 ${Array.isArray(playerHotkeys) ? playerHotkeys.length : 0} 个快捷键`,
+                    `${Array.isArray(playerHotkeys) ? playerHotkeys.length : 0} shortcuts configured`
+                  )}
                 </p>
               </div>
               <button
@@ -160,13 +170,15 @@ export default function GlobalSettingsModal({
                 onClick={() => setPlayerSettingsOpen(true)}
                 className="rounded border px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
               >
-                设置快捷键
+                {zh('设置快捷键', 'Configure shortcuts')}
               </button>
             </div>
           </section>
 
           <section className="rounded-lg border p-4">
-            <h3 className="mb-4 text-sm font-semibold text-gray-700">目录管理</h3>
+            <h3 className="mb-4 text-sm font-semibold text-gray-700">
+              {zh('目录管理', 'Directory Management')}
+            </h3>
             <DirectoryManager
               open={open}
               directories={directories}

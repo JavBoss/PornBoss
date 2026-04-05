@@ -16,6 +16,7 @@ import {
   fetchJavTags,
   fetchConfig,
 } from '@/api'
+import { zh } from '@/utils/i18n'
 
 const VIDEO_PAGE_SIZE = 25
 const JAV_PAGE_SIZE = 24
@@ -245,7 +246,7 @@ export const useStore = create((set, get) => ({
       const tags = await fetchJavTags()
       set({ javTagOptions: tags })
     } catch (e) {
-      set({ javError: e.message || '加载 JAV 标签失败' })
+      set({ javError: e.message || zh('加载 JAV 标签失败', 'Failed to load JAV tags') })
     }
   },
   loadConfig: async () => {
@@ -314,7 +315,7 @@ export const useStore = create((set, get) => ({
       const directories = await fetchDirectories()
       set({ directories: directories.filter((d) => !d.is_delete) })
     } catch (e) {
-      console.error('加载目录失败', e)
+      console.error(zh('加载目录失败', 'Failed to load directories'), e)
     }
   },
   loadVideos: async (options = {}) => {
@@ -410,7 +411,7 @@ export const useStore = create((set, get) => ({
         javTotal: javRandomMode ? items.length : resp.total || 0,
       })
     } catch (e) {
-      set({ javError: e.message || '加载 JAV 失败' })
+      set({ javError: e.message || zh('加载 JAV 失败', 'Failed to load JAV') })
     } finally {
       set({ javLoading: false })
     }
@@ -436,7 +437,7 @@ export const useStore = create((set, get) => ({
         idolTotal: resp.total || 0,
       })
     } catch (e) {
-      set({ idolError: e.message || '加载女优失败' })
+      set({ idolError: e.message || zh('加载女优失败', 'Failed to load idols') })
     } finally {
       set({ idolLoading: false })
     }

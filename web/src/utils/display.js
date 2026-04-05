@@ -1,3 +1,5 @@
+import { zh } from '@/utils/i18n'
+
 export const getVideoDisplayName = (video) => {
   if (!video) return ''
   if (video.filename) {
@@ -10,7 +12,7 @@ export const getVideoDisplayName = (video) => {
   if (video.path) {
     return video.path
   }
-  return video.id != null ? `视频 #${video.id}` : ''
+  return video.id != null ? zh(`视频 #${video.id}`, `Video #${video.id}`) : ''
 }
 
 export const parseVideoFingerprint = (fp) => {

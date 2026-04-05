@@ -63,17 +63,17 @@ func createJavTag(c *gin.Context) {
 		return
 	}
 
-	tag, err := dbpkg.CreateJavTag(c.Request.Context(), req.Name, true)
+	tag, err := dbpkg.CreateJavTag(c.Request.Context(), req.Name)
 	if err != nil {
 		logging.Error("create jav tag error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, dbpkg.JavTagCount{
-		ID:     tag.ID,
-		Name:   tag.Name,
-		IsUser: tag.IsUser,
-		Count:  0,
+		ID:       tag.ID,
+		Name:     tag.Name,
+		Provider: tag.Provider,
+		Count:    0,
 	})
 }
 

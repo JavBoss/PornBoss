@@ -1,3 +1,5 @@
+import { isChineseLocale, zh } from '@/utils/i18n'
+
 export default function JavIdolGrid({ items, onSelectIdol, buildIdolUrl }) {
   // 可调节右侧展示比例：0.47 表示展示封面最右侧 47%，可按需修改
   const RIGHT_PORTION = 0.47
@@ -11,7 +13,7 @@ export default function JavIdolGrid({ items, onSelectIdol, buildIdolUrl }) {
   if (!hasItems) {
     return (
       <div className="flex min-h-[200px] items-center justify-center rounded border border-dashed border-gray-200 text-gray-500">
-        暂无女优数据
+        {zh('暂无女优数据', 'No idol data')}
       </div>
     )
   }
@@ -33,17 +35,25 @@ export default function JavIdolGrid({ items, onSelectIdol, buildIdolUrl }) {
 }
 
 function IdolCard({ item, onSelectIdol, href, bgWidthPercent, coverAspectPercent }) {
+  const chineseLocale = isChineseLocale()
   const cover = item?.sample_code ? `/jav/${encodeURIComponent(item.sample_code)}/cover` : null
   const workCount = item?.work_count || 0
-  const name = item?.name || '未知女优'
+  const name = item?.name || zh('未知女优', 'Unknown idol')
   const romanName = item?.roman_name || ''
+  const japaneseName = item?.japanese_name || ''
   const chineseName = item?.chinese_name || ''
   const birthDate = formatBirthDate(item?.birth_date)
   const height = typeof item?.height_cm === 'number' ? `${item.height_cm}cm` : ''
   const bwh = formatBwh(item)
   const cup = formatCup(item?.cup)
-  const metaRows = buildMetaRows({ birthDate, height, bwh, cup, romanName, chineseName })
-  const displayName = name
+  const { primaryName, secondaryName } = buildDisplayNames({
+    name,
+    romanName,
+    japaneseName,
+    chineseName,
+    chineseLocale,
+  })
+  const metaRows = buildMetaRows({ birthDate, height, bwh, cup, secondaryName })
 
   const handleClick = (e) => {
     const selection = window.getSelection?.()
@@ -85,19 +95,19 @@ function IdolCard({ item, onSelectIdol, href, bgWidthPercent, coverAspectPercent
               backgroundRepeat: 'no-repeat',
             }}
             role="img"
-            aria-label={name}
+            aria-label={primaryName}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-lg font-semibold text-gray-600">
-            {name}
+            {primaryName}
           </div>
         )}
         <div className="absolute left-2 top-2 rounded bg-black/70 px-2 py-1 text-xs text-white">
-          作品 {workCount}
+          {zh(`作品 ${workCount}`, `${workCount} titles`)}
         </div>
       </div>
       <div className="flex flex-1 flex-col gap-2 p-3">
-        <div className="line-clamp-2 text-sm font-semibold leading-tight">{displayName}</div>
+        <div className="line-clamp-2 text-sm font-semibold leading-tight">{primaryName}</div>
         {metaRows.length > 0 ? (
           <div className="flex flex-col gap-1.5 text-[10px] text-gray-900">
             {metaRows.map((row) => (
@@ -114,7 +124,7 @@ function IdolCard({ item, onSelectIdol, href, bgWidthPercent, coverAspectPercent
             ))}
           </div>
         ) : (
-          <div className="text-xs text-gray-400">信息待补充</div>
+          <div className="text-xs text-gray-400">{zh('信息待补充', 'More info coming')}</div>
         )}
       </div>
     </a>
@@ -145,18 +155,16 @@ function formatBwh(item) {
 function formatCup(value) {
   if (typeof value !== 'number' || value <= 0) return ''
   const letter = String.fromCharCode(64 + value)
-  return `${letter}罩杯`
+  return zh(`${letter}罩杯`, `${letter} cup`)
 }
 
-function buildMetaRows({ birthDate, height, bwh, cup, romanName, chineseName }) {
+function buildMetaRows({ birthDate, height, bwh, cup, secondaryName }) {
   const rows = []
-  if (romanName || chineseName) {
-    const label =
-      romanName && chineseName ? `${romanName} · ${chineseName}` : romanName || chineseName
+  if (secondaryName) {
     rows.push({
       key: 'row-1',
       className: 'font-semibold text-gray-950',
-      items: [{ key: `roman-${romanName}-cn-${chineseName}`, label }],
+      items: [{ key: `secondary-${secondaryName}`, label: secondaryName }],
     })
   }
   if (birthDate) {
@@ -177,4 +185,54 @@ function buildMetaRows({ birthDate, height, bwh, cup, romanName, chineseName }) 
     rows.push({ key: 'row-3', items: rowTwo })
   }
   return rows
+}
+
+function buildDisplayNames({ name, romanName, japaneseName, chineseName, chineseLocale }) {
+  if (chineseLocale) {
+    const primaryName = firstNonEmpty(
+      japaneseName,
+      name,
+      romanName,
+      chineseName,
+      zh('未知女优', 'Unknown idol')
+    )
+    return {
+      primaryName,
+      secondaryName: joinUniqueDisplayParts([romanName, chineseName], [primaryName]),
+    }
+  }
+  const primaryName = firstNonEmpty(
+    romanName,
+    name,
+    japaneseName,
+    chineseName,
+    zh('Unknown idol', 'Unknown idol')
+  )
+  return {
+    primaryName,
+    secondaryName: joinUniqueDisplayParts([japaneseName, chineseName], [primaryName]),
+  }
+}
+
+function firstNonEmpty(...values) {
+  for (const value of values) {
+    const trimmed = String(value || '').trim()
+    if (trimmed) return trimmed
+  }
+  return ''
+}
+
+function joinUniqueDisplayParts(values, exclude = []) {
+  const excluded = new Set(exclude.map((value) => String(value || '').trim()).filter(Boolean))
+  const seen = new Set()
+  const parts = []
+  for (const value of values) {
+    const trimmed = String(value || '').trim()
+    if (!trimmed || excluded.has(trimmed) || seen.has(trimmed)) {
+      continue
+    }
+    seen.add(trimmed)
+    parts.push(trimmed)
+  }
+  return parts.join(' · ')
 }
