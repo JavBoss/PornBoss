@@ -1,12 +1,10 @@
 import { Button } from '@mui/material'
-import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank'
 import Pagination from './Pagination'
 import VideoGrid from './VideoGrid'
 
 export default function VideoView({
-  selectMode,
-  setSelectMode,
   selectedCount,
+  clearSelection,
   setSelectionOpsOpen,
   page,
   lastPage,
@@ -28,26 +26,23 @@ export default function VideoView({
   const pageIds = videos.map((video) => video?.id).filter(Boolean)
   const pageSelectable = pageIds.length > 0
   const pageAllSelected = pageSelectable && pageIds.every((id) => selectedVideoIds.has(id))
+  const hasSelection = selectedCount > 0
 
   return (
     <>
-      <div className="sticky-pagination mb-4 grid grid-cols-[auto_1fr_auto] items-start gap-3">
-        <div className="flex items-center gap-2 pt-1">
-          <Button
-            startIcon={<CheckBoxOutlineBlankIcon fontSize="small" />}
-            variant={selectMode ? 'contained' : 'outlined'}
-            onClick={() => setSelectMode(!selectMode)}
-            size="small"
-          >
-            {selectMode ? '退出选择' : '选择模式'}
-          </Button>
-          {selectMode && (
+      <div className="sticky-pagination mb-4 grid grid-cols-[auto_1fr_auto] items-center gap-3">
+        <div className="flex items-center gap-1 overflow-x-auto overflow-y-hidden whitespace-nowrap">
+          {hasSelection && (
             <>
+              <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium leading-5 text-sky-700">
+                已选 {selectedCount} 项
+              </span>
               <Button
                 variant="outlined"
                 size="small"
                 onClick={onToggleSelectPage}
                 disabled={!pageSelectable}
+                className="!min-h-0 !min-w-0 !px-2 !py-0.5 !text-xs !leading-5"
               >
                 {pageAllSelected ? '取消本页' : '全选本页'}
               </Button>
@@ -56,8 +51,17 @@ export default function VideoView({
                 size="small"
                 onClick={() => setSelectionOpsOpen(true)}
                 disabled={selectedCount === 0}
+                className="!min-h-0 !min-w-0 !px-2 !py-0.5 !text-xs !leading-5"
               >
                 操作
+              </Button>
+              <Button
+                variant="text"
+                size="small"
+                onClick={clearSelection}
+                className="!min-h-0 !min-w-0 !px-2 !py-0.5 !text-xs !leading-5"
+              >
+                清空
               </Button>
             </>
           )}
@@ -87,21 +91,32 @@ export default function VideoView({
             />
           )}
         </div>
-        <div className="pointer-events-none flex items-center gap-2 opacity-0">
-          <Button
-            startIcon={<CheckBoxOutlineBlankIcon fontSize="small" />}
-            variant={selectMode ? 'contained' : 'outlined'}
-            size="small"
-          >
-            {selectMode ? '退出选择' : '选择模式'}
-          </Button>
-          {selectMode && (
+        <div className="pointer-events-none flex items-center justify-end gap-1 overflow-hidden whitespace-nowrap opacity-0">
+          {hasSelection && (
             <>
-              <Button variant="outlined" size="small">
+              <span className="rounded-full px-2 py-0.5 text-xs font-medium leading-5">
+                已选 {selectedCount} 项
+              </span>
+              <Button
+                variant="outlined"
+                size="small"
+                className="!min-h-0 !min-w-0 !px-2 !py-0.5 !text-xs !leading-5"
+              >
                 {pageAllSelected ? '取消本页' : '全选本页'}
               </Button>
-              <Button variant="outlined" size="small">
+              <Button
+                variant="outlined"
+                size="small"
+                className="!min-h-0 !min-w-0 !px-2 !py-0.5 !text-xs !leading-5"
+              >
                 操作
+              </Button>
+              <Button
+                variant="text"
+                size="small"
+                className="!min-h-0 !min-w-0 !px-2 !py-0.5 !text-xs !leading-5"
+              >
+                清空
               </Button>
             </>
           )}
@@ -117,7 +132,6 @@ export default function VideoView({
           selectedIds={selectedVideoIds}
           onToggleSelect={toggleSelectVideo}
           onPlay={(video) => openPlayer(video)}
-          selectMode={selectMode}
           onOpenTagPicker={(vid) => setTagPickerFor(vid)}
           onTagClick={onTagClick}
         />

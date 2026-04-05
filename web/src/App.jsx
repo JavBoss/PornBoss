@@ -63,8 +63,6 @@ export default function App() {
     error,
     hasNext,
     total,
-    selectMode,
-    setSelectMode,
     setSelectedTags,
     clearSelection,
     searchTerm,
@@ -900,13 +898,6 @@ export default function App() {
   }
 
   useEffect(() => {
-    // 进入选择模式时清空之前的选择
-    if (selectMode) {
-      clearSelection()
-    }
-  }, [selectMode, clearSelection])
-
-  useEffect(() => {
     if (videoSettingsOpen) {
       setVideoPageSizeInput(pageSize)
       setVideoSortInput(sortOrder)
@@ -923,12 +914,11 @@ export default function App() {
   }, [javSettingsOpen, javPageSize, idolPageSize, javSort, idolSort])
 
   useEffect(() => {
-    if (!selectMode) {
-      setSelectionOpsOpen(false)
-      setSelectionTagsOpen(false)
-      setSelectionTagChoices([])
-    }
-  }, [selectMode])
+    if (selectedCount !== 0) return
+    setSelectionOpsOpen(false)
+    setSelectionTagsOpen(false)
+    setSelectionTagChoices([])
+  }, [selectedCount])
 
   const openTagEditor = useCallback(
     (videoId) => {
@@ -1130,7 +1120,6 @@ export default function App() {
       setSelectionTagsOpen(false)
       setSelectionTagChoices([])
       setSelectionOpsOpen(false)
-      setSelectMode(false)
       clearSelection()
     }
   }
@@ -1161,7 +1150,6 @@ export default function App() {
         selectedTags: [],
         searchTerm: '',
         page: 1,
-        selectMode: false,
         selectedVideoIds: new Set(),
         selectedVideoMeta: {},
       })
@@ -1397,9 +1385,8 @@ export default function App() {
           )
         ) : (
           <VideoView
-            selectMode={selectMode}
-            setSelectMode={setSelectMode}
             selectedCount={selectedCount}
+            clearSelection={clearSelection}
             setSelectionOpsOpen={setSelectionOpsOpen}
             page={page}
             lastPage={lastPage}

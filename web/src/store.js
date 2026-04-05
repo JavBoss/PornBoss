@@ -44,7 +44,6 @@ export const useStore = create((set, get) => ({
   selectedTags: [],
   selectedVideoIds: new Set(),
   selectedVideoMeta: {},
-  selectMode: false,
   searchTerm: '',
   sortOrder: 'recent', // recent | filename | duration | play_count
   javSort: 'recent', // recent | code | release | play_count
@@ -119,7 +118,6 @@ export const useStore = create((set, get) => ({
     }
     set(updates)
   },
-  setSelectMode: (v) => set({ selectMode: !!v }),
   setSearchTerm: (value, options = {}) => {
     const { resetPage = true } = options
     const trimmed = (value || '').trim()

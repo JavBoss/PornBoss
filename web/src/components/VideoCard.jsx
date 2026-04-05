@@ -10,7 +10,6 @@ export default function VideoCard({
   checked,
   onToggle,
   onPlay,
-  selectMode,
   onOpenTagPicker,
   onTagClick,
 }) {
@@ -50,7 +49,25 @@ export default function VideoCard({
     }
   }
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow">
+    <div
+      className={`video-card group relative overflow-hidden rounded-xl border bg-white shadow transition-all ${
+        checked ? 'border-sky-400 ring-2 ring-sky-200' : 'border-gray-200 hover:border-gray-300'
+      }`}
+    >
+      <div className={`video-card-select ${checked ? 'is-visible' : ''}`}>
+        <input
+          id={`check-${video.id}`}
+          type="checkbox"
+          checked={checked}
+          onChange={onToggle}
+          className="video-select-check"
+          onClick={(e) => e.stopPropagation()}
+          onPointerUp={(e) => {
+            e.currentTarget.blur()
+          }}
+          aria-label={`选择 ${displayName}`}
+        />
+      </div>
       <div className="aspect-video w-full overflow-hidden bg-gray-200">
         <img
           src={`/videos/${video.id}/thumbnail`}
@@ -65,23 +82,12 @@ export default function VideoCard({
 
       <div className="p-3">
         <div className="flex items-center gap-2">
-          {selectMode && (
-            <input
-              id={`check-${video.id}`}
-              type="checkbox"
-              checked={checked}
-              onChange={onToggle}
-              className="h-4 w-4"
-              onClick={(e) => e.stopPropagation()}
-            />
-          )}
-          <label
-            htmlFor={`check-${video.id}`}
+          <div
             className="line-clamp-2 text-[11px] font-medium leading-snug sm:text-xs"
             title={displayName}
           >
             {displayName}
-          </label>
+          </div>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-1">
           <span className="inline-flex h-4 items-center rounded bg-gray-100 px-1 text-[10px] font-medium text-gray-700">

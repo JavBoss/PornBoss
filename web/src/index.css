@@ -23,6 +23,45 @@ body {
   background: #fff;
 }
 
+.video-card-select {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 20;
+  opacity: 0;
+  transform: translateY(-2px) scale(0.96);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.video-card:hover .video-card-select,
+.video-card:focus-within .video-card-select,
+.video-card-select.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@media (hover: none) {
+  .video-card-select {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.video-select-check {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #0284c7;
+  border-radius: 0.375rem;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 8px 24px rgba(15, 23, 42, 0.18),
+    0 1px 2px rgba(15, 23, 42, 0.16);
+}
+
 .player-shell {
   --player-controls-height: 30px;
   height: 75vh;
