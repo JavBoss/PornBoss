@@ -50,15 +50,7 @@ porn manager, jav manager, av manager, jav scraper, jav metadata, adult video ma
 
 ## Quick Start
 
-### 1. Prerequisites
-
-Before you begin, you only need three things:
-
-- A local video directory
-- A browser
-- A working proxy, if you want JAV scraping features
-
-### 2. Download
+### 1. Download
 
 Go to the [Releases](https://github.com/JavBoss/pornboss/releases) page, download the package for your system, and extract it:
 
@@ -67,7 +59,7 @@ Go to the [Releases](https://github.com/JavBoss/pornboss/releases) page, downloa
 - `macos-x86_64`
 - `macos-arm64`
 
-### 3. Start the App
+### 2. Start the App
 
 - Windows: double-click `pornboss.exe`. If SmartScreen blocks it on first launch, click "More info" and continue.
 - macOS: right-click `pornboss.command` and choose Open. If macOS shows a security warning, continue anyway.
@@ -75,11 +67,11 @@ Go to the [Releases](https://github.com/JavBoss/pornboss/releases) page, downloa
 
 After launch, Pornboss will try to open your browser automatically. If it does not, open the local address shown in the terminal manually.
 
-### 4. Add Your Media Directories
+### 3. Add Your Media Directories
 
 Open `Global Settings` -> `Directory Management`, then add the local folders that store your videos. Scanning runs quietly in the background, and videos that are already indexed are available immediately.
 
-### 5. Start Using It
+### 4. Start Using It
 
 - Manage general adult videos in video mode
 - Browse JAV titles by code, work, or actress in JAV mode
@@ -108,14 +100,7 @@ After downloading and extracting a new version, copy the current `data` director
 
 - Q: How do I move a managed directory?
 - A: Move it directly, then update the directory path in directory management.
-</br>
 
-- Q: Why do some videos show a black screen or fail to play?
-- A: The browser does not support that video format. Pornboss also supports opening the file with your system's default player.
-</br>
-
-- Q: Can I use it without a proxy?
-- A: Without a proxy, JAV-mode-related features will not work, but you can still use Pornboss to manage your local video collection.
 
 ## Screenshots
 

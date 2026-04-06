@@ -51,15 +51,7 @@ porn manager, jav manager, av manager, jav scraper, jav metadata, adult video ma
 
 ## 快速上手
 
-### 1. 准备工作
-
-在开始之前，你只需要准备三样东西：
-
-- 本地的视频文件目录
-- 一个安装好的浏览器
-- 一把可用的梯子（如果你不用Jav搜刮整理也可以不要）
-
-### 2. 下载
+### 1. 下载
 
 前往仓库的  [Releases](https://github.com/JavBoss/pornboss/releases)  页面，下载适合你系统的版本并解压：
 
@@ -68,7 +60,7 @@ porn manager, jav manager, av manager, jav scraper, jav metadata, adult video ma
 - `macos-x86_64`
 - `macos-arm64`
 
-### 3. 启动程序
+### 2. 启动程序
 
 - Windows：双击 `pornboss.exe`；首次运行可能会被smartScreen阻止，点击更多信息->仍要运行
 - macOS：右键 `pornboss.command` 点击打开；如果系统弹出安全警告，仍然选择继续打开
@@ -76,11 +68,11 @@ porn manager, jav manager, av manager, jav scraper, jav metadata, adult video ma
 
 启动成功后，程序会自动尝试打开浏览器；如果没有自动打开，可以手动访问终端里显示的本地地址。
 
-### 4. 添加你的资源目录
+### 3. 添加你的资源目录
 
 进入“全局设置” -> “目录管理”，把存放视频的本地文件夹加进去。扫描过程在后台静默进行，已经入库的视频可以立刻开始用，无需等待扫描彻底完成。
 
-### 5. 开始使用
+### 4. 开始使用
 
 - 在视频模式里管理普通成人视频
 - 在 JAV 模式里按番号、作品、女优浏览
@@ -94,7 +86,7 @@ porn manager, jav manager, av manager, jav scraper, jav metadata, adult video ma
 ## 注意事项
 
 - 这是本地媒体库管理工具，不是在线视频站。
-- JAV 元数据、封面和女优资料依赖外部站点可访问性。
+- JAV 元数据、封面和女优资料依赖外部站点可访问性，中国大陆地区请自备梯子。
 - 首次导入大库时，扫描、封面抓取、资料补全需要一些时间。
 
 ## Q&A
@@ -109,14 +101,7 @@ porn manager, jav manager, av manager, jav scraper, jav metadata, adult video ma
 
 - Q: 我想移动一个被管理的目录要怎么做？
 - A: 直接移动，然后在目录管理里面修改目录地址。
-</br>
 
-- Q: 为什么有些视频无法播放，黑屏？
-- A: 该视频格式浏览器不支持，pornboss支持使用系统默认播放器播放。
-</br>
-
-- Q: 没有梯子可以使用吗？
-- A: 没有梯子无法只是使用Jav模式相关的功能，你仍然可以用pornboss管理你的所有本地视频。
 
 ## 部分截图
 
