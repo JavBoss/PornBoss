@@ -1,3 +1,5 @@
+[中文](README.md) | [English](README.en.md)
+
 # Pornboss
 
 Pornboss 是一个面向本地成人视频收藏的一站式解决方案，同时覆盖普通成人视频管理和日本 JAV 管理。
