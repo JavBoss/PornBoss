@@ -63,7 +63,6 @@ export default function TopBar({
   }
 
   const filterLabelPrefix = zh('筛选条件：', 'Filters:')
-  const filterLabelValue = filterSummary || zh('无', 'None')
 
   return (
     <header ref={headerRef} className={headerClassName}>
@@ -220,13 +219,15 @@ export default function TopBar({
                 </Button>
               </div>
 
-              <span
-                className="min-w-0 flex-1 truncate whitespace-nowrap text-xs text-gray-500"
-                title={`${filterLabelPrefix}${filterLabelValue}`}
-              >
-                {filterLabelPrefix}
-                <span className="font-semibold text-gray-700">{filterLabelValue}</span>
-              </span>
+              {filterSummary ? (
+                <span
+                  className="min-w-0 flex-1 truncate whitespace-nowrap text-xs text-gray-500"
+                  title={`${filterLabelPrefix}${filterSummary}`}
+                >
+                  {filterLabelPrefix}
+                  <span className="font-semibold text-gray-700">{filterSummary}</span>
+                </span>
+              ) : null}
             </div>
           </div>
 
