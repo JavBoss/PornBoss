@@ -103,7 +103,7 @@ function IdolCard({ item, onSelectIdol, href, bgWidthPercent, coverAspectPercent
           </div>
         )}
         <div className="absolute left-2 top-2 rounded bg-black/70 px-2 py-1 text-xs text-white">
-          {zh(`作品 ${workCount}`, `${workCount} titles`)}
+          {zh(`作品 ${workCount}`, `${workCount} javs`)}
         </div>
       </div>
       <div className="flex flex-1 flex-col gap-2 p-3">

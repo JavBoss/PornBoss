@@ -758,13 +758,10 @@ export default function App() {
     })
   }, [])
   const filterSummary = useMemo(() => {
-    const formatList = (items, max = 3) => {
+    const formatList = (items) => {
       if (!items || items.length === 0) return ''
       const separator = isChineseLocale() ? '、' : ', '
-      if (items.length <= max) return items.join(separator)
-      return isChineseLocale()
-        ? `${items.slice(0, max).join(separator)} 等${items.length}个`
-        : `${items.slice(0, max).join(separator)} +${items.length - max} more`
+      return items.join(separator)
     }
     if (isJavMode) {
       const parts = []
@@ -778,7 +775,7 @@ export default function App() {
       }
       const searchLabel = (javSearchTerm || '').trim()
       if (searchLabel) parts.push(zh(`搜索: ${searchLabel}`, `Search: ${searchLabel}`))
-      return parts.length ? parts.join(isChineseLocale() ? '；' : '; ') : zh('无', 'None')
+      return parts.length ? parts.join(isChineseLocale() ? '；' : '; ') : ''
     }
     const parts = []
     const tagsLabel = formatList(selectedTags)
@@ -788,7 +785,7 @@ export default function App() {
     if (randomMode) {
       parts.push(zh('随机', 'Random'))
     }
-    return parts.length ? parts.join(isChineseLocale() ? '；' : '; ') : zh('无', 'None')
+    return parts.length ? parts.join(isChineseLocale() ? '；' : '; ') : ''
   }, [
     isJavMode,
     javTab,

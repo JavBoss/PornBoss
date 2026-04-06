@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
 import { IconButton, Tooltip } from '@mui/material'
 import Fade from '@mui/material/Fade'
-import EditIcon from '@mui/icons-material/Edit'
-import OpenInNewIcon from '@mui/icons-material/OpenInNew'
+import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined'
+import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
-import LanguageIcon from '@mui/icons-material/Language'
+import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 
 import { isUserJavTag } from '@/constants/jav'
 import { zh } from '@/utils/i18n'
@@ -196,7 +196,7 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
                 className="h-6 w-6"
                 onClick={(event) => event.stopPropagation()}
               >
-                <LanguageIcon fontSize="inherit" />
+                <OpenInNewIcon fontSize="inherit" />
               </IconButton>
               <div className="pointer-events-none absolute bottom-full left-0 z-20 flex items-center gap-2 rounded-full border border-gray-200 bg-white/95 px-2 py-1 text-xs text-gray-700 opacity-0 shadow-lg backdrop-blur transition group-hover:pointer-events-auto group-hover:opacity-100">
                 {externalLinks.map((site) => (
@@ -231,7 +231,7 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
               aria-label={zh('打开文件', 'Open file')}
               className="h-6 w-6"
             >
-              <OpenInNewIcon fontSize="inherit" />
+              <PlayArrowIcon fontSize="inherit" />
             </IconButton>
           </Tooltip>
           <Tooltip title={zh('打开所在位置', 'Reveal in folder')}>
@@ -253,7 +253,7 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
                 aria-label={zh('编辑标签', 'Edit tags')}
                 className="h-6 w-6"
               >
-                <EditIcon fontSize="inherit" />
+                <LocalOfferOutlinedIcon fontSize="inherit" />
               </IconButton>
             </Tooltip>
           )}
