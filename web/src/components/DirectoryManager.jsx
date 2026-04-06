@@ -3,6 +3,15 @@ import { useEffect, useState } from 'react'
 import { pickDirectory } from '@/api'
 import { zh } from '@/utils/i18n'
 
+function isWindowsPlatform() {
+  if (typeof navigator === 'undefined') return false
+
+  const platform =
+    navigator.userAgentData?.platform || navigator.platform || navigator.userAgent || ''
+
+  return /windows/i.test(String(platform))
+}
+
 export default function DirectoryManager({ open, directories, onCreate, onUpdate, onDelete }) {
   const [path, setPath] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -16,6 +25,14 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
   const [rowErrorMsg, setRowErrorMsg] = useState('')
   const [savingId, setSavingId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
+  const windowsPlatform = isWindowsPlatform()
+  const pathPlaceholder = windowsPlatform
+    ? zh('输入目录路径，例如 D:\\Videos', 'Enter a folder path, e.g. D:\\Videos')
+    : zh('输入目录路径，例如 /Volumes/Videos', 'Enter a folder path, e.g. /Volumes/Videos')
+  const pathHelperText = zh(
+    '建议优先使用“选择目录”，也可以手动输入完整目录路径。',
+    'Use "Choose directory" when possible, or enter the full folder path manually.'
+  )
 
   useEffect(() => {
     if (open) {
@@ -138,7 +155,12 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
     <div className="space-y-3">
       <div className="divide-y rounded border">
         {directories.length === 0 && (
-          <div className="p-3 text-sm text-gray-500">{zh('暂无目录', 'No directories')}</div>
+          <div className="p-3 text-sm text-gray-500">
+            {zh(
+              '还没有添加目录，添加后会自动扫描其中的视频。',
+              'No directories yet. Added folders will be scanned automatically.'
+            )}
+          </div>
         )}
         {directories.map((d) => {
           const isEditing = editId === d.id
@@ -160,7 +182,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
                         value={editPath}
                         onChange={(e) => setEditPath(e.target.value)}
                         className="w-full rounded border px-3 py-2 text-sm sm:min-w-[420px] sm:flex-1"
-                        placeholder="/absolute/path"
+                        placeholder={pathPlaceholder}
                       />
                       <button
                         type="button"
@@ -179,6 +201,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
                         {picking ? zh('选择中…', 'Picking...') : zh('选择目录', 'Choose directory')}
                       </button>
                     </div>
+                    <div className="text-xs text-blue-700">{pathHelperText}</div>
                   </form>
                 )}
                 <div className="flex flex-wrap items-center gap-2">
@@ -249,7 +272,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
               id="dir-path-input"
               value={path}
               onChange={(e) => setPath(e.target.value)}
-              placeholder="/absolute/path"
+              placeholder={pathPlaceholder}
               className="flex-1 rounded border px-3 py-2"
             />
             <button
@@ -261,6 +284,7 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
               {picking ? zh('选择中…', 'Picking...') : zh('选择目录', 'Choose directory')}
             </button>
           </div>
+          <div className="text-xs text-blue-700">{pathHelperText}</div>
           {error && <div className="text-sm text-red-600">{error}</div>}
           <div className="flex justify-end gap-2">
             <button
