@@ -79,9 +79,9 @@ export default function TopBar({
             </button>
 
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {isJavMode ? (
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <Button
                       variant={javTab === 'list' ? 'contained' : 'outlined'}
                       onClick={() => onSwitchJavTab('list')}
@@ -96,7 +96,7 @@ export default function TopBar({
                     </Button>
                     <form
                       onSubmit={onSubmitJavSearch}
-                      className="flex min-w-0 max-w-full items-center overflow-hidden rounded-full border border-gray-200 bg-white shadow-sm"
+                      className="flex items-center overflow-hidden rounded-full border border-gray-200 bg-white shadow-sm"
                     >
                       <input
                         value={javSearchInput}
@@ -106,7 +106,7 @@ export default function TopBar({
                             ? zh('搜索女优名称', 'Search idol name')
                             : zh('搜索番号或标题', 'Search code or title')
                         }
-                        className="h-10 min-w-0 flex-1 border-0 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="h-10 flex-1 border-0 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         aria-label={zh('搜索JAV', 'Search JAV')}
                       />
                       <Button
@@ -155,13 +155,13 @@ export default function TopBar({
                   <>
                     <form
                       onSubmit={onSubmitVideoSearch}
-                      className="flex min-w-0 max-w-full items-center overflow-hidden rounded-full border border-gray-200 bg-white shadow-sm"
+                      className="flex items-center overflow-hidden rounded-full border border-gray-200 bg-white shadow-sm"
                     >
                       <input
                         value={videoSearchInput}
                         onChange={(e) => onVideoSearchInputChange(e.target.value)}
                         placeholder={zh('搜索文件名', 'Search filename')}
-                        className="h-10 min-w-0 flex-1 border-0 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="h-10 flex-1 border-0 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         aria-label={zh('搜索视频', 'Search videos')}
                       />
                       <Button
@@ -221,7 +221,7 @@ export default function TopBar({
               </div>
 
               <span
-                className="ml-1 min-w-0 flex-1 truncate whitespace-nowrap text-xs text-gray-500"
+                className="min-w-0 flex-1 truncate whitespace-nowrap text-xs text-gray-500"
                 title={`${filterLabelPrefix}${filterLabelValue}`}
               >
                 {filterLabelPrefix}
@@ -230,7 +230,7 @@ export default function TopBar({
             </div>
           </div>
 
-          <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
+          <div className="flex flex-shrink-0 items-center gap-2">
             <Button
               startIcon={<SettingsOutlinedIcon fontSize="small" />}
               variant="outlined"
