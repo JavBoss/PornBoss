@@ -11,6 +11,8 @@ func TestIsChineseLocaleValue(t *testing.T) {
 		{value: "en_US.UTF-8", want: false},
 		{value: "zh_CN.UTF-8", want: true},
 		{value: "zh-Hans-CN", want: true},
+		{value: "(\n    \"zh-Hans-CN\"\n)", want: true},
+		{value: "(\n    \"en-US\"\n)", want: false},
 		{value: "English:Chinese", want: true},
 		{value: "ja_JP:en_US", want: false},
 	}

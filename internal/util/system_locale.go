@@ -14,7 +14,7 @@ var (
 // SystemPrefersChinese reports whether the current OS/UI locale should be treated as Chinese.
 func SystemPrefersChinese() bool {
 	systemPrefersChineseOnce.Do(func() {
-		for _, key := range []string{"LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG", "AppleLocale"} {
+		for _, key := range []string{"LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG", "AppleLanguages", "AppleLocale"} {
 			if isChineseLocaleValue(os.Getenv(key)) {
 				systemPrefersChinese = true
 				return
@@ -30,12 +30,25 @@ func isChineseLocaleValue(value string) bool {
 	if value == "" {
 		return false
 	}
-	for _, part := range strings.Split(value, ":") {
+
+	parts := strings.FieldsFunc(value, func(r rune) bool {
+		switch r {
+		case ':', ';', ',', '\n', '\r', '\t', ' ', '(', ')', '[', ']', '{', '}', '"', '\'':
+			return true
+		default:
+			return false
+		}
+	})
+
+	for _, part := range parts {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
 		}
-		if strings.HasPrefix(part, "zh") || strings.Contains(part, "_zh") || strings.Contains(part, "-zh") || strings.Contains(part, "chinese") {
+		if idx := strings.IndexAny(part, ".@"); idx >= 0 {
+			part = part[:idx]
+		}
+		if part == "zh" || strings.HasPrefix(part, "zh_") || strings.HasPrefix(part, "zh-") || strings.Contains(part, "chinese") {
 			return true
 		}
 	}
