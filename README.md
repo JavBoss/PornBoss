@@ -2,7 +2,7 @@
 
 <h1 align="center">Pornboss</h1>
 
-<p align="center">Pornboss 是一个面向本地成人视频收藏的一站式解决方案，同时覆盖普通成人视频管理和日本 JAV 管理。</p>
+<p align="center">面向本地成人视频收藏的一站式解决方案，支持普通视频与日本 JAV 的整理、浏览与检索。</p>
 
 <p align="center">
   <a href="https://github.com/JavBoss/pornboss/releases"><img alt="Release" src="https://img.shields.io/github/v/release/JavBoss/pornboss?display_name=tag"></a>

@@ -2,7 +2,7 @@
 
 <h1 align="center">Pornboss</h1>
 
-<p align="center">Pornboss is an all-in-one solution for managing a local adult video collection, covering both general adult videos and Japanese JAV libraries.</p>
+<p align="center">An all-in-one solution for managing a local adult video collection, with support for organizing, browsing, and searching both general videos and Japanese JAV libraries.</p>
 
 <p align="center">
   <a href="https://github.com/JavBoss/pornboss/releases"><img alt="Release" src="https://img.shields.io/github/v/release/JavBoss/pornboss?display_name=tag"></a>
