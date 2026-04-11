@@ -2,6 +2,13 @@
 
 # Pornboss
 
+[![Release](https://img.shields.io/github/v/release/JavBoss/pornboss?display_name=tag)](https://github.com/JavBoss/pornboss/releases)
+[![Stars](https://img.shields.io/github/stars/JavBoss/pornboss?style=flat)](https://github.com/JavBoss/pornboss/stargazers)
+[![Go](https://img.shields.io/badge/Go-1.25%2B-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![Frontend](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+[![Database](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![Media](https://img.shields.io/badge/Media-FFmpeg-007808?logo=ffmpeg&logoColor=white)](https://ffmpeg.org/)
+
 Pornboss is an all-in-one solution for managing a local adult video collection, covering both general adult videos and Japanese JAV libraries.
 
 ## Keywords
