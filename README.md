@@ -1,5 +1,3 @@
-[中文](README.md) | [English](README.en.md)
-
 <h1 align="center">Pornboss</h1>
 
 <p align="center">面向本地成人视频收藏的一站式解决方案，支持普通视频与日本 JAV 的整理、浏览与检索。</p>
@@ -10,6 +8,8 @@
   <a href="https://github.com/JavBoss/pornboss/releases"><img alt="Platform" src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-1E88E5"></a>
   <a href="https://go.dev/"><img alt="Go" src="https://img.shields.io/badge/Go-1.25%2B-00ADD8?logo=go&logoColor=white"></a>
 </p>
+
+<p align="center">[中文](README.md) | [English](README.en.md)</p>
 
 ## Keywords
 
