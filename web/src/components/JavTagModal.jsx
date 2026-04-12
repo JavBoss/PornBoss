@@ -98,6 +98,7 @@ export default function JavTagModal({
     const set = new Set(selectedTagIds)
     return displayTags.filter((t) => set.has(t.id)).map((t) => t.id)
   }, [displayTags, selectedTagIds])
+
   const renderTagGroup = (group) => {
     if (multiSelect) {
       return (
@@ -106,6 +107,7 @@ export default function JavTagModal({
           onToggle={handleTagClick}
           multiSelect={multiSelect}
           selectedIds={selectedTagIds}
+          variant="neumorphic"
           onSelect={(id) => {
             setSelectedTagIds((prev) => {
               const next = new Set(prev)
@@ -128,10 +130,16 @@ export default function JavTagModal({
           const canRename = isUserJavTag(t)
           const showRenameHint = editMode && hoverTagId === t.id && canRename
           const showDelete = editMode && hoverTagId === t.id && canRename
+          const baseTagClass = canRename ? 'skeuo-tag--user' : 'skeuo-tag--scraped'
+          const interactiveTagClass = editMode
+            ? showRenameHint
+              ? 'skeuo-tag--active'
+              : 'skeuo-tag--editing'
+            : 'skeuo-tag--button'
           return (
             <div
               key={t.id}
-              className="inline-flex items-center gap-2 rounded px-2 py-1 text-sm text-slate-700 transition hover:bg-slate-100"
+              className={`skeuo-tag ${baseTagClass} ${interactiveTagClass}`}
               onMouseEnter={() => {
                 if (editMode) setHoverTagId(t.id)
               }}
@@ -141,7 +149,7 @@ export default function JavTagModal({
             >
               <button
                 type="button"
-                className="flex items-center gap-2 text-left"
+                className="flex min-w-0 items-center gap-2 text-left"
                 onClick={() => {
                   if (editMode) {
                     if (canRename) handleStartRename(t)
@@ -151,16 +159,10 @@ export default function JavTagModal({
                 }}
                 title={t.name}
               >
-                <span>{t.name}</span>
-                {!editMode && count !== null && (
-                  <span className="rounded-full bg-slate-100 px-1.5 text-[10px] text-slate-500">
-                    {count}
-                  </span>
-                )}
+                <span className="skeuo-tag-label">{t.name}</span>
+                {!editMode && count !== null && <span className="skeuo-tag-count">{count}</span>}
                 {showRenameHint && (
-                  <span className="text-[10px] text-slate-400">
-                    {zh('单击重命名', 'Click to rename')}
-                  </span>
+                  <span className="skeuo-tag-hint">{zh('单击重命名', 'Click to rename')}</span>
                 )}
               </button>
               {showDelete && (
@@ -168,6 +170,7 @@ export default function JavTagModal({
                   type="button"
                   aria-label={zh('删除标签', 'Delete tag')}
                   disabled={deletingId === t.id}
+                  className="skeuo-tag-delete"
                   onClick={async (event) => {
                     event.preventDefault()
                     event.stopPropagation()
@@ -187,7 +190,7 @@ export default function JavTagModal({
                     }
                   }}
                 >
-                  <CloseOutlinedIcon fontSize="inherit" className="h-3.5 w-3.5 text-rose-500" />
+                  <CloseOutlinedIcon fontSize="inherit" className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>

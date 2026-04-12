@@ -114,3 +114,140 @@ body {
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 6px;
 }
+
+.skeuo-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.2rem;
+  padding: 0.38rem 0.62rem 0.38rem 0.82rem;
+  border-radius: 9999px;
+  border: 1px solid #d6dbe4;
+  background: #f8fafc;
+  box-shadow: none;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.skeuo-tag:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.skeuo-tag--button,
+.skeuo-tag--toggle,
+.skeuo-tag--active,
+.skeuo-tag--editing {
+  cursor: pointer;
+}
+
+.skeuo-tag--user {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.skeuo-tag--scraped {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.skeuo-tag--editing {
+  opacity: 0.9;
+}
+
+.skeuo-tag--active,
+.skeuo-tag--selected {
+  background: #f59e0b;
+  border-color: #d97706;
+}
+
+.skeuo-tag--selected:hover {
+  background: #f59e0b;
+  border-color: #d97706;
+}
+
+.skeuo-tag-label {
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.skeuo-tag--active .skeuo-tag-label {
+  color: #fff;
+}
+
+.skeuo-tag--selected .skeuo-tag-label {
+  color: #fff;
+}
+
+.skeuo-tag-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: none;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.skeuo-tag--active .skeuo-tag-count {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.skeuo-tag--selected .skeuo-tag-count {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.skeuo-tag-hint {
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(71, 85, 105, 0.72);
+}
+
+.skeuo-tag-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  color: #be123c;
+  background: #ffe4e6;
+  box-shadow: none;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.skeuo-tag-delete:hover {
+  background: #fecdd3;
+}
+
+.skeuo-tag-check {
+  accent-color: #c78b3b;
+}
+
+@media (max-width: 640px) {
+  .skeuo-tag {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .skeuo-tag-label {
+    max-width: min(100%, 11rem);
+  }
+}
