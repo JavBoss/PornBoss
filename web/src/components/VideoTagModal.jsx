@@ -115,6 +115,7 @@ export default function VideoTagModal({
                   onToggle={handleTagClick}
                   multiSelect={multiSelect}
                   selectedIds={selectedTagIds}
+                  variant="neumorphic"
                   onSelect={(id) => {
                     setSelectedTagIds((prev) => {
                       const next = new Set(prev)
@@ -136,7 +137,7 @@ export default function VideoTagModal({
                     return (
                       <div
                         key={t.id}
-                        className="inline-flex items-center gap-2 rounded px-2 py-1 text-sm text-slate-700 transition hover:bg-slate-100"
+                        className={`skeuo-tag ${editMode ? (showRenameHint ? 'skeuo-tag--active' : 'skeuo-tag--editing') : 'skeuo-tag--button'}`}
                         onMouseEnter={() => {
                           if (editMode) setHoverTagId(t.id)
                         }}
@@ -146,7 +147,7 @@ export default function VideoTagModal({
                       >
                         <button
                           type="button"
-                          className="flex items-center gap-2 text-left"
+                          className="flex min-w-0 items-center gap-2 text-left"
                           onClick={() => {
                             if (editMode) {
                               handleStartRename(t)
@@ -156,14 +157,14 @@ export default function VideoTagModal({
                           }}
                           title={t.name}
                         >
-                          <span>{t.name}</span>
+                          <span className="skeuo-tag-label">{t.name}</span>
                           {!editMode && count !== null && (
-                            <span className="rounded-full bg-slate-100 px-1.5 text-[10px] text-slate-500">
+                            <span className="skeuo-tag-count">
                               {count}
                             </span>
                           )}
                           {showRenameHint && (
-                            <span className="text-[10px] text-slate-400">
+                            <span className="skeuo-tag-hint">
                               {zh('单击重命名', 'Click to rename')}
                             </span>
                           )}
@@ -173,6 +174,7 @@ export default function VideoTagModal({
                             type="button"
                             aria-label={zh('删除标签', 'Delete tag')}
                             disabled={deletingId === t.id}
+                            className="skeuo-tag-delete"
                             onClick={async (event) => {
                               event.preventDefault()
                               event.stopPropagation()
@@ -194,10 +196,7 @@ export default function VideoTagModal({
                               }
                             }}
                           >
-                            <CloseOutlinedIcon
-                              fontSize="inherit"
-                              className="h-3.5 w-3.5 text-rose-500"
-                            />
+                            <CloseOutlinedIcon fontSize="inherit" className="h-3.5 w-3.5" />
                           </button>
                         )}
                       </div>
