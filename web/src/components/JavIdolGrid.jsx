@@ -55,7 +55,7 @@ export function IdolCard({
   const romanName = item?.roman_name || ''
   const japaneseName = item?.japanese_name || ''
   const chineseName = item?.chinese_name || ''
-  const birthDate = formatBirthDate(item?.birth_date)
+  const birthDate = formatBirthDateWithAge(item?.birth_date)
   const height = typeof item?.height_cm === 'number' ? `${item.height_cm}cm` : ''
   const bwh = formatBwh(item)
   const cup = formatCup(item?.cup)
@@ -155,6 +155,31 @@ function formatBirthDate(value) {
     return value.toISOString().slice(0, 10)
   }
   return ''
+}
+
+function formatBirthDateWithAge(value) {
+  const birthDate = formatBirthDate(value)
+  if (!birthDate) return ''
+
+  const age = calculateAge(birthDate)
+  if (!Number.isFinite(age) || age < 0) {
+    return birthDate
+  }
+  return zh(`${birthDate}（${age}岁）`, `${birthDate} (${age} years old)`)
+}
+
+function calculateAge(birthDate) {
+  const date = new Date(`${birthDate}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return null
+
+  const now = new Date()
+  let age = now.getFullYear() - date.getFullYear()
+  const monthDiff = now.getMonth() - date.getMonth()
+  const dayDiff = now.getDate() - date.getDate()
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+    age -= 1
+  }
+  return age
 }
 
 function formatBwh(item) {
