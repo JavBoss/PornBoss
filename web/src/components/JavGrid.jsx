@@ -1,11 +1,13 @@
-import { useMemo } from 'react'
-import { IconButton, Tooltip } from '@mui/material'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { IconButton, Popper, Tooltip } from '@mui/material'
 import Fade from '@mui/material/Fade'
 import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 
+import { fetchJavIdolPreview } from '@/api'
+import { IdolCard, getIdolCardLayoutProps } from '@/components/JavIdolGrid'
 import { isUserJavTag } from '@/constants/jav'
 import { zh } from '@/utils/i18n'
 
@@ -49,13 +51,7 @@ function ReleaseIcon() {
         strokeWidth="1.6"
         strokeLinecap="round"
       />
-      <path
-        d="M5.8 8.8h8.4"
-        fill="none"
-        stroke="#F97316"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
+      <path d="M5.8 8.8h8.4" fill="none" stroke="#F97316" strokeWidth="1.4" strokeLinecap="round" />
       <rect x="6.7" y="10.2" width="2.5" height="2.3" rx="0.5" fill="#22C55E" />
       <rect x="10.7" y="10.2" width="2.5" height="2.3" rx="0.5" fill="#3B82F6" />
       <rect x="6.7" y="13.4" width="2.5" height="2.3" rx="0.5" fill="#F43F5E" />
@@ -73,7 +69,38 @@ export default function JavGrid({
   onOpenFile,
   onRevealFile,
 }) {
+  const idolPreviewCacheRef = useRef(new Map())
+  const idolPreviewInflightRef = useRef(new Map())
   const hasItems = Array.isArray(items) && items.length > 0
+
+  const loadIdolPreview = async (idol) => {
+    const idolId = Number(idol?.id)
+    if (!Number.isFinite(idolId) || idolId <= 0) {
+      return idol || null
+    }
+
+    const cached = idolPreviewCacheRef.current.get(idolId)
+    if (cached) {
+      return cached
+    }
+
+    const inflight = idolPreviewInflightRef.current.get(idolId)
+    if (inflight) {
+      return inflight
+    }
+
+    const request = fetchJavIdolPreview(idolId)
+      .then((preview) => {
+        idolPreviewCacheRef.current.set(idolId, preview)
+        return preview
+      })
+      .finally(() => {
+        idolPreviewInflightRef.current.delete(idolId)
+      })
+    idolPreviewInflightRef.current.set(idolId, request)
+    return request
+  }
+
   if (!hasItems) {
     return (
       <div className="mt-4 flex min-h-[200px] items-center justify-center rounded border border-dashed border-gray-200 text-gray-500">
@@ -94,14 +121,25 @@ export default function JavGrid({
           onEditTags={onEditTags}
           onOpenFile={onOpenFile}
           onRevealFile={onRevealFile}
+          loadIdolPreview={loadIdolPreview}
         />
       ))}
     </div>
   )
 }
 
-function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile, onRevealFile }) {
+function JavCard({
+  item,
+  onPlay,
+  onIdolClick,
+  onTagClick,
+  onEditTags,
+  onOpenFile,
+  onRevealFile,
+  loadIdolPreview,
+}) {
   const primaryVideo = useMemo(() => (item?.videos || [])[0], [item])
+  const { bgWidthPercent, coverAspectPercent } = useMemo(() => getIdolCardLayoutProps(), [])
   const cover = item?.code ? `/jav/${encodeURIComponent(item.code)}/cover` : null
 
   const release =
@@ -163,6 +201,58 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
   }
   const tags = Array.isArray(item?.tags) ? item.tags : []
   const showEditTags = typeof onEditTags === 'function'
+  const [previewIdol, setPreviewIdol] = useState(null)
+  const [hoverAnchorEl, setHoverAnchorEl] = useState(null)
+  const closeTimerRef = useRef(null)
+  const activeHoverIdRef = useRef(null)
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        window.clearTimeout(closeTimerRef.current)
+      }
+    }
+  }, [])
+
+  const clearHoverCloseTimer = () => {
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }
+
+  const scheduleHoverClose = () => {
+    clearHoverCloseTimer()
+    closeTimerRef.current = window.setTimeout(() => {
+      activeHoverIdRef.current = null
+      setPreviewIdol(null)
+      setHoverAnchorEl(null)
+      closeTimerRef.current = null
+    }, 120)
+  }
+
+  const handleIdolHoverStart = (idol, event) => {
+    clearHoverCloseTimer()
+    const idolId = Number(idol?.id)
+    activeHoverIdRef.current = Number.isFinite(idolId) ? idolId : null
+    setPreviewIdol(idol || null)
+    setHoverAnchorEl(event.currentTarget)
+
+    void loadIdolPreview?.(idol)
+      .then((loadedIdol) => {
+        if (!loadedIdol) return
+        if (activeHoverIdRef.current !== Number(loadedIdol.id)) return
+        setPreviewIdol((current) =>
+          current && current.id === loadedIdol.id ? { ...current, ...loadedIdol } : current
+        )
+      })
+      .catch((error) => {
+        console.warn('load idol preview failed', error)
+      })
+  }
+
+  const showIdolWorkCount =
+    typeof previewIdol?.work_count === 'number' && previewIdol.work_count > 0
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border bg-white shadow-sm transition hover:shadow-lg">
@@ -218,11 +308,45 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
                 key={idol.id || idol.name}
                 type="button"
                 className="rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 transition hover:bg-purple-200"
+                onMouseEnter={(event) => handleIdolHoverStart(idol, event)}
+                onMouseLeave={scheduleHoverClose}
+                onFocus={(event) => handleIdolHoverStart(idol, event)}
+                onBlur={scheduleHoverClose}
                 onClick={() => onIdolClick?.(idol.name)}
               >
                 {idol.name}
               </button>
             ))}
+            <Popper
+              open={Boolean(previewIdol && hoverAnchorEl)}
+              anchorEl={hoverAnchorEl}
+              placement="right-start"
+              className="z-[1400]"
+              modifiers={[
+                {
+                  name: 'offset',
+                  options: {
+                    offset: [10, 0],
+                  },
+                },
+              ]}
+            >
+              <div
+                className="w-[220px]"
+                onMouseEnter={clearHoverCloseTimer}
+                onMouseLeave={scheduleHoverClose}
+              >
+                {previewIdol ? (
+                  <IdolCard
+                    item={previewIdol}
+                    onSelectIdol={(idol) => onIdolClick?.(idol?.name)}
+                    bgWidthPercent={bgWidthPercent}
+                    coverAspectPercent={coverAspectPercent}
+                    showWorkCount={showIdolWorkCount}
+                  />
+                ) : null}
+              </div>
+            </Popper>
           </div>
         )}
         {tags.length > 0 && (

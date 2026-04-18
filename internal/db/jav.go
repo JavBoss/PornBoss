@@ -410,6 +410,39 @@ func buildVisibleSoloIdolSampleQuery(ctx context.Context) *gorm.DB {
 		Group("jim_solo.jav_idol_id")
 }
 
+func buildVisibleIdolWorkCountQuery(ctx context.Context) *gorm.DB {
+	return common.DB.WithContext(ctx).
+		Table("jav_idol_map jim").
+		Select("jim.jav_idol_id, COUNT(DISTINCT jim.jav_id) AS work_count").
+		Joins("JOIN video v ON v.jav_id = jim.jav_id").
+		Where("(v.hidden = 0 OR v.hidden IS NULL)").
+		Group("jim.jav_idol_id")
+}
+
+// GetJavIdolSummary returns one idol summary for hover preview usage.
+func GetJavIdolSummary(ctx context.Context, idolID int64) (*JavIdolSummary, error) {
+	if idolID <= 0 {
+		return nil, errors.New("idol id must be positive")
+	}
+
+	var item JavIdolSummary
+	tx := common.DB.WithContext(ctx).
+		Table("jav_idol ji").
+		Select("ji.id, ji.name, ji.roman_name, ji.japanese_name, ji.chinese_name, ji.height_cm, ji.birth_date, ji.bust, ji.waist, ji.hips, ji.cup, COALESCE(idol_work_counts.work_count, 0) AS work_count, solo_idols.sample_code").
+		Joins("LEFT JOIN (?) idol_work_counts ON idol_work_counts.jav_idol_id = ji.id", buildVisibleIdolWorkCountQuery(ctx)).
+		Joins("LEFT JOIN (?) solo_idols ON solo_idols.jav_idol_id = ji.id", buildVisibleSoloIdolSampleQuery(ctx)).
+		Where("ji.id = ?", idolID).
+		Limit(1).
+		Scan(&item)
+	if tx.Error != nil {
+		return nil, fmt.Errorf("get jav idol summary: %w", tx.Error)
+	}
+	if tx.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return &item, nil
+}
+
 // ListJavIdols returns idols ordered by selected sort with pagination.
 func ListJavIdols(ctx context.Context, search, sort string, limit, offset int) ([]JavIdolSummary, int64, error) {
 	if limit <= 0 {

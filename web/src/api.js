@@ -358,3 +358,12 @@ export async function fetchJavIdols({ limit = 25, offset = 0, search = '', sort 
   }
   return res.json()
 }
+
+export async function fetchJavIdolPreview(id) {
+  const res = await fetch(`/jav/idols/${encodeURIComponent(id)}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || zh('加载女优预览失败', 'Failed to load idol preview'))
+  }
+  return res.json()
+}

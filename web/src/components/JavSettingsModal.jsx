@@ -43,7 +43,9 @@ export default function JavSettingsModal({
                 className="w-24 rounded border px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </label>
-            <div className="text-sm font-medium text-gray-700">{zh('默认排序', 'Default sort')}</div>
+            <div className="text-sm font-medium text-gray-700">
+              {zh('默认排序', 'Default sort')}
+            </div>
             <label
               htmlFor="jav-sort-recent"
               className="flex cursor-pointer items-center gap-3 rounded border bg-white px-3 py-1.5 hover:border-blue-500"
@@ -140,7 +142,9 @@ export default function JavSettingsModal({
                 className="w-24 rounded border px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </label>
-            <div className="text-sm font-medium text-gray-700">{zh('女优排序', 'Idol sorting')}</div>
+            <div className="text-sm font-medium text-gray-700">
+              {zh('女优排序', 'Idol sorting')}
+            </div>
             <label
               htmlFor="idol-sort-work"
               className="flex cursor-pointer items-center gap-3 rounded border bg-white px-3 py-1.5 hover:border-blue-500"
