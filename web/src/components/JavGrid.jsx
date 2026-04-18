@@ -40,7 +40,7 @@ function ReleaseIcon() {
         rx="2.4"
         fill="none"
         stroke="#7C3AED"
-        strokeWidth="1"
+        strokeWidth="0.8"
       />
       <path
         d="M6.4 3.2v2.8M13.6 3.2v2.8"
@@ -56,10 +56,10 @@ function ReleaseIcon() {
         strokeWidth="1.4"
         strokeLinecap="round"
       />
-      <rect x="6.1" y="10.2" width="2.5" height="2.3" rx="0.5" fill="#22C55E" />
-      <rect x="10.1" y="10.2" width="2.5" height="2.3" rx="0.5" fill="#3B82F6" />
-      <rect x="6.1" y="13.4" width="2.5" height="2.3" rx="0.5" fill="#F43F5E" />
-      <rect x="10.1" y="13.4" width="2.5" height="2.3" rx="0.5" fill="#14B8A6" />
+      <rect x="6.7" y="10.2" width="2.5" height="2.3" rx="0.5" fill="#22C55E" />
+      <rect x="10.7" y="10.2" width="2.5" height="2.3" rx="0.5" fill="#3B82F6" />
+      <rect x="6.7" y="13.4" width="2.5" height="2.3" rx="0.5" fill="#F43F5E" />
+      <rect x="10.7" y="13.4" width="2.5" height="2.3" rx="0.5" fill="#14B8A6" />
     </svg>
   )
 }
