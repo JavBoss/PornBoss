@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -36,6 +37,9 @@ func ScanIdolProfiles(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	rand.New(rand.NewSource(time.Now().UnixNano())).Shuffle(len(idols), func(i, j int) {
+		idols[i], idols[j] = idols[j], idols[i]
+	})
 	logging.Info("found %d idols missing profile info", len(idols))
 	javDatabaseLookup := jav.JavDatabaseProvider
 	javModelLookup := jav.JavModelProvider

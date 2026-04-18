@@ -576,7 +576,9 @@ func FindIdolSoloCode(ctx context.Context, idolID int64) (string, error) {
 // ListIdolsMissingProfile returns idols that have no profile fields populated.
 func ListIdolsMissingProfile(ctx context.Context) ([]models.JavIdol, error) {
 	var idols []models.JavIdol
+	soloIdols := buildVisibleSoloIdolSampleQuery(ctx)
 	if err := common.DB.WithContext(ctx).
+		Joins("JOIN (?) solo_idols ON solo_idols.jav_idol_id = jav_idol.id", soloIdols).
 		Where(`
 (
   japanese_name IS NULL OR japanese_name = '' OR
