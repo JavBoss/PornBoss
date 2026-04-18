@@ -23,7 +23,7 @@ porn manager, jav manager, av manager, jav scraper, jav metadata, adult video ma
 
 - I hoard too many videos, do not have time to watch them all, and have no good way to organize them.
 - I want to browse my local JAV library the same way I browse sites like JavBus or JavLibrary, with covers, titles, actresses, and tags.
-- Existing local JAV scraping workflows are too complicated and require too many third-party tools.
+- Existing local JAV scraping workflows are too complicated, often touch the contents of my folders, and still require too many third-party tools.
 - I also keep a lot of short local videos and want to tag them in batches and browse them by collection.
 - I want instant playback instead of opening a heavy local media player every time.
 - I want random discovery so older forgotten videos can surface again.
@@ -33,29 +33,26 @@ porn manager, jav manager, av manager, jav scraper, jav metadata, adult video ma
 - **Ready to use**
   Add your media directories after launch and Pornboss starts scanning and organizing immediately. It can auto-detect a local proxy port, so setup stays simple.
 
-- **Automatic code detection**
-  Extracts common JAV identifiers from filenames such as `IPX-633`, `SSIS-001`, and `ipx633_ch`.
+- **Smart directory content management**
+  Supports multiple media directories and automatically syncs any changes to their contents, including new files, deletions, and moves. Pornboss never modifies anything inside your folders. All library data is maintained inside Pornboss's own data directory.
+
+- **Simple and intuitive**
+  The interface is designed to stay straightforward and focused, without clutter or redundant information, so finding and playing videos stays fast.
 
 - **Actress-centric browsing**
-  Browse not only by title, but also by actress, and jump directly into one actress's full library.
+  Browse not only by title, but also by actress, and jump directly into one actress's full library. Actress profiles are fetched automatically and can be sorted in multiple ways, including height, age, and measurements.
 
-- **Automatic metadata, cast, tags, and covers**
-  Once a code is recognized, Pornboss fetches the JAV title, release date, actress info, tags, and cover art.
+- **Automatic code detection and metadata fetching**
+  Extracts common JAV identifiers from filenames such as `IPX-633`, `SSIS-001`, and `ipx633_ch`, then fetches the title, release date, actress info, tags, and cover art automatically.
 
 - **Separate management for general videos and JAV**
   Homemade clips, compilations, uncensored fragments, and short videos can stay in the regular library, while coded JAV titles go into the JAV library.
 
-- **Automatic local directory scanning**
-  Supports multiple directories, discovers new files automatically, updates metadata, and keeps the media library in sync.
-
 - **Screenshot thumbnails and an in-site player with customizable hotkeys**
   Generates preview screenshots for faster browsing, supports direct playback in the browser, and lets you open the original file or containing folder with one click.
 
-- **Batch tagging and powerful tag management**
-  Supports batch tagging, tag replacement, and tag-based filtering. Tags for general videos and JAV are managed separately.
-
 - **Tags, search, random, and sorting**
-  Filter by tags, code, title, actress, play count, and more, with random browsing and multiple sorting options.
+  Supports batch tagging, bulk tag replacement, and tag-based filtering. You can filter by tags, code, title, actress, play count, and more, with random browsing and multiple sorting options.
 
 ## Quick Start
 
@@ -116,6 +113,10 @@ After downloading and extracting a new version, copy the current `data` director
 - When importing a large library for the first time, scanning, cover downloads, and metadata completion will take some time.
 
 ## Q&A
+
+- Q: After adding a directory for the first time, how do I know when scanning is finished? Do I need to wait?
+- A: Pornboss keeps scanning in the background on a schedule, so you can start using it right after adding a directory and metadata will fill in gradually. You can also close the app at any time. Scanning will resume automatically the next time you start it.
+</br>
 
 - Q: I downloaded new videos and want them added to the library, or I want to remove videos I no longer want. What should I do?
 - A: Just move videos into or out of a managed directory. Pornboss periodically resyncs the full directory state, so you can safely add, move, or delete files without worrying about losing library data.
