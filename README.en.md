@@ -115,7 +115,7 @@ After downloading and extracting a new version, copy the current `data` director
 ## Q&A
 
 - Q: After adding a directory for the first time, how do I know when scanning is finished? Do I need to wait?
-- A: Pornboss keeps scanning in the background on a schedule, so you can start using it right after adding a directory and metadata will fill in gradually. You can also close the app at any time. Scanning will resume automatically the next time you start it.
+- A: Pornboss keeps scanning in the background on a schedule, so you can start using it right after adding a directory and metadata will fill in gradually. You can close the app at any time. Scanning will resume automatically the next time you start it.
 </br>
 
 - Q: I downloaded new videos and want them added to the library, or I want to remove videos I no longer want. What should I do?
