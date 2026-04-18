@@ -142,9 +142,9 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
       </div>
       <div className="flex flex-1 flex-col gap-2 p-3">
         <div className="line-clamp-2 text-sm leading-tight" title={titleText}>
-          {codeText ? <span className="font-medium text-gray-950">{codeText}</span> : null}
+          {codeText ? <span className="font-semibold text-gray-800">{codeText}</span> : null}
           {codeText ? ' ' : null}
-          <span className="font-semibold text-gray-800">{mainTitle}</span>
+          <span className="font-medium text-gray-800">{mainTitle}</span>
         </div>
         <div className="text-xs text-gray-600">
           {durationText || zh('时长未知', 'Unknown duration')}
