@@ -57,9 +57,9 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
   const durationText = item?.duration_min
     ? zh(`${item.duration_min} 分钟`, `${item.duration_min} min`)
     : ''
-  const titleText = [item?.code, item?.title || item?.code || zh('未知标题', 'Untitled')]
-    .filter(Boolean)
-    .join(' ')
+  const codeText = item?.code?.trim()
+  const mainTitle = item?.title || item?.code || zh('未知标题', 'Untitled')
+  const titleText = [codeText, mainTitle].filter(Boolean).join(' ')
   const videos = item?.videos || []
   const openableVideos = videos.filter((video) =>
     Boolean(video?.path && (video?.directory?.path || video?.directory_path))
@@ -141,8 +141,10 @@ function JavCard({ item, onPlay, onIdolClick, onTagClick, onEditTags, onOpenFile
         </div>
       </div>
       <div className="flex flex-1 flex-col gap-2 p-3">
-        <div className="line-clamp-2 text-sm font-semibold leading-tight" title={titleText}>
-          {titleText}
+        <div className="line-clamp-2 text-sm leading-tight" title={titleText}>
+          {codeText ? <span className="font-medium text-gray-950">{codeText}</span> : null}
+          {codeText ? ' ' : null}
+          <span className="font-semibold text-gray-800">{mainTitle}</span>
         </div>
         <div className="text-xs text-gray-600">
           {durationText || zh('时长未知', 'Unknown duration')}
