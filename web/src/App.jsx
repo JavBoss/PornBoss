@@ -1304,7 +1304,6 @@ export default function App() {
   const showDirectorySetupHint =
     hydrated &&
     configLoaded &&
-    !isJavMode &&
     !loading &&
     !activeError &&
     Array.isArray(directories) &&
