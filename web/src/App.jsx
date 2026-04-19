@@ -1353,6 +1353,7 @@ export default function App() {
         javTab={javTab}
         onSwitchJavTab={handleSwitchJavTab}
         filterSummary={filterSummary}
+        showDirectorySetupHint={showDirectorySetupHint}
       />
 
       <main className="mx-auto max-w-screen-2xl px-6 pb-6 pt-0">
@@ -1362,30 +1363,6 @@ export default function App() {
             className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-red-700"
           >
             {String(activeError)}
-          </div>
-        )}
-        {showDirectorySetupHint && (
-          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="text-sm font-semibold">
-                  {zh('还没有可用的视频目录', 'No video directories available yet')}
-                </div>
-                <div className="mt-1 text-sm text-blue-800">
-                  {zh(
-                    '请点击右上角“全局设置”，然后在“目录管理”里添加目录。',
-                    'Open Global Settings in the top-right corner, then add a directory in Directory Management.'
-                  )}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setGlobalSettingsOpen(true)}
-                className="rounded border border-blue-300 bg-white px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-100"
-              >
-                {zh('打开全局设置', 'Open Global Settings')}
-              </button>
-            </div>
           </div>
         )}
 

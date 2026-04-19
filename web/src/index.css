@@ -23,6 +23,40 @@ body {
   background: #fff;
 }
 
+.directory-setup-hint {
+  position: relative;
+}
+
+.directory-setup-hint__arrow {
+  color: #b45309;
+  animation: directory-setup-arrow-point 1.15s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes directory-setup-arrow-point {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.78;
+  }
+
+  45% {
+    transform: translateX(5px) scale(1.06);
+    opacity: 1;
+  }
+
+  70% {
+    transform: translateX(2px);
+    opacity: 0.92;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .directory-setup-hint__arrow {
+    animation: none;
+  }
+}
+
 .video-card-select {
   position: absolute;
   top: 0.75rem;

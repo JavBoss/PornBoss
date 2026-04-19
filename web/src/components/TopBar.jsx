@@ -5,6 +5,7 @@ import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined'
 import ShuffleOutlinedIcon from '@mui/icons-material/ShuffleOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import { zh } from '@/utils/i18n'
 
 export default function TopBar({
@@ -33,6 +34,7 @@ export default function TopBar({
   javTab,
   onSwitchJavTab,
   filterSummary,
+  showDirectorySetupHint,
 }) {
   const headerRef = useRef(null)
   const headerClassName = ['sticky top-0 z-40 border-b bg-white/80 backdrop-blur']
@@ -231,7 +233,25 @@ export default function TopBar({
             </div>
           </div>
 
-          <div className="flex flex-shrink-0 items-center gap-2">
+          <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
+            {showDirectorySetupHint ? (
+              <div
+                className="directory-setup-hint flex max-w-full items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 shadow-sm"
+                role="status"
+              >
+                <span className="min-w-0 truncate">
+                  {zh(
+                    '没有可用的视频目录，打开目录管理添加',
+                    'No video directories. Open Directory Management to add one'
+                  )}
+                </span>
+                <ArrowForwardRoundedIcon
+                  className="directory-setup-hint__arrow shrink-0"
+                  fontSize="small"
+                  aria-hidden="true"
+                />
+              </div>
+            ) : null}
             <Button
               startIcon={<SettingsOutlinedIcon fontSize="small" />}
               variant="outlined"
