@@ -5,6 +5,8 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { pipeline } from "node:stream/promises";
+import { createGunzip } from "node:zlib";
 function findRepoRoot(startDir) {
   let dir = startDir;
   while (true) {
@@ -32,6 +34,7 @@ const ROOT_DIR = findRepoRoot(entryDirFromArgv());
 const WEB_DIR = path.join(ROOT_DIR, "web");
 const INTERNAL_BIN_DIR = path.join(ROOT_DIR, "internal", "bin");
 const BIN_DIR = path.join(ROOT_DIR, "bin");
+const FFMPEG_LINK_FILE = path.join(ROOT_DIR, "link.txt");
 
 const PLATFORM_CHOICES = [
   { label: "windows-x86_64", goos: "windows", goarch: "amd64" },
@@ -52,7 +55,7 @@ function normalizeGoos(input) {
 function normalizeArch(input) {
   const v = String(input || "").trim().toLowerCase();
   if (v === "x86_64" || v === "amd64" || v === "x64") return "amd64";
-  if (v === "aarch64") return "arm64";
+  if (v === "aarch64" || v === "arm_64") return "arm64";
   return v;
 }
 
@@ -388,56 +391,74 @@ async function runRelease(choice, version) {
   console.log(`[release] 完成：${zipPath}`);
 }
 
-function ffmpegUrls(choice) {
-  const osUpper = choice.goos.toUpperCase();
-  const archUpper = choice.goarch.toUpperCase();
-  const envArch = process.env[`FFMPEG_URL_${osUpper}_${archUpper}`];
-  const envOs = process.env[`FFMPEG_URL_${osUpper}`];
-  const envLabel = process.env[`FFMPEG_URL_${choice.label.replace(/-/g, "_").toUpperCase()}`];
+let ffmpegLinkMapPromise = null;
 
-  const urls = [];
-  const ffprobeExtras = [];
+async function loadFfmpegLinkMap() {
+  if (ffmpegLinkMapPromise) return ffmpegLinkMapPromise;
 
-  if (process.env.FFMPEG_URL) {
-    urls.push(process.env.FFMPEG_URL);
-  } else if (envLabel) {
-    urls.push(envLabel);
-  } else if (envArch) {
-    urls.push(envArch);
-  } else if (envOs) {
-    urls.push(envOs);
-  } else {
-    if (choice.goos === "linux") {
-      urls.push("https://johnvansickle.com/ffmpeg/releases/ffmpeg-6.1-amd64-static.tar.xz");
-    } else if (choice.goos === "windows") {
-      urls.push("https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-8.0.1-essentials_build.zip");
-    } else if (choice.goos === "darwin") {
-      if (choice.goarch === "amd64") {
-        urls.push("https://www.osxexperts.net/ffmpeg61intel.zip");
-      } else if (choice.goarch === "arm64") {
-        urls.push("https://www.osxexperts.net/ffmpeg61arm.zip");
-      }
-      ffprobeExtras.push("https://evermeet.cx/ffmpeg/ffprobe-6.1.zip");
+  ffmpegLinkMapPromise = (async () => {
+    const links = new Map();
+    if (!(await exists(FFMPEG_LINK_FILE))) {
+      return links;
     }
-  }
 
-  if (process.env.FFPROBE_URL) {
-    ffprobeExtras.unshift(process.env.FFPROBE_URL);
-  }
+    const content = await fsp.readFile(FFMPEG_LINK_FILE, "utf8");
+    let currentChoice = null;
 
-  return { urls, ffprobeExtras };
+    for (const rawLine of content.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith("#")) continue;
+
+      const platformMatch = line.match(/^([^:]+):\s*$/);
+      if (platformMatch) {
+        currentChoice = parsePlatformInput(platformMatch[1]);
+        continue;
+      }
+
+      const linkMatch = line.match(/^(ffmpeg|ffprobe):\s*(https?:\/\/\S+)\s*$/i);
+      if (!linkMatch || !currentChoice) continue;
+
+      const current = links.get(currentChoice.label) || {};
+      current[linkMatch[1].toLowerCase()] = linkMatch[2];
+      links.set(currentChoice.label, current);
+    }
+
+    return links;
+  })();
+
+  return ffmpegLinkMapPromise;
+}
+
+async function ffmpegUrls(choice) {
+  const linkMap = await loadFfmpegLinkMap();
+  const linked = linkMap.get(choice.label);
+  return {
+    urls: linked?.ffmpeg ? [linked.ffmpeg] : [],
+    ffprobeExtras: linked?.ffprobe ? [linked.ffprobe] : [],
+  };
 }
 
 async function downloadFile(url, dest) {
   if (await commandExists("curl")) {
-    await runCommand("curl", ["-L", "--fail", "-o", dest, url]);
+    await runCommand(
+      "curl",
+      ["-L", "--fail", "--retry", "3", "--retry-all-errors", "-o", dest, url],
+    );
     return;
   }
   if (await commandExists("wget")) {
-    await runCommand("wget", ["-O", dest, url]);
+    await runCommand("wget", ["--tries=3", "-O", dest, url]);
     return;
   }
   throw new Error("需要 curl 或 wget 下载文件");
+}
+
+async function extractGzipFile(archive, destFile) {
+  await pipeline(
+    fs.createReadStream(archive),
+    createGunzip(),
+    fs.createWriteStream(destFile),
+  );
 }
 
 async function extractArchive(archive, destDir) {
@@ -469,6 +490,62 @@ async function findFile(dir, filename) {
   return null;
 }
 
+function downloadFilename(url, fallbackName) {
+  try {
+    const parsed = new URL(url);
+    const base = path.basename(parsed.pathname);
+    if (base) return base;
+  } catch {
+    // fall back to provided name
+  }
+  return fallbackName;
+}
+
+async function installBinaryFromUrl({
+  url,
+  target,
+  binaryName,
+  logLabel,
+  choice,
+  tmpBase,
+}) {
+  const archive = path.join(tmpBase, `${logLabel}-${downloadFilename(url, "download.bin")}`);
+  const extractDir = path.join(tmpBase, `${logLabel}-extract`);
+
+  try {
+    await fsp.rm(archive, { force: true });
+    await downloadFile(url, archive);
+  } catch (err) {
+    console.warn(`[ffmpeg] ${logLabel} 下载失败，尝试下一个来源`);
+    return false;
+  }
+
+  try {
+    if (archive.toLowerCase().endsWith(".gz")) {
+      await extractGzipFile(archive, target);
+    } else {
+      await fsp.rm(extractDir, { recursive: true, force: true });
+      await fsp.mkdir(extractDir, { recursive: true });
+      await extractArchive(archive, extractDir);
+      const found = await findFile(extractDir, binaryName);
+      if (!found) {
+        console.warn(`[ffmpeg] ${logLabel} 解压后未找到 ${binaryName}`);
+        return false;
+      }
+      await fsp.copyFile(found, target);
+    }
+  } catch (err) {
+    await fsp.rm(target, { force: true });
+    console.warn(`[ffmpeg] ${logLabel} 解压失败，尝试下一个来源`);
+    return false;
+  }
+
+  if (choice.goos !== "windows") {
+    await fsp.chmod(target, 0o755);
+  }
+  return true;
+}
+
 async function downloadFfmpeg(choice) {
   const ffmpegTarget = binFfmpegPath(choice);
   const ffprobeTarget = binFfprobePath(choice);
@@ -478,7 +555,7 @@ async function downloadFfmpeg(choice) {
     return;
   }
 
-  const { urls, ffprobeExtras } = ffmpegUrls(choice);
+  const { urls, ffprobeExtras } = await ffmpegUrls(choice);
   if (!urls.length) {
     throw new Error(`[ffmpeg] 未找到下载地址（${choice.label}）`);
   }
@@ -489,39 +566,40 @@ async function downloadFfmpeg(choice) {
     let installed = false;
     for (const url of urls) {
       console.log(`[ffmpeg] 下载 ${choice.label}：${url}`);
-      const archive = path.join(tmpBase, path.basename(url));
+      const archive = path.join(tmpBase, downloadFilename(url, "ffmpeg-download.bin"));
       const extractDir = path.join(tmpBase, "extract");
       await fsp.rm(extractDir, { recursive: true, force: true });
       await fsp.mkdir(extractDir, { recursive: true });
 
       try {
         await downloadFile(url, archive);
-      } catch (err) {
-        console.warn("[ffmpeg] 下载失败，尝试下一个来源");
-        continue;
-      }
+        if (archive.toLowerCase().endsWith(".gz")) {
+          await extractGzipFile(archive, ffmpegTarget);
+          if (choice.goos !== "windows") {
+            await fsp.chmod(ffmpegTarget, 0o755);
+          }
+        } else {
+          await extractArchive(archive, extractDir);
 
-      try {
-        await extractArchive(archive, extractDir);
-      } catch (err) {
-        console.warn("[ffmpeg] 解压失败，尝试下一个来源");
-        continue;
-      }
+          const ffmpegFound = await findFile(extractDir, ffmpegBinName(choice.goos));
+          const ffprobeFound = await findFile(extractDir, ffprobeBinName(choice.goos));
 
-      const ffmpegFound = await findFile(extractDir, ffmpegBinName(choice.goos));
-      const ffprobeFound = await findFile(extractDir, ffprobeBinName(choice.goos));
-
-      if (ffmpegFound) {
-        await fsp.copyFile(ffmpegFound, ffmpegTarget);
-        if (choice.goos !== "windows") {
-          await fsp.chmod(ffmpegTarget, 0o755);
+          if (ffmpegFound) {
+            await fsp.copyFile(ffmpegFound, ffmpegTarget);
+            if (choice.goos !== "windows") {
+              await fsp.chmod(ffmpegTarget, 0o755);
+            }
+          }
+          if (ffprobeFound) {
+            await fsp.copyFile(ffprobeFound, ffprobeTarget);
+            if (choice.goos !== "windows") {
+              await fsp.chmod(ffprobeTarget, 0o755);
+            }
+          }
         }
-      }
-      if (ffprobeFound) {
-        await fsp.copyFile(ffprobeFound, ffprobeTarget);
-        if (choice.goos !== "windows") {
-          await fsp.chmod(ffprobeTarget, 0o755);
-        }
+      } catch (err) {
+        console.warn("[ffmpeg] 下载或解压失败，尝试下一个来源");
+        continue;
       }
 
       if (await isBinReady(choice)) {
@@ -531,29 +609,19 @@ async function downloadFfmpeg(choice) {
       }
     }
 
-    if (!installed && choice.goos === "darwin" && ffprobeExtras.length) {
+    if (!installed && ffprobeExtras.length) {
       for (const url of ffprobeExtras) {
         console.log(`[ffmpeg] 下载 ffprobe：${url}`);
-        const archive = path.join(tmpBase, path.basename(url));
-        const extractDir = path.join(tmpBase, "extract-ffprobe");
-        await fsp.rm(extractDir, { recursive: true, force: true });
-        await fsp.mkdir(extractDir, { recursive: true });
+        const ffprobeInstalled = await installBinaryFromUrl({
+          url,
+          target: ffprobeTarget,
+          binaryName: ffprobeBinName(choice.goos),
+          logLabel: "ffprobe",
+          choice,
+          tmpBase,
+        });
+        if (!ffprobeInstalled) continue;
 
-        try {
-          await downloadFile(url, archive);
-          await extractArchive(archive, extractDir);
-        } catch (err) {
-          console.warn("[ffmpeg] ffprobe 下载或解压失败，尝试下一个来源");
-          continue;
-        }
-
-        const ffprobeFound = await findFile(extractDir, ffprobeBinName(choice.goos));
-        if (ffprobeFound) {
-          await fsp.copyFile(ffprobeFound, ffprobeTarget);
-          if (choice.goos !== "windows") {
-            await fsp.chmod(ffprobeTarget, 0o755);
-          }
-        }
         if (await exists(ffprobeTarget)) {
           console.log(`[ffmpeg] ffprobe 安装完成：${ffprobeTarget}`);
           installed = await exists(ffmpegTarget);
