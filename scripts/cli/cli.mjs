@@ -34,7 +34,6 @@ const ROOT_DIR = findRepoRoot(entryDirFromArgv());
 const WEB_DIR = path.join(ROOT_DIR, "web");
 const INTERNAL_BIN_DIR = path.join(ROOT_DIR, "internal", "bin");
 const BIN_DIR = path.join(ROOT_DIR, "bin");
-const FFMPEG_LINK_FILE = path.join(ROOT_DIR, "link.txt");
 
 const PLATFORM_CHOICES = [
   { label: "windows-x86_64", goos: "windows", goarch: "amd64" },
@@ -44,6 +43,40 @@ const PLATFORM_CHOICES = [
 ];
 
 const PLATFORM_BY_LABEL = new Map(PLATFORM_CHOICES.map((p) => [p.label, p]));
+const FFMPEG_DOWNLOADS = new Map([
+  [
+    "windows-x86_64",
+    {
+      ffmpeg: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-win32-x64.gz",
+      ffprobe:
+        "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-win32-x64.gz",
+    },
+  ],
+  [
+    "linux-x86_64",
+    {
+      ffmpeg: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-x64.gz",
+      ffprobe:
+        "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-linux-x64.gz",
+    },
+  ],
+  [
+    "macos-x86_64",
+    {
+      ffmpeg: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-x64.gz",
+      ffprobe:
+        "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-darwin-x64.gz",
+    },
+  ],
+  [
+    "macos-arm64",
+    {
+      ffmpeg: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-arm64.gz",
+      ffprobe:
+        "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-darwin-arm64.gz",
+    },
+  ],
+]);
 
 function normalizeGoos(input) {
   const v = String(input || "").trim().toLowerCase();
@@ -391,47 +424,8 @@ async function runRelease(choice, version) {
   console.log(`[release] 完成：${zipPath}`);
 }
 
-let ffmpegLinkMapPromise = null;
-
-async function loadFfmpegLinkMap() {
-  if (ffmpegLinkMapPromise) return ffmpegLinkMapPromise;
-
-  ffmpegLinkMapPromise = (async () => {
-    const links = new Map();
-    if (!(await exists(FFMPEG_LINK_FILE))) {
-      return links;
-    }
-
-    const content = await fsp.readFile(FFMPEG_LINK_FILE, "utf8");
-    let currentChoice = null;
-
-    for (const rawLine of content.split(/\r?\n/)) {
-      const line = rawLine.trim();
-      if (!line || line.startsWith("#")) continue;
-
-      const platformMatch = line.match(/^([^:]+):\s*$/);
-      if (platformMatch) {
-        currentChoice = parsePlatformInput(platformMatch[1]);
-        continue;
-      }
-
-      const linkMatch = line.match(/^(ffmpeg|ffprobe):\s*(https?:\/\/\S+)\s*$/i);
-      if (!linkMatch || !currentChoice) continue;
-
-      const current = links.get(currentChoice.label) || {};
-      current[linkMatch[1].toLowerCase()] = linkMatch[2];
-      links.set(currentChoice.label, current);
-    }
-
-    return links;
-  })();
-
-  return ffmpegLinkMapPromise;
-}
-
-async function ffmpegUrls(choice) {
-  const linkMap = await loadFfmpegLinkMap();
-  const linked = linkMap.get(choice.label);
+function ffmpegUrls(choice) {
+  const linked = FFMPEG_DOWNLOADS.get(choice.label);
   return {
     urls: linked?.ffmpeg ? [linked.ffmpeg] : [],
     ffprobeExtras: linked?.ffprobe ? [linked.ffprobe] : [],
@@ -555,7 +549,7 @@ async function downloadFfmpeg(choice) {
     return;
   }
 
-  const { urls, ffprobeExtras } = await ffmpegUrls(choice);
+  const { urls, ffprobeExtras } = ffmpegUrls(choice);
   if (!urls.length) {
     throw new Error(`[ffmpeg] 未找到下载地址（${choice.label}）`);
   }
@@ -631,7 +625,7 @@ async function downloadFfmpeg(choice) {
     }
 
     if (!installed) {
-      throw new Error("[ffmpeg] 下载失败，请检查网络或设置 FFMPEG_URL");
+      throw new Error(`[ffmpeg] 下载失败，请检查脚本内置的 ${choice.label} 下载链接`);
     }
 
     const current = currentPlatformChoice();
