@@ -23,6 +23,7 @@ export default function PlayerSettingsModal({ hotkeys, onSave }) {
   const seedRef = useRef(0)
   const [rows, setRows] = useState([])
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -30,18 +31,12 @@ export default function PlayerSettingsModal({ hotkeys, onSave }) {
     const source = Array.isArray(hotkeys) ? hotkeys : DEFAULT_PLAYER_HOTKEYS
     setRows(createRows(source))
     setError('')
+    setSuccess('')
     setSaving(false)
   }, [hotkeys])
 
   const setRowValue = (id, patch) => {
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)))
-  }
-
-  const resetToCurrent = () => {
-    const source = Array.isArray(hotkeys) ? hotkeys : DEFAULT_PLAYER_HOTKEYS
-    setRows(createRows(source))
-    setError('')
-    setSaving(false)
   }
 
   const handleAdd = () => {
@@ -56,15 +51,18 @@ export default function PlayerSettingsModal({ hotkeys, onSave }) {
       },
     ])
     setError('')
+    setSuccess('')
   }
 
   const handleReset = () => {
     setRows(createRows(DEFAULT_PLAYER_HOTKEYS))
     setError('')
+    setSuccess('')
   }
 
   const handleSave = async () => {
     setError('')
+    setSuccess('')
     const seen = new Set()
     const normalized = []
     for (const row of rows) {
@@ -121,6 +119,7 @@ export default function PlayerSettingsModal({ hotkeys, onSave }) {
     setSaving(true)
     try {
       await onSave?.(normalized)
+      setSuccess(zh('快捷键保存成功', 'Shortcut settings saved'))
     } catch (err) {
       setError(err.message || zh('保存失败', 'Save failed'))
     } finally {
@@ -158,6 +157,7 @@ export default function PlayerSettingsModal({ hotkeys, onSave }) {
                   if (!nextKey) return
                   setRowValue(row.id, { key: nextKey })
                   setError('')
+                  setSuccess('')
                 }}
                 onFocus={() => setError('')}
                 placeholder={zh('聚焦后按下按键', 'Focus then press a key')}
@@ -172,6 +172,7 @@ export default function PlayerSettingsModal({ hotkeys, onSave }) {
                     amount: nextAction === PLAYER_HOTKEY_ACTIONS.VOLUME ? '10' : '5',
                   })
                   setError('')
+                  setSuccess('')
                 }}
                 className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
               >
@@ -186,6 +187,7 @@ export default function PlayerSettingsModal({ hotkeys, onSave }) {
                   onChange={(event) => {
                     setRowValue(row.id, { amount: event.target.value })
                     setError('')
+                    setSuccess('')
                   }}
                   className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
                 />
@@ -198,6 +200,7 @@ export default function PlayerSettingsModal({ hotkeys, onSave }) {
                 onClick={() => {
                   setRows((current) => current.filter((item) => item.id !== row.id))
                   setError('')
+                  setSuccess('')
                 }}
                 className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50"
               >
@@ -215,6 +218,7 @@ export default function PlayerSettingsModal({ hotkeys, onSave }) {
         )}
       </div>
       {error && <div className="mt-2 text-sm text-red-600">{error}</div>}
+      {success && <div className="mt-2 text-sm text-emerald-600">{success}</div>}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
@@ -234,13 +238,6 @@ export default function PlayerSettingsModal({ hotkeys, onSave }) {
           </button>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={resetToCurrent}
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm hover:bg-zinc-50"
-          >
-            {zh('撤销修改', 'Discard changes')}
-          </button>
           <button
             type="button"
             onClick={handleSave}
