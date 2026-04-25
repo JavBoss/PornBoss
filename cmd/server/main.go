@@ -33,9 +33,11 @@ import (
 var buildMode = "development"
 
 func main() {
-	addr := flag.String("addr", ":8080", "HTTP address to listen on")
+	addr := flag.String("addr", ":17654", "HTTP address to listen on")
 	staticDir := flag.String("static", "web/dist", "Path to built frontend assets")
 	flag.Parse()
+
+	_ = os.Setenv("PORNBOSS_BUILD_MODE", buildMode)
 
 	if buildMode == "release" && os.Getenv("GIN_MODE") == "" {
 		gin.SetMode(gin.ReleaseMode)

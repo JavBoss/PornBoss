@@ -8,7 +8,7 @@
 - `data/`: runtime DB/thumbnails; keep generated files out of commits.
 
 ## Build, Test, and Development Commands
-- Backend: `go run ./cmd/server -addr :8080 -static web/dist` to serve API (and built frontend when desired).
+- Backend: `go run ./cmd/server -addr :17654 -static web/dist` to serve API (and built frontend when desired).
 - Dev helper: `scripts/cli.sh dev backend|frontend` (flags: `WITH_STATIC=1`, `SKIP_NPM_INSTALL=1`, etc.).
 - Tests: `GOCACHE=$(pwd)/.gocache go test ./...` (no Go tests yet—keep it green).
 - Frontend (in `web/`): `npm install`; `npm run dev` for Vite, `npm run lint`, `npm run build` for prod bundle.

@@ -10,9 +10,9 @@ import {
   removeTagFromVideos,
   replaceTagsForVideos,
   updateConfig,
+  playVideoFile,
   openVideoFile,
   revealVideoLocation,
-  incrementVideoPlayCount,
   createJavTag,
   renameJavTag,
   deleteJavTag,
@@ -24,7 +24,6 @@ import JavSettingsModal from '@/components/JavSettingsModal'
 import JavTagModal from '@/components/JavTagModal'
 import JavVideoPickerModal from '@/components/JavVideoPickerModal'
 import JavView from '@/components/JavView'
-import PlayerModal from '@/components/PlayerModal'
 import SelectionOpsModal from '@/components/SelectionOpsModal'
 import SelectionTagsModal from '@/components/SelectionTagsModal'
 import TagPickerModal from '@/components/TagPickerModal'
@@ -36,7 +35,6 @@ import VideoView from '@/components/VideoView'
 import { isUserJavTag, normalizeJavSort } from '@/constants/jav'
 import { isChineseLocale, zh } from '@/utils/i18n'
 import { useStore } from '@/store'
-import { parsePlayerHotkeys } from '@/utils/playerHotkeys'
 
 export default function App() {
   const isPoppingRef = useRef(false)
@@ -59,9 +57,6 @@ export default function App() {
     deleteTag,
     renameTag,
     toggleSelectVideo,
-    playingVideo,
-    openPlayer,
-    closePlayer,
     loading,
     error,
     hasNext,
@@ -152,10 +147,6 @@ export default function App() {
   const [idolSortInput, setIdolSortInput] = useState(idolSort)
   const [toastMessage, setToastMessage] = useState('')
   const javVideoChoices = javVideoPickerItem?.videos || []
-  const playerHotkeys = useMemo(
-    () => parsePlayerHotkeys(config?.player_hotkeys),
-    [config?.player_hotkeys]
-  )
   const showToast = useCallback((message) => {
     setToastMessage(String(message || '').trim())
   }, [])
@@ -201,16 +192,12 @@ export default function App() {
 
   const handleOpenPlayer = useCallback(
     (video) => {
-      if (!video) return
-      openPlayer(video)
-      const id = Number(video?.id)
-      if (Number.isFinite(id) && id > 0) {
-        incrementVideoPlayCount(id).catch((err) =>
-          console.error(zh('增加播放次数失败', 'Failed to increment play count'), err)
-        )
-      }
+      if (!video || !isVideoOpenable(video)) return
+      playVideoFile({ path: getVideoRelPath(video), dirPath: getVideoDirPath(video) }).catch(
+        (err) => console.error(zh('播放文件失败', 'Failed to play file'), err)
+      )
     },
-    [openPlayer]
+    [getVideoDirPath, getVideoRelPath, isVideoOpenable]
   )
 
   const closeJavVideoPicker = useCallback(() => {
@@ -1620,7 +1607,6 @@ export default function App() {
           await loadJavTags()
         }}
       />
-      <PlayerModal video={playingVideo} onClose={closePlayer} hotkeys={playerHotkeys} />
       <GlobalSettingsModal
         open={globalSettingsOpen}
         onClose={() => setGlobalSettingsOpen(false)}
@@ -1649,11 +1635,6 @@ export default function App() {
         proxyPort={Number.parseInt(config?.proxy_port, 10) || 0}
         onSaveProxyPort={async (port) => {
           const cfg = await updateConfig({ proxy_port: port })
-          useStore.setState({ config: cfg })
-        }}
-        playerHotkeys={playerHotkeys}
-        onSavePlayerHotkeys={async (hotkeys) => {
-          const cfg = await updateConfig({ player_hotkeys: hotkeys })
           useStore.setState({ config: cfg })
         }}
       />

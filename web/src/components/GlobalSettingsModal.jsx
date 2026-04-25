@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 
 import DirectoryManager from '@/components/DirectoryManager'
-import PlayerSettingsModal from '@/components/PlayerSettingsModal'
 import { zh } from '@/utils/i18n'
 
 export default function GlobalSettingsModal({
@@ -13,15 +12,12 @@ export default function GlobalSettingsModal({
   onDeleteDirectory,
   proxyPort,
   onSaveProxyPort,
-  playerHotkeys,
-  onSavePlayerHotkeys,
 }) {
   const [proxyInput, setProxyInput] = useState('')
   const [proxyError, setProxyError] = useState('')
   const [savingProxy, setSavingProxy] = useState(false)
   const [proxyEditing, setProxyEditing] = useState(false)
   const [proxyEnabledInput, setProxyEnabledInput] = useState(false)
-  const [playerSettingsOpen, setPlayerSettingsOpen] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -29,7 +25,6 @@ export default function GlobalSettingsModal({
       setProxyEnabledInput(Boolean(proxyPort))
       setProxyEditing(false)
       setProxyError('')
-      setPlayerSettingsOpen(false)
     }
   }, [open, proxyPort])
 
@@ -153,29 +148,6 @@ export default function GlobalSettingsModal({
           </section>
 
           <section className="rounded-lg border p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700">
-                  {zh('播放器设置', 'Player Settings')}
-                </h3>
-                <p className="mt-1 text-xs text-gray-500">
-                  {zh(
-                    `当前已配置 ${Array.isArray(playerHotkeys) ? playerHotkeys.length : 0} 个快捷键`,
-                    `${Array.isArray(playerHotkeys) ? playerHotkeys.length : 0} shortcuts configured`
-                  )}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPlayerSettingsOpen(true)}
-                className="rounded border px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                {zh('设置快捷键', 'Configure shortcuts')}
-              </button>
-            </div>
-          </section>
-
-          <section className="rounded-lg border p-4">
             <h3 className="mb-4 text-sm font-semibold text-gray-700">
               {zh('目录管理', 'Directory Management')}
             </h3>
@@ -189,13 +161,6 @@ export default function GlobalSettingsModal({
           </section>
         </div>
       </div>
-
-      <PlayerSettingsModal
-        open={playerSettingsOpen}
-        onClose={() => setPlayerSettingsOpen(false)}
-        hotkeys={playerHotkeys}
-        onSave={onSavePlayerHotkeys}
-      />
     </div>
   )
 }

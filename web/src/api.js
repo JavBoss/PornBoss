@@ -145,6 +145,18 @@ export async function openVideoFile({ path, dirPath }) {
   }
 }
 
+export async function playVideoFile({ path, dirPath }) {
+  const res = await fetch('/videos/play', {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify({ path, dir_path: dirPath }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || zh('播放文件失败', 'Failed to play file'))
+  }
+}
+
 export async function revealVideoLocation({ path, dirPath }) {
   const res = await fetch('/videos/reveal', {
     method: 'POST',

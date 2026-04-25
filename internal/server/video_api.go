@@ -304,6 +304,28 @@ func openVideoFile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
+func playVideoFile(c *gin.Context) {
+	fullPath, dirPath, err := resolveVideoPathFromBody(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := ensureVideoFileExists(c, fullPath); err != nil {
+		return
+	}
+	if err := util.PlayVideo(fullPath); err != nil {
+		logging.Error("play video file error: %v", err)
+		if strings.Contains(err.Error(), "mpv not found") {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "play file failed"})
+		return
+	}
+	incrementPlayCountByPath(c.Request.Context(), dirPath, fullPath)
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
 func revealVideoLocation(c *gin.Context) {
 	fullPath, _, err := resolveVideoPathFromBody(c)
 	if err != nil {

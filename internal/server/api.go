@@ -20,6 +20,7 @@ func RegisterRoutes(router *gin.Engine) {
 	router.GET("/videos/:id/stream.m3u8/:segment", streamHLSSegment)
 	router.GET("/videos/:id/thumbnail", getThumbnail)
 	router.POST("/videos/:id/play", incrementVideoPlayCount)
+	router.POST("/videos/play", playVideoFile)
 	router.POST("/videos/open", openVideoFile)
 	router.POST("/videos/reveal", revealVideoLocation)
 

@@ -145,6 +145,10 @@ function ffprobePath(choice) {
   return path.join(INTERNAL_BIN_DIR, ffprobeBinName(choice.goos));
 }
 
+function internalMpvDir() {
+  return path.join(INTERNAL_BIN_DIR, "mpv");
+}
+
 function platformBinDir(choice) {
   return path.join(BIN_DIR, choice.label);
 }
@@ -155,6 +159,25 @@ function binFfmpegPath(choice) {
 
 function binFfprobePath(choice) {
   return path.join(platformBinDir(choice), ffprobeBinName(choice.goos));
+}
+
+function binMpvDir(choice) {
+  return path.join(platformBinDir(choice), "mpv");
+}
+
+function mpvExecutablePath(baseDir, choice) {
+  if (choice.goos === "darwin") {
+    return path.join(baseDir, "mpv.app", "Contents", "MacOS", "mpv");
+  }
+  return path.join(baseDir, choice.goos === "windows" ? "mpv.exe" : "mpv");
+}
+
+function binMpvPath(choice) {
+  return mpvExecutablePath(binMpvDir(choice), choice);
+}
+
+function internalMpvPath(choice) {
+  return mpvExecutablePath(internalMpvDir(), choice);
 }
 
 async function exists(filePath) {
@@ -182,6 +205,10 @@ async function isBinReady(choice) {
   const ffmpegOk = await exists(binFfmpegPath(choice));
   const ffprobeOk = await exists(binFfprobePath(choice));
   return ffmpegOk && ffprobeOk;
+}
+
+async function isBundledMpvReady(choice) {
+  return exists(binMpvPath(choice));
 }
 
 function runCommand(cmd, args, options = {}) {
@@ -268,13 +295,15 @@ async function startBackendDevChild() {
   }
   if (!ffmpegOk || !ffprobeOk) {
     console.error(
-      `[dev] internal/bin 缺少 ${current.label} 的 ffmpeg/ffprobe，请先选择 “download ffmpeg” 下载到 bin/${current.label}。`,
+      `[dev] internal/bin 缺少 ${current.label} 的 ffmpeg/ffprobe，请先选择 “download dependencies” 下载到 bin/${current.label}。`,
     );
     process.exitCode = 1;
     return null;
   }
 
-  const addr = process.env.ADDR || ":8080";
+  await syncBundledMpvToInternal(current);
+
+  const addr = process.env.ADDR || ":17654";
   const args = ["./cmd/server", "-addr", addr];
   if (process.env.WITH_STATIC === "1") {
     args.push("-static", process.env.STATIC || "web/dist");
@@ -297,6 +326,17 @@ async function runBackendDev() {
 async function copyDir(src, dest) {
   await fsp.mkdir(dest, { recursive: true });
   await fsp.cp(src, dest, { recursive: true });
+}
+
+async function syncBundledMpvToInternal(choice) {
+  if (!(await isBundledMpvReady(choice))) return false;
+  await fsp.mkdir(INTERNAL_BIN_DIR, { recursive: true });
+  await fsp.rm(internalMpvDir(), { recursive: true, force: true });
+  await copyDir(binMpvDir(choice), internalMpvDir());
+  if (choice.goos !== "windows") {
+    await fsp.chmod(internalMpvPath(choice), 0o755).catch(() => {});
+  }
+  return true;
 }
 
 async function buildBackendRelease(choice, outDir) {
@@ -350,6 +390,14 @@ async function copyBundledFfmpeg(choice, outDir) {
   }
 }
 
+async function copyBundledMpv(choice, outDir) {
+  const destDir = path.join(outDir, "internal", "bin", "mpv");
+  await copyDir(binMpvDir(choice), destDir);
+  if (choice.goos !== "windows") {
+    await fsp.chmod(mpvExecutablePath(destDir, choice), 0o755).catch(() => {});
+  }
+}
+
 async function createMacCommandLauncher(outDir) {
   const launcherPath = path.join(outDir, "pornboss.command");
   const launcherContent = [
@@ -393,7 +441,16 @@ async function runRelease(choice, version) {
   const ffprobeOk = await exists(binFfprobePath(choice));
   if (!ffmpegOk || !ffprobeOk) {
     console.error(
-      `[release] bin/${choice.label} 缺少 ffmpeg/ffprobe，请先选择 “download ffmpeg” 下载。`,
+      `[release] bin/${choice.label} 缺少 ffmpeg/ffprobe，请先选择 “download dependencies” 下载。`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const bundledMpvOk = await isBundledMpvReady(choice);
+  const requireBundledMpv = true;
+  if (requireBundledMpv && !bundledMpvOk) {
+    console.error(
+      `[release] bin/${choice.label} 缺少 mpv，请先选择 “download dependencies” 下载。`,
     );
     process.exitCode = 1;
     return;
@@ -409,6 +466,10 @@ async function runRelease(choice, version) {
   await buildBackendRelease(choice, outDir);
   console.log("[release] 复制 ffmpeg/ffprobe");
   await copyBundledFfmpeg(choice, outDir);
+  if (bundledMpvOk) {
+    console.log("[release] 复制 mpv");
+    await copyBundledMpv(choice, outDir);
+  }
   if (choice.goos === "darwin") {
     console.log("[release] 生成 macOS .command 启动器");
     await createMacCommandLauncher(outDir);
@@ -430,6 +491,41 @@ function ffmpegUrls(choice) {
     urls: linked?.ffmpeg ? [linked.ffmpeg] : [],
     ffprobeExtras: linked?.ffprobe ? [linked.ffprobe] : [],
   };
+}
+
+function mpvUrls(choice) {
+  const osUpper = choice.goos.toUpperCase();
+  const archUpper = choice.goarch.toUpperCase();
+  const envArch = process.env[`MPV_URL_${osUpper}_${archUpper}`];
+  const envOs = process.env[`MPV_URL_${osUpper}`];
+  const envLabel = process.env[`MPV_URL_${choice.label.replace(/-/g, "_").toUpperCase()}`];
+
+  const urls = [];
+  if (process.env.MPV_URL) {
+    urls.push(process.env.MPV_URL);
+  } else if (envLabel) {
+    urls.push(envLabel);
+  } else if (envArch) {
+    urls.push(envArch);
+  } else if (envOs) {
+    urls.push(envOs);
+  } else if (choice.goos === "windows" && choice.goarch === "amd64") {
+    urls.push(
+      "https://github.com/mpv-player/mpv/releases/download/v0.41.0/mpv-v0.41.0-x86_64-w64-mingw32.zip",
+    );
+  } else if (choice.goos === "linux" && choice.goarch === "amd64") {
+    urls.push(
+      "https://github.com/ivan-hc/MPV-appimage/releases/download/continuous/mpv-Media-Player_0.41.0-3-archimage5.0-x86_64.AppImage",
+    );
+  } else if (choice.goos === "darwin" && choice.goarch === "amd64") {
+    urls.push(
+      "https://github.com/mpv-player/mpv/releases/download/v0.41.0/mpv-v0.41.0-macos-15-intel.zip",
+    );
+  } else if (choice.goos === "darwin" && choice.goarch === "arm64") {
+    urls.push("https://github.com/mpv-player/mpv/releases/download/v0.41.0/mpv-v0.41.0-macos-14-arm.zip");
+  }
+
+  return { urls };
 }
 
 async function downloadFile(url, dest) {
@@ -540,6 +636,67 @@ async function installBinaryFromUrl({
   return true;
 }
 
+async function findDirectory(dir, dirname) {
+  const entries = await fsp.readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory() && entry.name === dirname) {
+      return fullPath;
+    }
+    if (entry.isDirectory()) {
+      const found = await findDirectory(fullPath, dirname);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function isArchiveName(name) {
+  return (
+    name.endsWith(".zip") ||
+    name.endsWith(".tar") ||
+    name.endsWith(".tar.gz") ||
+    name.endsWith(".tgz") ||
+    name.endsWith(".tar.xz")
+  );
+}
+
+async function findArchives(dir) {
+  const result = [];
+  const entries = await fsp.readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      result.push(...(await findArchives(fullPath)));
+      continue;
+    }
+    if (entry.isFile() && isArchiveName(entry.name)) {
+      result.push(fullPath);
+    }
+  }
+  return result;
+}
+
+async function expandNestedArchives(dir, maxDepth = 2) {
+  const seen = new Set();
+  for (let depth = 0; depth < maxDepth; depth += 1) {
+    const archives = await findArchives(dir);
+    let extractedAny = false;
+    for (const archive of archives) {
+      if (seen.has(archive)) continue;
+      seen.add(archive);
+      try {
+        await extractArchive(archive, path.dirname(archive));
+        await fsp.rm(archive, { force: true });
+        extractedAny = true;
+      } catch {
+        continue;
+      }
+    }
+    if (!extractedAny) break;
+  }
+}
+
 async function downloadFfmpeg(choice) {
   const ffmpegTarget = binFfmpegPath(choice);
   const ffprobeTarget = binFfprobePath(choice);
@@ -643,6 +800,111 @@ async function downloadFfmpeg(choice) {
   }
 }
 
+async function downloadMpv(choice) {
+  if (await isBundledMpvReady(choice)) {
+    console.log(`[mpv] 已存在：${binMpvDir(choice)}`);
+    return;
+  }
+
+  const { urls } = mpvUrls(choice);
+  if (!urls.length) {
+    console.log(`[mpv] ${choice.label} 未配置默认下载地址，跳过；可通过 MPV_URL 指定`);
+    return;
+  }
+
+  await fsp.mkdir(platformBinDir(choice), { recursive: true });
+  const tmpBase = await fsp.mkdtemp(path.join(os.tmpdir(), "pornboss-mpv-"));
+  try {
+    let installed = false;
+    for (const url of urls) {
+      console.log(`[mpv] 下载 ${choice.label}：${url}`);
+      const archive = path.join(tmpBase, path.basename(url));
+      const extractDir = path.join(tmpBase, "extract");
+      await fsp.rm(extractDir, { recursive: true, force: true });
+      await fsp.mkdir(extractDir, { recursive: true });
+
+      try {
+        await downloadFile(url, archive);
+      } catch (err) {
+        console.warn("[mpv] 下载失败，尝试下一个来源");
+        continue;
+      }
+
+      if (archive.endsWith(".AppImage")) {
+        await fsp.rm(binMpvDir(choice), { recursive: true, force: true });
+        await fsp.mkdir(binMpvDir(choice), { recursive: true });
+        await fsp.copyFile(archive, binMpvPath(choice));
+      } else {
+        try {
+          await extractArchive(archive, extractDir);
+        } catch (err) {
+          console.warn("[mpv] 解压失败，尝试下一个来源");
+          continue;
+        }
+
+        if (choice.goos === "darwin") {
+          let mpvApp = await findDirectory(extractDir, "mpv.app");
+          if (!mpvApp) {
+            await expandNestedArchives(extractDir);
+            mpvApp = await findDirectory(extractDir, "mpv.app");
+          }
+          if (!mpvApp) {
+            console.warn("[mpv] 未找到 mpv.app，尝试下一个来源");
+            continue;
+          }
+          const srcRoot = path.dirname(mpvApp);
+          await fsp.rm(binMpvDir(choice), { recursive: true, force: true });
+          await copyDir(srcRoot, binMpvDir(choice));
+        } else {
+          let mpvFound = await findFile(
+            extractDir,
+            choice.goos === "windows" ? "mpv.exe" : "mpv",
+          );
+          if (!mpvFound) {
+            await expandNestedArchives(extractDir);
+            mpvFound = await findFile(
+              extractDir,
+              choice.goos === "windows" ? "mpv.exe" : "mpv",
+            );
+          }
+          if (!mpvFound) {
+            console.warn("[mpv] 未找到可执行文件，尝试下一个来源");
+            continue;
+          }
+          const srcRoot = path.dirname(mpvFound);
+          await fsp.rm(binMpvDir(choice), { recursive: true, force: true });
+          await copyDir(srcRoot, binMpvDir(choice));
+        }
+      }
+
+      if (choice.goos !== "windows") {
+        await fsp.chmod(binMpvPath(choice), 0o755).catch(() => {});
+      }
+      if (await isBundledMpvReady(choice)) {
+        console.log(`[mpv] 安装完成：${binMpvDir(choice)}`);
+        installed = true;
+        break;
+      }
+    }
+
+    if (!installed) {
+      throw new Error("[mpv] 下载失败，请检查网络或设置 MPV_URL");
+    }
+
+    const current = currentPlatformChoice();
+    if (current && current.label === choice.label) {
+      await syncBundledMpvToInternal(choice);
+    }
+  } finally {
+    await fsp.rm(tmpBase, { recursive: true, force: true });
+  }
+}
+
+async function downloadDependencies(choice) {
+  await downloadFfmpeg(choice);
+  await downloadMpv(choice);
+}
+
 async function handleDev(mode) {
   if (mode === "frontend") {
     await runFrontendDev();
@@ -729,7 +991,7 @@ async function handleDownload(platformArg) {
       {
         type: "list",
         name: "platform",
-        message: "选择 ffmpeg 下载平台",
+        message: "选择依赖下载平台",
         choices: PLATFORM_CHOICES.map((p) => ({ name: p.label, value: p.label })),
       },
     ]);
@@ -740,7 +1002,7 @@ async function handleDownload(platformArg) {
     throw new Error("未选择有效平台");
   }
 
-  await downloadFfmpeg(choice);
+  await downloadDependencies(choice);
 }
 
 async function main() {
@@ -766,7 +1028,7 @@ async function main() {
       choices: [
         { name: "dev", value: "dev" },
         { name: "release", value: "release" },
-        { name: "download ffmpeg", value: "download" },
+        { name: "download dependencies", value: "download" },
       ],
     },
   ]);

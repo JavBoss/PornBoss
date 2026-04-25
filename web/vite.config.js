@@ -13,13 +13,13 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/healthz': 'http://localhost:8080',
-      '/videos': 'http://localhost:8080',
-      '/tags': 'http://localhost:8080',
-      '/sync': 'http://localhost:8080',
-      '/directories': 'http://localhost:8080',
-      '/jav': 'http://localhost:8080',
-      '/config': 'http://localhost:8080',
+      '/healthz': 'http://localhost:17654',
+      '/videos': 'http://localhost:17654',
+      '/tags': 'http://localhost:17654',
+      '/sync': 'http://localhost:17654',
+      '/directories': 'http://localhost:17654',
+      '/jav': 'http://localhost:17654',
+      '/config': 'http://localhost:17654',
     },
   },
 })

@@ -54,7 +54,6 @@ export const useStore = create((set, get) => ({
   randomSeed: null,
   javRandomMode: false,
   javRandomSeed: null,
-  playingVideo: null, // 当前播放的视频对象
   viewMode: 'video', // video | jav
   javTab: 'list', // list | idol
   javPage: 1,
@@ -197,8 +196,6 @@ export const useStore = create((set, get) => ({
   },
   clearRandomMode: () => set({ randomMode: false, randomSeed: null }),
   clearJavRandom: () => set({ javPageSort: '', javRandomMode: false, javRandomSeed: null }),
-  openPlayer: (video) => set({ playingVideo: video }),
-  closePlayer: () => set({ playingVideo: null }),
   setViewMode: (mode) => {
     if (mode !== 'video' && mode !== 'jav') return
     set({ viewMode: mode, ...(mode === 'jav' ? {} : { javPageSort: '' }) })
