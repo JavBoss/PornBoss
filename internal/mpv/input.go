@@ -342,13 +342,13 @@ func buildConfigContent() (string, error) {
 
 func loadConfiguredPlayerBaseSettings() (int, int, bool, int, error) {
 	if common.DB == nil {
-		return defaultWindowWidth, defaultWindowHeight, true, defaultVolume, nil
+		return defaultWindowWidth, defaultWindowHeight, false, defaultVolume, nil
 	}
 
 	cfg, err := dbpkg.ListConfig(context.Background())
 	if err != nil {
 		logging.Error("list player base config failed, using defaults: %v", err)
-		return defaultWindowWidth, defaultWindowHeight, true, defaultVolume, nil
+		return defaultWindowWidth, defaultWindowHeight, false, defaultVolume, nil
 	}
 
 	windowWidth := defaultWindowWidth
@@ -370,7 +370,7 @@ func loadConfiguredPlayerBaseSettings() (int, int, bool, int, error) {
 		}
 	}
 
-	useAutofit := true
+	useAutofit := false
 	if raw := strings.TrimSpace(cfg[playerWindowUseAutofitConfigKey]); raw != "" {
 		switch strings.ToLower(raw) {
 		case "0", "false", "no", "off":

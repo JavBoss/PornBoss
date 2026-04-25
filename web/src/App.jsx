@@ -1649,7 +1649,7 @@ export default function App() {
         }
         playerWindowUseAutofit={
           config?.player_window_use_autofit == null
-            ? true
+            ? false
             : !['0', 'false', 'no', 'off'].includes(
                 String(config.player_window_use_autofit).trim().toLowerCase()
               )

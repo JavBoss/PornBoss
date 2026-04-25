@@ -52,7 +52,7 @@ export default function GlobalSettingsModal({
   const [savingPlayerBasic, setSavingPlayerBasic] = useState(false)
   const [playerWindowWidthInput, setPlayerWindowWidthInput] = useState('')
   const [playerWindowHeightInput, setPlayerWindowHeightInput] = useState('')
-  const [playerWindowUseAutofitInput, setPlayerWindowUseAutofitInput] = useState(true)
+  const [playerWindowUseAutofitInput, setPlayerWindowUseAutofitInput] = useState(false)
   const [playerVolumeInput, setPlayerVolumeInput] = useState('')
 
   const normalizedPlayerHotkeys = parsePlayerHotkeys(playerHotkeys)
@@ -68,7 +68,7 @@ export default function GlobalSettingsModal({
       setPlayerBasicSuccess('')
       setPlayerWindowWidthInput(String(playerWindowWidth ?? 70))
       setPlayerWindowHeightInput(String(playerWindowHeight ?? 70))
-      setPlayerWindowUseAutofitInput(playerWindowUseAutofit ?? true)
+      setPlayerWindowUseAutofitInput(playerWindowUseAutofit ?? false)
       setPlayerVolumeInput(String(playerVolume ?? 70))
     }
   }, [open, proxyPort, playerWindowWidth, playerWindowHeight, playerWindowUseAutofit, playerVolume])
@@ -232,108 +232,117 @@ export default function GlobalSettingsModal({
 
         {playerTab === 'basic' ? (
           <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-            <div className="grid gap-4 md:grid-cols-3">
-              <div>
-                <label className="mb-1 block text-sm font-semibold text-zinc-800">
-                  {zh('初始宽度', 'Initial Width')}
-                </label>
-                <div className="flex items-center gap-2">
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                <h4 className="mb-4 text-sm font-semibold text-zinc-800">
+                  {zh('窗口大小设置', 'Window Size Settings')}
+                </h4>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-zinc-800">
+                      {zh('初始宽度', 'Initial Width')}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={playerWindowWidthInput}
+                        onChange={(e) => {
+                          setPlayerWindowWidthInput(e.target.value)
+                          setPlayerBasicError('')
+                          setPlayerBasicSuccess('')
+                        }}
+                        inputMode="numeric"
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                      />
+                      <span className="text-sm text-zinc-500">%</span>
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {zh(
+                        '控制 mpv 初始窗口宽度，范围 10-100。',
+                        'Controls the initial mpv window width, range 10-100.'
+                      )}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-zinc-800">
+                      {zh('初始高度', 'Initial Height')}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={playerWindowHeightInput}
+                        onChange={(e) => {
+                          setPlayerWindowHeightInput(e.target.value)
+                          setPlayerBasicError('')
+                          setPlayerBasicSuccess('')
+                        }}
+                        inputMode="numeric"
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                      />
+                      <span className="text-sm text-zinc-500">%</span>
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {zh(
+                        '控制 mpv 初始窗口高度，范围 10-100。',
+                        'Controls the initial mpv window height, range 10-100.'
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                <label className="flex items-center gap-3 text-sm font-semibold text-zinc-800">
                   <input
-                    value={playerWindowWidthInput}
+                    type="checkbox"
+                    checked={playerWindowUseAutofitInput}
                     onChange={(e) => {
-                      setPlayerWindowWidthInput(e.target.value)
+                      setPlayerWindowUseAutofitInput(e.target.checked)
                       setPlayerBasicError('')
                       setPlayerBasicSuccess('')
                     }}
-                    inputMode="numeric"
-                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                    className="h-4 w-4 rounded"
                   />
-                  <span className="text-sm text-zinc-500">%</span>
-                </div>
-                <p className="mt-1 text-xs text-zinc-500">
-                  {zh(
-                    '控制 mpv 初始窗口宽度，范围 10-100。',
-                    'Controls the initial mpv window width, range 10-100.'
-                  )}
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-semibold text-zinc-800">
-                  {zh('初始高度', 'Initial Height')}
+                  <span>{zh('自动调节窗口大小', 'Automatically adjust window size')}</span>
                 </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    value={playerWindowHeightInput}
-                    onChange={(e) => {
-                      setPlayerWindowHeightInput(e.target.value)
-                      setPlayerBasicError('')
-                      setPlayerBasicSuccess('')
-                    }}
-                    inputMode="numeric"
-                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
-                  />
-                  <span className="text-sm text-zinc-500">%</span>
-                </div>
-                <p className="mt-1 text-xs text-zinc-500">
-                  {zh(
-                    '控制 mpv 初始窗口高度，范围 10-100。',
-                    'Controls the initial mpv window height, range 10-100.'
-                  )}
+                <p className="mt-2 text-xs text-zinc-500">
+                  {playerWindowUseAutofitInput
+                    ? zh(
+                        '开启后按最大宽高限制窗口，并保持视频纵横比。',
+                        'When enabled, the window is limited by max width and height while preserving aspect ratio.'
+                      )
+                    : zh(
+                        '关闭后将强制使用指定宽高，可能出现黑边。',
+                        'When disabled, the specified width and height are enforced and may produce letterboxing.'
+                      )}
                 </p>
               </div>
 
-              <div>
-                <label className="mb-1 block text-sm font-semibold text-zinc-800">
-                  {zh('初始音量', 'Initial Volume')}
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    value={playerVolumeInput}
-                    onChange={(e) => {
-                      setPlayerVolumeInput(e.target.value)
-                      setPlayerBasicError('')
-                      setPlayerBasicSuccess('')
-                    }}
-                    inputMode="numeric"
-                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
-                  />
-                  <span className="text-sm text-zinc-500">%</span>
-                </div>
-                <p className="mt-1 text-xs text-zinc-500">
-                  {zh(
-                    '控制 mpv 启动时的默认音量，范围 0-130。',
-                    'Controls the default mpv startup volume, range 0-130.'
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <label className="flex items-center gap-3 text-sm font-semibold text-zinc-800">
-                <input
-                  type="checkbox"
-                  checked={playerWindowUseAutofitInput}
-                  onChange={(e) => {
-                    setPlayerWindowUseAutofitInput(e.target.checked)
-                    setPlayerBasicError('')
-                    setPlayerBasicSuccess('')
-                  }}
-                  className="h-4 w-4 rounded"
-                />
-                <span>{zh('窗口大小使用 AutoFit', 'Use AutoFit for window size')}</span>
-              </label>
-              <p className="mt-2 text-xs text-zinc-500">
-                {playerWindowUseAutofitInput
-                  ? zh(
-                      '开启后按最大宽高限制窗口，并保持视频纵横比。',
-                      'When enabled, the window is limited by max width and height while preserving aspect ratio.'
-                    )
-                  : zh(
-                      '关闭后将强制使用指定宽高，可能出现黑边。',
-                      'When disabled, the specified width and height are enforced and may produce letterboxing.'
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                <div className="max-w-sm">
+                  <label className="mb-1 block text-sm font-semibold text-zinc-800">
+                    {zh('初始音量', 'Initial Volume')}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={playerVolumeInput}
+                      onChange={(e) => {
+                        setPlayerVolumeInput(e.target.value)
+                        setPlayerBasicError('')
+                        setPlayerBasicSuccess('')
+                      }}
+                      inputMode="numeric"
+                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                    />
+                    <span className="text-sm text-zinc-500">%</span>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {zh(
+                      '控制 mpv 启动时的默认音量，范围 0-130。',
+                      'Controls the default mpv startup volume, range 0-130.'
                     )}
-              </p>
+                  </p>
+                </div>
+              </div>
             </div>
 
             {playerBasicError && (
