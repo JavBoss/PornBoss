@@ -112,16 +112,13 @@ func main() {
 		jav.ThePornDBProvider,
 		jav.JavDatabaseProvider,
 	})
-	streamManager := manager.NewStreamManager(filepath.Join(dataDir, "stream-cache"))
 
 	common.AppConfig = cfg
 	common.ScreenshotManager = screenshotManager
 	common.CoverManager = coverManager
-	common.StreamManager = streamManager
 
 	screenshotManager.Start(ctx)
 	coverManager.Start(ctx)
-	streamManager.Start(ctx)
 	service.StartDirectoryScanner(ctx, time.Minute)
 	service.StartJavScanner(ctx, time.Minute)
 	service.StartIdolProfileScanner(ctx, time.Minute)

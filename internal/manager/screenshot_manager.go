@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -52,7 +53,7 @@ func NewScreenshotManager(dataDir string, fetchVideo VideoFetcher) *ScreenshotMa
 	if workers > maxScreenshotWorkers {
 		workers = maxScreenshotWorkers
 	}
-	logging.Info("screenshot manager initialized with %d workers", workers);
+	logging.Info("screenshot manager initialized with %d workers", workers)
 	return &ScreenshotManager{
 		tasks:      make(chan Task, 5000),
 		workers:    workers,
@@ -230,7 +231,7 @@ func (m *ScreenshotManager) processTask(parent context.Context, task Task) error
 		return nil
 	}
 
-	// Bound ffmpeg execution time to avoid stuck processes.
+	// Bound mpv execution time to avoid stuck processes.
 	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
 	defer cancel()
 
@@ -253,49 +254,72 @@ func (m *ScreenshotManager) capture(ctx context.Context, videoPath string, secon
 	}
 
 	tempPath := outputPath + ".tmp.jpg"
-	ffmpegPath, pathErr := util.ResolveFFmpegPath()
+	mpvPath, pathErr := util.ResolveMPVPath()
 	if pathErr != nil {
-		return fmt.Errorf("resolve ffmpeg path: %w", pathErr)
+		return fmt.Errorf("resolve mpv path: %w", pathErr)
 	}
+	tempDir, err := os.MkdirTemp(filepath.Dir(outputPath), ".mpv-shot-*")
+	if err != nil {
+		return fmt.Errorf("create mpv temp dir: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	args := []string{
-		"-hide_banner",
-		"-loglevel",
-		"error",
-		"-y",
-		"-ss",
-		strconv.Itoa(second),
-		"-i",
+		"--no-config",
+		"--really-quiet",
+		"--msg-level=all=error",
+		"--ao=null",
+		"--hr-seek=yes",
+		"--start=" + strconv.Itoa(second),
+		"--frames=1",
+		"--vo=image",
+		"--vo-image-format=jpg",
+		"--vo-image-outdir=" + tempDir,
 		videoPath,
-		"-frames:v",
-		"1",
-		"-q:v",
-		"2",
-		tempPath,
 	}
 
-	cmd := exec.CommandContext(ctx, ffmpegPath, args...)
+	cmd := exec.CommandContext(ctx, mpvPath, args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		_ = os.Remove(tempPath)
 		if errors.Is(err, exec.ErrNotFound) {
-			return fmt.Errorf("ffmpeg not found: %w", err)
+			return fmt.Errorf("mpv not found: %w", err)
 		}
 		lastOut := strings.TrimSpace(string(out))
 		if lastOut != "" {
-			return fmt.Errorf("ffmpeg screenshot failed: %w: %s", err, lastOut)
+			return fmt.Errorf("mpv screenshot failed: %w: %s", err, lastOut)
 		}
-		return fmt.Errorf("ffmpeg screenshot failed: %w", err)
+		return fmt.Errorf("mpv screenshot failed: %w", err)
 	}
 
-	info, err := os.Stat(tempPath)
+	entries, err := os.ReadDir(tempDir)
 	if err != nil {
-		_ = os.Remove(tempPath)
+		return fmt.Errorf("read mpv output dir: %w", err)
+	}
+	files := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if strings.EqualFold(filepath.Ext(entry.Name()), ".jpg") || strings.EqualFold(filepath.Ext(entry.Name()), ".jpeg") {
+			files = append(files, filepath.Join(tempDir, entry.Name()))
+		}
+	}
+	if len(files) == 0 {
+		return errors.New("mpv produced no screenshot file")
+	}
+	slices.Sort(files)
+
+	info, err := os.Stat(files[0])
+	if err != nil {
 		return fmt.Errorf("screenshot not produced: %s %w", videoPath, err)
 	}
 	if info.Size() == 0 {
-		_ = os.Remove(tempPath)
-		return errors.New("ffmpeg produced no screenshot file")
+		return errors.New("mpv produced empty screenshot file")
+	}
+
+	if err := os.Rename(files[0], tempPath); err != nil {
+		return fmt.Errorf("stage screenshot: %w", err)
 	}
 
 	if err := os.Rename(tempPath, outputPath); err != nil {

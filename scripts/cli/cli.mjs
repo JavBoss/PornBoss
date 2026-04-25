@@ -43,37 +43,29 @@ const PLATFORM_CHOICES = [
 ];
 
 const PLATFORM_BY_LABEL = new Map(PLATFORM_CHOICES.map((p) => [p.label, p]));
-const FFMPEG_DOWNLOADS = new Map([
+const FFPROBE_DOWNLOADS = new Map([
   [
     "windows-x86_64",
     {
-      ffmpeg: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-win32-x64.gz",
-      ffprobe:
-        "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-win32-x64.gz",
+      ffprobe: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-win32-x64.gz",
     },
   ],
   [
     "linux-x86_64",
     {
-      ffmpeg: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-x64.gz",
-      ffprobe:
-        "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-linux-x64.gz",
+      ffprobe: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-linux-x64.gz",
     },
   ],
   [
     "macos-x86_64",
     {
-      ffmpeg: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-x64.gz",
-      ffprobe:
-        "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-darwin-x64.gz",
+      ffprobe: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-darwin-x64.gz",
     },
   ],
   [
     "macos-arm64",
     {
-      ffmpeg: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-arm64.gz",
-      ffprobe:
-        "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-darwin-arm64.gz",
+      ffprobe: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-darwin-arm64.gz",
     },
   ],
 ]);
@@ -129,16 +121,8 @@ function currentPlatformChoice() {
   return platformFromGoosArch(goos, goarch);
 }
 
-function ffmpegBinName(goos) {
-  return goos === "windows" ? "ffmpeg.exe" : "ffmpeg";
-}
-
 function ffprobeBinName(goos) {
   return goos === "windows" ? "ffprobe.exe" : "ffprobe";
-}
-
-function ffmpegPath(choice) {
-  return path.join(INTERNAL_BIN_DIR, ffmpegBinName(choice.goos));
 }
 
 function ffprobePath(choice) {
@@ -151,10 +135,6 @@ function internalMpvDir() {
 
 function platformBinDir(choice) {
   return path.join(BIN_DIR, choice.label);
-}
-
-function binFfmpegPath(choice) {
-  return path.join(platformBinDir(choice), ffmpegBinName(choice.goos));
 }
 
 function binFfprobePath(choice) {
@@ -201,10 +181,8 @@ async function isExecutable(filePath) {
   }
 }
 
-async function isBinReady(choice) {
-  const ffmpegOk = await exists(binFfmpegPath(choice));
-  const ffprobeOk = await exists(binFfprobePath(choice));
-  return ffmpegOk && ffprobeOk;
+async function isBundledFfprobeReady(choice) {
+  return exists(binFfprobePath(choice));
 }
 
 async function isBundledMpvReady(choice) {
@@ -271,31 +249,26 @@ function waitForExit(child, label) {
 async function startBackendDevChild() {
   const current = currentPlatformChoice();
   if (!current) {
-    console.error("[dev] 当前系统不在支持列表内，无法确定 ffmpeg 平台");
+    console.error("[dev] 当前系统不在支持列表内，无法确定 ffprobe 平台");
     process.exitCode = 1;
     return null;
   }
 
-  let ffmpegOk = await isExecutable(ffmpegPath(current));
   let ffprobeOk = await isExecutable(ffprobePath(current));
-  if (!ffmpegOk || !ffprobeOk) {
-    if (await isBinReady(current)) {
-      const binFfmpeg = binFfmpegPath(current);
+  if (!ffprobeOk) {
+    if (await isBundledFfprobeReady(current)) {
       const binFfprobe = binFfprobePath(current);
       await fsp.mkdir(INTERNAL_BIN_DIR, { recursive: true });
-      await fsp.copyFile(binFfmpeg, ffmpegPath(current));
       await fsp.copyFile(binFfprobe, ffprobePath(current));
       if (current.goos !== "windows") {
-        await fsp.chmod(ffmpegPath(current), 0o755);
         await fsp.chmod(ffprobePath(current), 0o755);
       }
-      ffmpegOk = true;
       ffprobeOk = true;
     }
   }
-  if (!ffmpegOk || !ffprobeOk) {
+  if (!ffprobeOk) {
     console.error(
-      `[dev] internal/bin 缺少 ${current.label} 的 ffmpeg/ffprobe，请先选择 “download dependencies” 下载到 bin/${current.label}。`,
+      `[dev] internal/bin 缺少 ${current.label} 的 ffprobe，请先选择 “download dependencies” 下载到 bin/${current.label}。`,
     );
     process.exitCode = 1;
     return null;
@@ -374,18 +347,14 @@ async function buildBackendRelease(choice, outDir) {
   );
 }
 
-async function copyBundledFfmpeg(choice, outDir) {
-  const srcFfmpeg = binFfmpegPath(choice);
+async function copyBundledFfprobe(choice, outDir) {
   const srcFfprobe = binFfprobePath(choice);
   const destDir = path.join(outDir, "internal", "bin");
-  const destFfmpeg = path.join(destDir, ffmpegBinName(choice.goos));
   const destFfprobe = path.join(destDir, ffprobeBinName(choice.goos));
 
   await fsp.mkdir(destDir, { recursive: true });
-  await fsp.copyFile(srcFfmpeg, destFfmpeg);
   await fsp.copyFile(srcFfprobe, destFfprobe);
   if (choice.goos !== "windows") {
-    await fsp.chmod(destFfmpeg, 0o755);
     await fsp.chmod(destFfprobe, 0o755);
   }
 }
@@ -437,11 +406,10 @@ async function createZip(outDir, zipPath) {
 }
 
 async function runRelease(choice, version) {
-  const ffmpegOk = await exists(binFfmpegPath(choice));
   const ffprobeOk = await exists(binFfprobePath(choice));
-  if (!ffmpegOk || !ffprobeOk) {
+  if (!ffprobeOk) {
     console.error(
-      `[release] bin/${choice.label} 缺少 ffmpeg/ffprobe，请先选择 “download dependencies” 下载。`,
+      `[release] bin/${choice.label} 缺少 ffprobe，请先选择 “download dependencies” 下载。`,
     );
     process.exitCode = 1;
     return;
@@ -464,8 +432,8 @@ async function runRelease(choice, version) {
   console.log("[release] 复制前端资源");
   await copyDir(path.join(WEB_DIR, "dist"), path.join(outDir, "web", "dist"));
   await buildBackendRelease(choice, outDir);
-  console.log("[release] 复制 ffmpeg/ffprobe");
-  await copyBundledFfmpeg(choice, outDir);
+  console.log("[release] 复制 ffprobe");
+  await copyBundledFfprobe(choice, outDir);
   if (bundledMpvOk) {
     console.log("[release] 复制 mpv");
     await copyBundledMpv(choice, outDir);
@@ -485,11 +453,10 @@ async function runRelease(choice, version) {
   console.log(`[release] 完成：${zipPath}`);
 }
 
-function ffmpegUrls(choice) {
-  const linked = FFMPEG_DOWNLOADS.get(choice.label);
+function ffprobeUrls(choice) {
+  const linked = FFPROBE_DOWNLOADS.get(choice.label);
   return {
-    urls: linked?.ffmpeg ? [linked.ffmpeg] : [],
-    ffprobeExtras: linked?.ffprobe ? [linked.ffprobe] : [],
+    urls: linked?.ffprobe ? [linked.ffprobe] : [],
   };
 }
 
@@ -606,7 +573,7 @@ async function installBinaryFromUrl({
     await fsp.rm(archive, { force: true });
     await downloadFile(url, archive);
   } catch (err) {
-    console.warn(`[ffmpeg] ${logLabel} 下载失败，尝试下一个来源`);
+    console.warn(`[${logLabel}] 下载失败，尝试下一个来源`);
     return false;
   }
 
@@ -619,14 +586,14 @@ async function installBinaryFromUrl({
       await extractArchive(archive, extractDir);
       const found = await findFile(extractDir, binaryName);
       if (!found) {
-        console.warn(`[ffmpeg] ${logLabel} 解压后未找到 ${binaryName}`);
+        console.warn(`[${logLabel}] 解压后未找到 ${binaryName}`);
         return false;
       }
       await fsp.copyFile(found, target);
     }
   } catch (err) {
     await fsp.rm(target, { force: true });
-    console.warn(`[ffmpeg] ${logLabel} 解压失败，尝试下一个来源`);
+    console.warn(`[${logLabel}] 解压失败，尝试下一个来源`);
     return false;
   }
 
@@ -697,101 +664,48 @@ async function expandNestedArchives(dir, maxDepth = 2) {
   }
 }
 
-async function downloadFfmpeg(choice) {
-  const ffmpegTarget = binFfmpegPath(choice);
+async function downloadFfprobe(choice) {
   const ffprobeTarget = binFfprobePath(choice);
 
-  if (await isBinReady(choice)) {
-    console.log(`[ffmpeg] 已存在：${platformBinDir(choice)}`);
+  if (await isBundledFfprobeReady(choice)) {
+    console.log(`[ffprobe] 已存在：${platformBinDir(choice)}`);
     return;
   }
 
-  const { urls, ffprobeExtras } = ffmpegUrls(choice);
+  const { urls } = ffprobeUrls(choice);
   if (!urls.length) {
-    throw new Error(`[ffmpeg] 未找到下载地址（${choice.label}）`);
+    throw new Error(`[ffprobe] 未找到下载地址（${choice.label}）`);
   }
 
   await fsp.mkdir(platformBinDir(choice), { recursive: true });
-  const tmpBase = await fsp.mkdtemp(path.join(os.tmpdir(), "pornboss-ffmpeg-"));
+  const tmpBase = await fsp.mkdtemp(path.join(os.tmpdir(), "pornboss-ffprobe-"));
   try {
     let installed = false;
     for (const url of urls) {
-      console.log(`[ffmpeg] 下载 ${choice.label}：${url}`);
-      const archive = path.join(tmpBase, downloadFilename(url, "ffmpeg-download.bin"));
-      const extractDir = path.join(tmpBase, "extract");
-      await fsp.rm(extractDir, { recursive: true, force: true });
-      await fsp.mkdir(extractDir, { recursive: true });
-
-      try {
-        await downloadFile(url, archive);
-        if (archive.toLowerCase().endsWith(".gz")) {
-          await extractGzipFile(archive, ffmpegTarget);
-          if (choice.goos !== "windows") {
-            await fsp.chmod(ffmpegTarget, 0o755);
-          }
-        } else {
-          await extractArchive(archive, extractDir);
-
-          const ffmpegFound = await findFile(extractDir, ffmpegBinName(choice.goos));
-          const ffprobeFound = await findFile(extractDir, ffprobeBinName(choice.goos));
-
-          if (ffmpegFound) {
-            await fsp.copyFile(ffmpegFound, ffmpegTarget);
-            if (choice.goos !== "windows") {
-              await fsp.chmod(ffmpegTarget, 0o755);
-            }
-          }
-          if (ffprobeFound) {
-            await fsp.copyFile(ffprobeFound, ffprobeTarget);
-            if (choice.goos !== "windows") {
-              await fsp.chmod(ffprobeTarget, 0o755);
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("[ffmpeg] 下载或解压失败，尝试下一个来源");
-        continue;
-      }
-
-      if (await isBinReady(choice)) {
-        console.log(`[ffmpeg] 安装完成：${platformBinDir(choice)}`);
-        installed = true;
+      console.log(`[ffprobe] 下载 ${choice.label}：${url}`);
+      installed = await installBinaryFromUrl({
+        url,
+        target: ffprobeTarget,
+        binaryName: ffprobeBinName(choice.goos),
+        logLabel: "ffprobe",
+        choice,
+        tmpBase,
+      });
+      if (installed) {
+        console.log(`[ffprobe] 安装完成：${platformBinDir(choice)}`);
         break;
       }
     }
 
-    if (!installed && ffprobeExtras.length) {
-      for (const url of ffprobeExtras) {
-        console.log(`[ffmpeg] 下载 ffprobe：${url}`);
-        const ffprobeInstalled = await installBinaryFromUrl({
-          url,
-          target: ffprobeTarget,
-          binaryName: ffprobeBinName(choice.goos),
-          logLabel: "ffprobe",
-          choice,
-          tmpBase,
-        });
-        if (!ffprobeInstalled) continue;
-
-        if (await exists(ffprobeTarget)) {
-          console.log(`[ffmpeg] ffprobe 安装完成：${ffprobeTarget}`);
-          installed = await exists(ffmpegTarget);
-          if (installed) break;
-        }
-      }
-    }
-
     if (!installed) {
-      throw new Error(`[ffmpeg] 下载失败，请检查脚本内置的 ${choice.label} 下载链接`);
+      throw new Error(`[ffprobe] 下载失败，请检查脚本内置的 ${choice.label} 下载链接`);
     }
 
     const current = currentPlatformChoice();
     if (current && current.label === choice.label) {
       await fsp.mkdir(INTERNAL_BIN_DIR, { recursive: true });
-      await fsp.copyFile(ffmpegTarget, ffmpegPath(choice));
       await fsp.copyFile(ffprobeTarget, ffprobePath(choice));
       if (choice.goos !== "windows") {
-        await fsp.chmod(ffmpegPath(choice), 0o755);
         await fsp.chmod(ffprobePath(choice), 0o755);
       }
     }
@@ -901,7 +815,7 @@ async function downloadMpv(choice) {
 }
 
 async function downloadDependencies(choice) {
-  await downloadFfmpeg(choice);
+  await downloadFfprobe(choice);
   await downloadMpv(choice);
 }
 

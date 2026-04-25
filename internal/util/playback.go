@@ -3,11 +3,10 @@ package util
 import "strings"
 
 type PlaybackProbeResult struct {
-	Container        string `json:"container"`
-	VideoCodec       string `json:"video_codec"`
-	AudioCodec       string `json:"audio_codec"`
-	SupportsDirect   bool   `json:"supports_direct"`
-	NeedsHLSFallback bool   `json:"needs_hls_fallback"`
+	Container      string `json:"container"`
+	VideoCodec     string `json:"video_codec"`
+	AudioCodec     string `json:"audio_codec"`
+	SupportsDirect bool   `json:"supports_direct"`
 }
 
 func ProbePlaybackSupport(path string) (*PlaybackProbeResult, error) {
@@ -22,7 +21,6 @@ func ProbePlaybackSupport(path string) (*PlaybackProbeResult, error) {
 func AssessPlaybackSupport(meta *VideoMetadata) PlaybackProbeResult {
 	result := PlaybackProbeResult{}
 	if meta == nil {
-		result.NeedsHLSFallback = true
 		return result
 	}
 
@@ -41,8 +39,6 @@ func AssessPlaybackSupport(meta *VideoMetadata) PlaybackProbeResult {
 	default:
 		result.SupportsDirect = false
 	}
-
-	result.NeedsHLSFallback = !result.SupportsDirect
 	return result
 }
 

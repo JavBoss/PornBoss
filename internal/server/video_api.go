@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -120,25 +119,21 @@ func getVideoStreams(c *gin.Context) {
 	}
 
 	info := playbackInfo{
-		VideoID:       video.ID,
-		PreferredKind: "hls",
-		Sources:       []playbackSource{},
+		VideoID: video.ID,
 	}
-	if probe.SupportsDirect {
-		info.PreferredKind = "direct"
-		info.Sources = append(info.Sources, playbackSource{
-			Kind:     "direct",
-			Src:      buildDirectStreamURL(video),
-			MimeType: directMimeType(probe.Container),
-			Label:    "Direct",
+	if !probe.SupportsDirect {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"error": "browser playback is not supported for this file format",
 		})
+		return
 	}
-	info.Sources = append(info.Sources, playbackSource{
-		Kind:     "hls",
-		Src:      "/videos/" + strconv.FormatInt(video.ID, 10) + "/stream.m3u8",
-		MimeType: manager.MimeHLS,
-		Label:    "HLS",
-	})
+	info.PreferredKind = "direct"
+	info.Sources = []playbackSource{{
+		Kind:     "direct",
+		Src:      buildDirectStreamURL(video),
+		MimeType: directMimeType(probe.Container),
+		Label:    "Direct",
+	}}
 
 	c.JSON(http.StatusOK, info)
 }
@@ -153,46 +148,6 @@ func streamVideo(c *gin.Context) {
 		}
 	}
 	serveVideoFile(c, fullPath)
-}
-
-func streamHLSManifest(c *gin.Context) {
-	video, fullPath, err := resolveVideoStreamTarget(c)
-	if err != nil {
-		respondPlaybackError(c, err)
-		return
-	}
-	if common.StreamManager == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "stream manager unavailable"})
-		return
-	}
-
-	resolution := strings.TrimSpace(c.Query("resolution"))
-	c.Header("Cache-Control", "no-cache")
-	common.StreamManager.ServeManifest(c.Writer, c.Request, fullPath, float64(video.DurationSec), resolution)
-}
-
-func streamHLSSegment(c *gin.Context) {
-	video, fullPath, err := resolveVideoStreamTarget(c)
-	if err != nil {
-		respondPlaybackError(c, err)
-		return
-	}
-	if common.StreamManager == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "stream manager unavailable"})
-		return
-	}
-
-	segment := strings.TrimSpace(c.Param("segment"))
-	resolution := strings.TrimSpace(c.Query("resolution"))
-	c.Header("Cache-Control", "no-cache")
-	common.StreamManager.ServeSegment(c.Writer, c.Request, manager.StreamOptions{
-		StreamType: manager.StreamTypeHLS,
-		SourcePath: fullPath,
-		Duration:   float64(video.DurationSec),
-		Resolution: resolution,
-		Key:        strconv.FormatInt(video.ID, 10),
-		Segment:    segment,
-	})
 }
 
 func resolveStreamPathFromQuery(c *gin.Context) (string, error) {
@@ -238,9 +193,11 @@ func respondPlaybackError(c *gin.Context, err error) {
 		c.Status(http.StatusNotFound)
 	case errors.Is(err, context.Canceled):
 		c.Status(499)
-	case strings.Contains(err.Error(), "ffmpeg not found"), strings.Contains(err.Error(), "ffprobe not found"):
+	case strings.Contains(err.Error(), "ffprobe not found"):
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
-	case strings.Contains(err.Error(), "invalid segment"), strings.Contains(err.Error(), "invalid id"), strings.Contains(err.Error(), "invalid path"):
+	case strings.Contains(err.Error(), "browser playback is not supported"):
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+	case strings.Contains(err.Error(), "invalid id"), strings.Contains(err.Error(), "invalid path"):
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
@@ -260,18 +217,7 @@ func buildDirectStreamURL(video *models.Video) string {
 	if video == nil {
 		return ""
 	}
-	base := "/videos/" + strconv.FormatInt(video.ID, 10) + "/stream"
-	values := url.Values{}
-	if path := strings.TrimSpace(video.Path); path != "" {
-		values.Set("path", path)
-	}
-	if dirPath := strings.TrimSpace(video.DirectoryRef.Path); dirPath != "" {
-		values.Set("dir_path", dirPath)
-	}
-	if len(values) == 0 {
-		return base
-	}
-	return base + "?" + values.Encode()
+	return "/videos/" + strconv.FormatInt(video.ID, 10) + "/stream"
 }
 
 func serveVideoFile(c *gin.Context, fullPath string) {

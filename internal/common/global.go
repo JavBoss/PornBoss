@@ -11,6 +11,5 @@ var (
 	DB                *gorm.DB
 	ScreenshotManager *manager.ScreenshotManager
 	CoverManager      *manager.CoverManager
-	StreamManager     *manager.StreamManager
 	AppConfig         *Config
 )

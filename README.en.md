@@ -142,14 +142,15 @@ After downloading and extracting a new version, copy the current `data` director
 
 - Backend: Go + Gin + GORM + SQLite
 - Frontend: React + Vite + Tailwind + Zustand
-- Media probing: `ffmpeg` / `ffprobe`
+- Media probing: `ffprobe`
+- Screenshot generation: `mpv`
 
 ### Common Commands
 
-Download ffmpeg:
+Download dependencies (`ffprobe` + `mpv`):
 
 ```bash
-./scripts/cli.sh download ffmepg
+./scripts/cli.sh download linux-x86_64
 ```
 
 Install frontend dependencies:
