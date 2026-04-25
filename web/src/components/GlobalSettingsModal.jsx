@@ -46,7 +46,7 @@ export default function GlobalSettingsModal({
   const [savingProxy, setSavingProxy] = useState(false)
   const [proxyEditing, setProxyEditing] = useState(false)
   const [proxyEnabledInput, setProxyEnabledInput] = useState(false)
-  const [activeSection, setActiveSection] = useState('proxy')
+  const [activeSection, setActiveSection] = useState('directories')
   const [playerTab, setPlayerTab] = useState('basic')
   const [playerBasicError, setPlayerBasicError] = useState('')
   const [playerBasicSuccess, setPlayerBasicSuccess] = useState('')

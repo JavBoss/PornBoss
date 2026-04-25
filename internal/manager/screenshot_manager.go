@@ -92,16 +92,6 @@ func (m *ScreenshotManager) Enqueue(task Task) {
 	m.tasks <- task
 }
 
-// EnqueueBatch schedules multiple tasks.
-func (m *ScreenshotManager) EnqueueBatch(tasks []Task) {
-	if m == nil {
-		return
-	}
-	for _, task := range tasks {
-		m.Enqueue(task)
-	}
-}
-
 // EnqueueForVideo schedules a screenshot task using the standard second selection logic.
 func (m *ScreenshotManager) EnqueueForVideo(video *models.Video) {
 	if m == nil {
