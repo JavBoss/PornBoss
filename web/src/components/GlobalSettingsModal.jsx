@@ -189,6 +189,12 @@ export default function GlobalSettingsModal({
           <h4 className="text-sm font-semibold text-zinc-800">
             {zh('快捷键设置', 'Shortcut Settings')}
           </h4>
+          <p className="mt-1 text-xs text-zinc-500">
+            {zh(
+              '正数表示增加，负数表示减少。`Space` 和 `Escape` 仍固定用于播放/暂停和关闭播放器。',
+              'Positive numbers increase, negative numbers decrease. `Space` and `Escape` remain reserved for play/pause and close.'
+            )}
+          </p>
         </div>
         <PlayerSettingsModal hotkeys={normalizedPlayerHotkeys} onSave={onSavePlayerHotkeys} />
       </section>

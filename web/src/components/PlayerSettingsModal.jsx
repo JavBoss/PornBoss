@@ -211,12 +211,6 @@ export default function PlayerSettingsModal({ hotkeys, onSave }) {
         )}
       </div>
 
-      <div className="mt-2 text-xs text-gray-500">
-        {zh(
-          '正数表示增加，负数表示减少。`Space` 和 `Escape` 仍固定用于播放/暂停和关闭播放器。',
-          'Positive numbers increase, negative numbers decrease. `Space` and `Escape` remain reserved for play/pause and close.'
-        )}
-      </div>
       {error && <div className="mt-2 text-sm text-red-600">{error}</div>}
       {success && <div className="mt-2 text-sm text-emerald-600">{success}</div>}
 
