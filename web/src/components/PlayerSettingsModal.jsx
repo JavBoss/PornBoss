@@ -19,25 +19,38 @@ const createRows = (items) =>
     amount: String(item.amount),
   }))
 
-export default function PlayerSettingsModal({ open, onClose, hotkeys, onSave }) {
+export default function PlayerSettingsModal({
+  open = true,
+  onClose,
+  hotkeys,
+  onSave,
+  embedded = false,
+}) {
   const seedRef = useRef(0)
   const [rows, setRows] = useState([])
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (!open) return
+    if (!embedded && !open) return
     seedRef.current += 1
     const source = Array.isArray(hotkeys) ? hotkeys : DEFAULT_PLAYER_HOTKEYS
     setRows(createRows(source))
     setError('')
     setSaving(false)
-  }, [open, hotkeys])
+  }, [embedded, open, hotkeys])
 
-  if (!open) return null
+  if (!embedded && !open) return null
 
   const setRowValue = (id, patch) => {
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)))
+  }
+
+  const resetToCurrent = () => {
+    const source = Array.isArray(hotkeys) ? hotkeys : DEFAULT_PLAYER_HOTKEYS
+    setRows(createRows(source))
+    setError('')
+    setSaving(false)
   }
 
   const handleAdd = () => {
@@ -117,7 +130,9 @@ export default function PlayerSettingsModal({ open, onClose, hotkeys, onSave }) 
     setSaving(true)
     try {
       await onSave?.(normalized)
-      onClose?.()
+      if (!embedded) {
+        onClose?.()
+      }
     } catch (err) {
       setError(err.message || zh('保存失败', 'Save failed'))
     } finally {
@@ -125,9 +140,9 @@ export default function PlayerSettingsModal({ open, onClose, hotkeys, onSave }) 
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
-      <div className="w-full max-w-4xl rounded-lg bg-white p-5 shadow-xl">
+  const content = (
+    <div className={embedded ? 'space-y-5' : 'w-full max-w-4xl rounded-lg bg-white p-5 shadow-xl'}>
+      {!embedded && (
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold">
@@ -148,8 +163,12 @@ export default function PlayerSettingsModal({ open, onClose, hotkeys, onSave }) 
             {zh('关闭', 'Close')}
           </button>
         </div>
+      )}
 
-        <div className="mt-4 space-y-3">
+      <div
+        className={embedded ? 'rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm' : 'mt-4'}
+      >
+        <div className="space-y-3">
           <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 px-2 text-xs font-medium uppercase tracking-wide text-gray-500">
             <div>{zh('按键', 'Key')}</div>
             <div>{zh('动作', 'Action')}</div>
@@ -165,7 +184,7 @@ export default function PlayerSettingsModal({ open, onClose, hotkeys, onSave }) 
             rows.map((row) => (
               <div
                 key={row.id}
-                className="grid grid-cols-1 gap-3 rounded border p-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
+                className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-zinc-50/60 p-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
               >
                 <input
                   value={formatPlayerHotkeyKey(row.key)}
@@ -180,7 +199,7 @@ export default function PlayerSettingsModal({ open, onClose, hotkeys, onSave }) 
                   }}
                   onFocus={() => setError('')}
                   placeholder={zh('聚焦后按下按键', 'Focus then press a key')}
-                  className="rounded border px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <select
                   value={row.action}
@@ -192,7 +211,7 @@ export default function PlayerSettingsModal({ open, onClose, hotkeys, onSave }) 
                     })
                     setError('')
                   }}
-                  className="rounded border px-3 py-2 text-sm"
+                  className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
                 >
                   <option value={PLAYER_HOTKEY_ACTIONS.SEEK}>{zh('调节进度', 'Seek')}</option>
                   <option value={PLAYER_HOTKEY_ACTIONS.VOLUME}>{zh('调节音量', 'Volume')}</option>
@@ -206,7 +225,7 @@ export default function PlayerSettingsModal({ open, onClose, hotkeys, onSave }) 
                       setRowValue(row.id, { amount: event.target.value })
                       setError('')
                     }}
-                    className="w-full rounded border px-3 py-2 text-sm"
+                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
                   />
                   <span className="shrink-0 text-sm text-gray-500">
                     {row.action === PLAYER_HOTKEY_ACTIONS.VOLUME ? '%' : zh('秒', 'sec')}
@@ -218,49 +237,13 @@ export default function PlayerSettingsModal({ open, onClose, hotkeys, onSave }) 
                     setRows((current) => current.filter((item) => item.id !== row.id))
                     setError('')
                   }}
-                  className="rounded border px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                  className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                 >
                   {zh('删除', 'Delete')}
                 </button>
               </div>
             ))
           )}
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleAdd}
-              className="rounded border px-3 py-1.5 text-sm hover:bg-gray-50"
-            >
-              {zh('新增快捷键', 'Add shortcut')}
-            </button>
-            <button
-              type="button"
-              onClick={handleReset}
-              className="rounded border px-3 py-1.5 text-sm hover:bg-gray-50"
-            >
-              {zh('恢复默认', 'Restore defaults')}
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded border px-3 py-1.5 text-sm hover:bg-gray-50"
-            >
-              {zh('取消', 'Cancel')}
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
-            >
-              {saving ? zh('保存中…', 'Saving...') : zh('保存', 'Save')}
-            </button>
-          </div>
         </div>
 
         <div className="mt-2 text-xs text-gray-500">
@@ -270,7 +253,51 @@ export default function PlayerSettingsModal({ open, onClose, hotkeys, onSave }) 
           )}
         </div>
         {error && <div className="mt-2 text-sm text-red-600">{error}</div>}
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleAdd}
+              className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm hover:bg-zinc-50"
+            >
+              {zh('新增快捷键', 'Add shortcut')}
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm hover:bg-zinc-50"
+            >
+              {zh('恢复默认', 'Restore defaults')}
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={embedded ? resetToCurrent : onClose}
+              className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm hover:bg-zinc-50"
+            >
+              {embedded ? zh('撤销修改', 'Discard changes') : zh('取消', 'Cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="rounded-xl bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
+            >
+              {saving ? zh('保存中…', 'Saving...') : zh('保存', 'Save')}
+            </button>
+          </div>
+        </div>
       </div>
+    </div>
+  )
+
+  if (embedded) return content
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
+      {content}
     </div>
   )
 }
