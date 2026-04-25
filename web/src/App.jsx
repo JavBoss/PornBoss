@@ -1637,6 +1637,11 @@ export default function App() {
           const cfg = await updateConfig({ proxy_port: port })
           useStore.setState({ config: cfg })
         }}
+        playerHotkeys={config?.player_hotkeys}
+        onSavePlayerHotkeys={async (hotkeys) => {
+          const cfg = await updateConfig({ player_hotkeys: hotkeys })
+          useStore.setState({ config: cfg })
+        }}
       />
       <Toast
         open={Boolean(toastMessage)}

@@ -130,9 +130,14 @@ export default function PlayerSettingsModal({ open, onClose, hotkeys, onSave }) 
       <div className="w-full max-w-4xl rounded-lg bg-white p-5 shadow-xl">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold">{zh('播放器设置', 'Player Settings')}</h2>
+            <h2 className="text-base font-semibold">
+              {zh('快捷键配置', 'Shortcut Configuration')}
+            </h2>
             <p className="mt-1 text-sm text-gray-500">
-              {zh('仅支持视频进度和音量快捷键', 'Only seek and volume shortcuts are supported')}
+              {zh(
+                '仅支持 mpv 的进度和音量快捷键，ESC 关闭为固定保留键',
+                'Only mpv seek and volume shortcuts are configurable. ESC remains reserved.'
+              )}
             </p>
           </div>
           <button

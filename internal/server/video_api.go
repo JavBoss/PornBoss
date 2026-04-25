@@ -17,6 +17,7 @@ import (
 	dbpkg "pornboss/internal/db"
 	"pornboss/internal/manager"
 	"pornboss/internal/models"
+	"pornboss/internal/mpv"
 	"pornboss/internal/util"
 )
 
@@ -313,7 +314,7 @@ func playVideoFile(c *gin.Context) {
 	if err := ensureVideoFileExists(c, fullPath); err != nil {
 		return
 	}
-	if err := util.PlayVideo(fullPath); err != nil {
+	if err := mpv.PlayVideo(fullPath); err != nil {
 		logging.Error("play video file error: %v", err)
 		if strings.Contains(err.Error(), "mpv not found") {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})

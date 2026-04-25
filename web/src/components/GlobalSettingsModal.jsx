@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import DirectoryManager from '@/components/DirectoryManager'
+import PlayerSettingsModal from '@/components/PlayerSettingsModal'
+import { formatPlayerHotkeyKey, parsePlayerHotkeys } from '@/utils/playerHotkeys'
 import { zh } from '@/utils/i18n'
 
 export default function GlobalSettingsModal({
@@ -12,18 +14,37 @@ export default function GlobalSettingsModal({
   onDeleteDirectory,
   proxyPort,
   onSaveProxyPort,
+  playerHotkeys,
+  onSavePlayerHotkeys,
 }) {
   const [proxyInput, setProxyInput] = useState('')
   const [proxyError, setProxyError] = useState('')
   const [savingProxy, setSavingProxy] = useState(false)
   const [proxyEditing, setProxyEditing] = useState(false)
   const [proxyEnabledInput, setProxyEnabledInput] = useState(false)
+  const [playerSettingsOpen, setPlayerSettingsOpen] = useState(false)
+
+  const normalizedPlayerHotkeys = useMemo(() => parsePlayerHotkeys(playerHotkeys), [playerHotkeys])
+  const shortcutSummary = normalizedPlayerHotkeys
+    .map((item) =>
+      item.action === 'volume'
+        ? zh(
+            `${formatPlayerHotkeyKey(item.key)}: 音量 ${item.amount > 0 ? '+' : ''}${item.amount}%`,
+            `${formatPlayerHotkeyKey(item.key)}: Volume ${item.amount > 0 ? '+' : ''}${item.amount}%`
+          )
+        : zh(
+            `${formatPlayerHotkeyKey(item.key)}: 进度 ${item.amount > 0 ? '+' : ''}${item.amount} 秒`,
+            `${formatPlayerHotkeyKey(item.key)}: Seek ${item.amount > 0 ? '+' : ''}${item.amount}s`
+          )
+    )
+    .join(' / ')
 
   useEffect(() => {
     if (open) {
       setProxyInput(proxyPort ? String(proxyPort) : '')
       setProxyEnabledInput(Boolean(proxyPort))
       setProxyEditing(false)
+      setPlayerSettingsOpen(false)
       setProxyError('')
     }
   }, [open, proxyPort])
@@ -148,6 +169,32 @@ export default function GlobalSettingsModal({
           </section>
 
           <section className="rounded-lg border p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="max-w-2xl">
+                <h3 className="text-sm font-semibold text-gray-700">
+                  {zh('播放器设置', 'Player Settings')}
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  {zh(
+                    '快捷键配置只控制 mpv 的进度和音量按键，ESC 关闭固定保留。',
+                    'Shortcut configuration only controls mpv seek and volume keys. ESC remains reserved.'
+                  )}
+                </p>
+                <p className="mt-2 text-xs text-gray-500">
+                  {shortcutSummary || zh('当前未配置自定义快捷键', 'No shortcuts configured')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPlayerSettingsOpen(true)}
+                className="rounded border px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+              >
+                {zh('快捷键配置', 'Shortcut Configuration')}
+              </button>
+            </div>
+          </section>
+
+          <section className="rounded-lg border p-4">
             <h3 className="mb-4 text-sm font-semibold text-gray-700">
               {zh('目录管理', 'Directory Management')}
             </h3>
@@ -161,6 +208,13 @@ export default function GlobalSettingsModal({
           </section>
         </div>
       </div>
+
+      <PlayerSettingsModal
+        open={playerSettingsOpen}
+        onClose={() => setPlayerSettingsOpen(false)}
+        hotkeys={normalizedPlayerHotkeys}
+        onSave={onSavePlayerHotkeys}
+      />
     </div>
   )
 }

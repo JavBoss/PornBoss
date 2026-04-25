@@ -6,12 +6,14 @@ export const PLAYER_HOTKEY_ACTIONS = {
 export const DEFAULT_PLAYER_HOTKEYS = [
   { key: 'a', action: PLAYER_HOTKEY_ACTIONS.SEEK, amount: -1 },
   { key: 'z', action: PLAYER_HOTKEY_ACTIONS.SEEK, amount: 1 },
-  { key: 's', action: PLAYER_HOTKEY_ACTIONS.SEEK, amount: -10 },
-  { key: 'x', action: PLAYER_HOTKEY_ACTIONS.SEEK, amount: 10 },
-  { key: 'd', action: PLAYER_HOTKEY_ACTIONS.SEEK, amount: -300 },
-  { key: 'c', action: PLAYER_HOTKEY_ACTIONS.SEEK, amount: 300 },
-  { key: 'q', action: PLAYER_HOTKEY_ACTIONS.VOLUME, amount: -10 },
-  { key: 'w', action: PLAYER_HOTKEY_ACTIONS.VOLUME, amount: 10 },
+  { key: 's', action: PLAYER_HOTKEY_ACTIONS.SEEK, amount: -5 },
+  { key: 'x', action: PLAYER_HOTKEY_ACTIONS.SEEK, amount: 5 },
+  { key: 'd', action: PLAYER_HOTKEY_ACTIONS.SEEK, amount: -30 },
+  { key: 'c', action: PLAYER_HOTKEY_ACTIONS.SEEK, amount: 30 },
+  { key: 'f', action: PLAYER_HOTKEY_ACTIONS.SEEK, amount: -300 },
+  { key: 'v', action: PLAYER_HOTKEY_ACTIONS.SEEK, amount: 300 },
+  { key: 'q', action: PLAYER_HOTKEY_ACTIONS.VOLUME, amount: -5 },
+  { key: 'w', action: PLAYER_HOTKEY_ACTIONS.VOLUME, amount: 5 },
 ]
 
 const INVALID_SINGLE_KEYS = new Set([''])

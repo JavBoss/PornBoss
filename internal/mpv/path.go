@@ -1,4 +1,4 @@
-package util
+package mpv
 
 import (
 	"errors"
@@ -16,7 +16,7 @@ var (
 	mpvErr  error
 )
 
-// ResolveMPVPath returns the path to the mpv binary by checking:
+// ResolvePath returns the path to the mpv binary by checking:
 //  1. MPV_PATH env var
 //  2. internal/bin/mpv(.exe) relative to current working directory
 //  3. internal/bin/mpv/mpv(.exe) relative to current working directory
@@ -26,14 +26,14 @@ var (
 //  7. mpv(.exe) in PATH
 //
 // The result is cached after the first resolution attempt.
-func ResolveMPVPath() (string, error) {
+func ResolvePath() (string, error) {
 	mpvOnce.Do(func() {
-		mpvPath, mpvErr = findMPVPath()
+		mpvPath, mpvErr = findPath()
 	})
 	return mpvPath, mpvErr
 }
 
-func findMPVPath() (string, error) {
+func findPath() (string, error) {
 	var candidates []string
 
 	if env := strings.TrimSpace(os.Getenv("MPV_PATH")); env != "" {
@@ -46,11 +46,11 @@ func findMPVPath() (string, error) {
 	}
 
 	if wd, err := os.Getwd(); err == nil {
-		candidates = appendMPVCandidates(candidates, wd, binName)
+		candidates = appendCandidates(candidates, wd, binName)
 	}
 
 	if execPath, err := os.Executable(); err == nil {
-		candidates = appendMPVCandidates(candidates, filepath.Dir(execPath), binName)
+		candidates = appendCandidates(candidates, filepath.Dir(execPath), binName)
 	}
 
 	candidates = append(candidates, binName)
@@ -70,7 +70,7 @@ func findMPVPath() (string, error) {
 	return "", errors.New("mpv not found; set MPV_PATH or place bundled mpv at internal/bin/mpv")
 }
 
-func appendMPVCandidates(candidates []string, baseDir, binName string) []string {
+func appendCandidates(candidates []string, baseDir, binName string) []string {
 	candidates = append(
 		candidates,
 		filepath.Join(baseDir, "internal", "bin", binName),
