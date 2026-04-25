@@ -35,6 +35,7 @@ export default function GlobalSettingsModal({
   playerWindowWidth,
   playerWindowHeight,
   playerWindowUseAutofit,
+  playerOntop,
   playerVolume,
   onSavePlayerBasicSettings,
   playerHotkeys,
@@ -53,6 +54,7 @@ export default function GlobalSettingsModal({
   const [playerWindowWidthInput, setPlayerWindowWidthInput] = useState('')
   const [playerWindowHeightInput, setPlayerWindowHeightInput] = useState('')
   const [playerWindowUseAutofitInput, setPlayerWindowUseAutofitInput] = useState(false)
+  const [playerOntopInput, setPlayerOntopInput] = useState(true)
   const [playerVolumeInput, setPlayerVolumeInput] = useState('')
 
   const normalizedPlayerHotkeys = parsePlayerHotkeys(playerHotkeys)
@@ -69,9 +71,18 @@ export default function GlobalSettingsModal({
       setPlayerWindowWidthInput(String(playerWindowWidth ?? 70))
       setPlayerWindowHeightInput(String(playerWindowHeight ?? 70))
       setPlayerWindowUseAutofitInput(playerWindowUseAutofit ?? false)
+      setPlayerOntopInput(playerOntop ?? true)
       setPlayerVolumeInput(String(playerVolume ?? 70))
     }
-  }, [open, proxyPort, playerWindowWidth, playerWindowHeight, playerWindowUseAutofit, playerVolume])
+  }, [
+    open,
+    proxyPort,
+    playerWindowWidth,
+    playerWindowHeight,
+    playerWindowUseAutofit,
+    playerOntop,
+    playerVolume,
+  ])
 
   if (!open) return null
 
@@ -327,6 +338,28 @@ export default function GlobalSettingsModal({
                   )}
                 </p>
               </section>
+
+              <section className="space-y-3 border-t border-zinc-200 pt-5">
+                <label className="flex items-center gap-3 text-sm font-semibold text-zinc-800">
+                  <input
+                    type="checkbox"
+                    checked={playerOntopInput}
+                    onChange={(e) => {
+                      setPlayerOntopInput(e.target.checked)
+                      setPlayerBasicError('')
+                      setPlayerBasicSuccess('')
+                    }}
+                    className="h-4 w-4 rounded"
+                  />
+                  <span>{zh('播放器强行置顶', 'Keep Player On Top')}</span>
+                </label>
+                <p className="text-xs text-zinc-500">
+                  {zh(
+                    '默认开启，使 mpv 播放器窗口保持置顶。',
+                    'Enabled by default to keep the mpv player window on top.'
+                  )}
+                </p>
+              </section>
             </div>
 
             {playerBasicError && (
@@ -370,6 +403,7 @@ export default function GlobalSettingsModal({
                       player_window_width: width,
                       player_window_height: height,
                       player_window_use_autofit: playerWindowUseAutofitInput,
+                      player_ontop: playerOntopInput,
                       player_volume: volume,
                     })
                     setPlayerBasicSuccess(zh('基础设置保存成功', 'Basic settings saved'))

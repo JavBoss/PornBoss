@@ -21,11 +21,13 @@ const playerWindowWidthConfigKey = "player_window_width"
 const playerWindowHeightConfigKey = "player_window_height"
 const playerWindowUseAutofitConfigKey = "player_window_use_autofit"
 const playerVolumeConfigKey = "player_volume"
+const playerOntopConfigKey = "player_ontop"
 
 const (
 	defaultWindowWidth  = 70
 	defaultWindowHeight = 70
 	defaultVolume       = 70
+	defaultOntop        = true
 )
 
 type hotkeyConfig struct {
@@ -321,7 +323,7 @@ func writeConfig() (string, error) {
 }
 
 func buildConfigContent() (string, error) {
-	windowWidth, windowHeight, useAutofit, volume, err := loadConfiguredPlayerBaseSettings()
+	windowWidth, windowHeight, useAutofit, volume, ontop, err := loadConfiguredPlayerBaseSettings()
 	if err != nil {
 		return "", err
 	}
@@ -329,7 +331,7 @@ func buildConfigContent() (string, error) {
 	lines := []string{
 		"auto-window-resize=no",
 		"keep-open=yes",
-		"ontop=yes",
+		fmt.Sprintf("ontop=%s", mpvBool(ontop)),
 	}
 	if useAutofit {
 		lines = append(lines,
@@ -344,15 +346,15 @@ func buildConfigContent() (string, error) {
 	return strings.Join(lines, "\n") + "\n", nil
 }
 
-func loadConfiguredPlayerBaseSettings() (int, int, bool, int, error) {
+func loadConfiguredPlayerBaseSettings() (int, int, bool, int, bool, error) {
 	if common.DB == nil {
-		return defaultWindowWidth, defaultWindowHeight, false, defaultVolume, nil
+		return defaultWindowWidth, defaultWindowHeight, false, defaultVolume, defaultOntop, nil
 	}
 
 	cfg, err := dbpkg.ListConfig(context.Background())
 	if err != nil {
 		logging.Error("list player base config failed, using defaults: %v", err)
-		return defaultWindowWidth, defaultWindowHeight, false, defaultVolume, nil
+		return defaultWindowWidth, defaultWindowHeight, false, defaultVolume, defaultOntop, nil
 	}
 
 	windowWidth := defaultWindowWidth
@@ -391,5 +393,22 @@ func loadConfiguredPlayerBaseSettings() (int, int, bool, int, error) {
 		}
 	}
 
-	return windowWidth, windowHeight, useAutofit, volume, nil
+	ontop := defaultOntop
+	if raw := strings.TrimSpace(cfg[playerOntopConfigKey]); raw != "" {
+		switch strings.ToLower(raw) {
+		case "0", "false", "no", "off":
+			ontop = false
+		case "1", "true", "yes", "on":
+			ontop = true
+		}
+	}
+
+	return windowWidth, windowHeight, useAutofit, volume, ontop, nil
+}
+
+func mpvBool(value bool) string {
+	if value {
+		return "yes"
+	}
+	return "no"
 }

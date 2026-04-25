@@ -46,6 +46,7 @@ func updateConfig(c *gin.Context) {
 		PlayerWindowHeight     *int                  `json:"player_window_height"`
 		PlayerWindowUseAutofit *bool                 `json:"player_window_use_autofit"`
 		PlayerVolume           *int                  `json:"player_volume"`
+		PlayerOntop            *bool                 `json:"player_ontop"`
 		PlayerHotkeys          []playerHotkeyPayload `json:"player_hotkeys"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -146,6 +147,9 @@ func updateConfig(c *gin.Context) {
 		}
 		entries["player_volume"] = strconv.Itoa(volume)
 	}
+	if req.PlayerOntop != nil {
+		entries["player_ontop"] = strconv.FormatBool(*req.PlayerOntop)
+	}
 	if req.PlayerHotkeys != nil {
 		clean := make([]playerHotkeyPayload, 0, len(req.PlayerHotkeys))
 		seen := make(map[string]struct{}, len(req.PlayerHotkeys))
@@ -206,7 +210,8 @@ func updateConfig(c *gin.Context) {
 		req.PlayerWindowWidth != nil ||
 		req.PlayerWindowHeight != nil ||
 		req.PlayerWindowUseAutofit != nil ||
-		req.PlayerVolume != nil {
+		req.PlayerVolume != nil ||
+		req.PlayerOntop != nil {
 		mpv.InvalidatePlayerConfigCache()
 	}
 

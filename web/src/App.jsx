@@ -1654,6 +1654,13 @@ export default function App() {
                 String(config.player_window_use_autofit).trim().toLowerCase()
               )
         }
+        playerOntop={
+          config?.player_ontop == null
+            ? true
+            : !['0', 'false', 'no', 'off'].includes(
+                String(config.player_ontop).trim().toLowerCase()
+              )
+        }
         playerVolume={
           config?.player_volume === '0' ? 0 : Number.parseInt(config?.player_volume, 10) || 70
         }
