@@ -326,7 +326,10 @@ func buildConfigContent() (string, error) {
 		return "", err
 	}
 
-	lines := []string{"auto-window-resize=no"}
+	lines := []string{
+		"auto-window-resize=no",
+		"keep-open=yes",
+	}
 	if useAutofit {
 		lines = append(lines,
 			fmt.Sprintf("autofit=%d%%x%d%%", windowWidth, windowHeight),
