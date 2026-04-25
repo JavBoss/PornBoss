@@ -285,31 +285,33 @@ export default function GlobalSettingsModal({
                     </label>
                   </div>
 
-                  <label className="flex items-center gap-3 text-sm font-medium text-zinc-600">
-                    <input
-                      type="checkbox"
-                      checked={playerWindowUseAutofitInput}
-                      onChange={(e) => {
-                        setPlayerWindowUseAutofitInput(e.target.checked)
-                        setPlayerBasicError('')
-                        setPlayerBasicSuccess('')
-                      }}
-                      className="h-4 w-4 rounded"
-                    />
-                    <span>{zh('自动调节窗口大小', 'Automatically adjust window size')}</span>
-                  </label>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="flex items-center gap-3 text-sm font-medium text-zinc-600">
+                      <input
+                        type="checkbox"
+                        checked={playerWindowUseAutofitInput}
+                        onChange={(e) => {
+                          setPlayerWindowUseAutofitInput(e.target.checked)
+                          setPlayerBasicError('')
+                          setPlayerBasicSuccess('')
+                        }}
+                        className="h-4 w-4 rounded"
+                      />
+                      <span>{zh('自动调节窗口大小', 'Automatically adjust window size')}</span>
+                    </label>
+                    <span className="text-xs text-zinc-500">
+                      {playerWindowUseAutofitInput
+                        ? zh(
+                            '开启后按最大宽高限制窗口，并保持视频纵横比。',
+                            'When enabled, the window is limited by max width and height while preserving aspect ratio.'
+                          )
+                        : zh(
+                            '默认关闭，强制使用指定宽高。',
+                            'Disabled by default and forces the specified width and height.'
+                          )}
+                    </span>
+                  </div>
                 </div>
-                <p className="text-xs text-zinc-500">
-                  {playerWindowUseAutofitInput
-                    ? zh(
-                        '开启后按最大宽高限制窗口，并保持视频纵横比。',
-                        'When enabled, the window is limited by max width and height while preserving aspect ratio.'
-                      )
-                    : zh(
-                        '默认关闭，强制使用指定宽高。',
-                        'Disabled by default and forces the specified width and height.'
-                      )}
-                </p>
               </section>
 
               <section className="space-y-3 border-t border-zinc-200 pt-5">
