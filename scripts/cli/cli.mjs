@@ -43,7 +43,7 @@ const PLATFORM_CHOICES = [
 ];
 
 const PLATFORM_BY_LABEL = new Map(PLATFORM_CHOICES.map((p) => [p.label, p]));
-const FFPROBE_DOWNLOADS = new Map([
+const FF_BINARY_DOWNLOADS = new Map([
   [
     "windows-x86_64",
     {
@@ -59,12 +59,14 @@ const FFPROBE_DOWNLOADS = new Map([
   [
     "macos-x86_64",
     {
+      ffmpeg: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-x64.gz",
       ffprobe: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-darwin-x64.gz",
     },
   ],
   [
     "macos-arm64",
     {
+      ffmpeg: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-arm64.gz",
       ffprobe: "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-darwin-arm64.gz",
     },
   ],
@@ -125,8 +127,16 @@ function ffprobeBinName(goos) {
   return goos === "windows" ? "ffprobe.exe" : "ffprobe";
 }
 
+function ffmpegBinName(goos) {
+  return goos === "windows" ? "ffmpeg.exe" : "ffmpeg";
+}
+
 function ffprobePath(choice) {
   return path.join(INTERNAL_BIN_DIR, ffprobeBinName(choice.goos));
+}
+
+function ffmpegPath(choice) {
+  return path.join(INTERNAL_BIN_DIR, ffmpegBinName(choice.goos));
 }
 
 function internalMpvDir() {
@@ -139,6 +149,10 @@ function platformBinDir(choice) {
 
 function binFfprobePath(choice) {
   return path.join(platformBinDir(choice), ffprobeBinName(choice.goos));
+}
+
+function binFfmpegPath(choice) {
+  return path.join(platformBinDir(choice), ffmpegBinName(choice.goos));
 }
 
 function binMpvDir(choice) {
@@ -183,6 +197,10 @@ async function isExecutable(filePath) {
 
 async function isBundledFfprobeReady(choice) {
   return exists(binFfprobePath(choice));
+}
+
+async function isBundledFfmpegReady(choice) {
+  return exists(binFfmpegPath(choice));
 }
 
 async function isBundledMpvReady(choice) {
@@ -274,6 +292,26 @@ async function startBackendDevChild() {
     return null;
   }
 
+  if (current.goos === "darwin") {
+    let ffmpegOk = await isExecutable(ffmpegPath(current));
+    if (!ffmpegOk) {
+      if (await isBundledFfmpegReady(current)) {
+        const binFfmpeg = binFfmpegPath(current);
+        await fsp.mkdir(INTERNAL_BIN_DIR, { recursive: true });
+        await fsp.copyFile(binFfmpeg, ffmpegPath(current));
+        await fsp.chmod(ffmpegPath(current), 0o755);
+        ffmpegOk = true;
+      }
+    }
+    if (!ffmpegOk) {
+      console.error(
+        `[dev] internal/bin 缺少 ${current.label} 的 ffmpeg，请先选择 “download dependencies” 下载到 bin/${current.label}。`,
+      );
+      process.exitCode = 1;
+      return null;
+    }
+  }
+
   await syncBundledMpvToInternal(current);
 
   const addr = process.env.ADDR || ":17654";
@@ -359,6 +397,18 @@ async function copyBundledFfprobe(choice, outDir) {
   }
 }
 
+async function copyBundledFfmpeg(choice, outDir) {
+  const srcFfmpeg = binFfmpegPath(choice);
+  const destDir = path.join(outDir, "internal", "bin");
+  const destFfmpeg = path.join(destDir, ffmpegBinName(choice.goos));
+
+  await fsp.mkdir(destDir, { recursive: true });
+  await fsp.copyFile(srcFfmpeg, destFfmpeg);
+  if (choice.goos !== "windows") {
+    await fsp.chmod(destFfmpeg, 0o755);
+  }
+}
+
 async function copyBundledMpv(choice, outDir) {
   const destDir = path.join(outDir, "internal", "bin", "mpv");
   await copyDir(binMpvDir(choice), destDir);
@@ -414,6 +464,14 @@ async function runRelease(choice, version) {
     process.exitCode = 1;
     return;
   }
+  const ffmpegOk = choice.goos !== "darwin" || (await exists(binFfmpegPath(choice)));
+  if (!ffmpegOk) {
+    console.error(
+      `[release] bin/${choice.label} 缺少 ffmpeg，请先选择 “download dependencies” 下载。`,
+    );
+    process.exitCode = 1;
+    return;
+  }
   const bundledMpvOk = await isBundledMpvReady(choice);
   const requireBundledMpv = true;
   if (requireBundledMpv && !bundledMpvOk) {
@@ -434,6 +492,10 @@ async function runRelease(choice, version) {
   await buildBackendRelease(choice, outDir);
   console.log("[release] 复制 ffprobe");
   await copyBundledFfprobe(choice, outDir);
+  if (choice.goos === "darwin") {
+    console.log("[release] 复制 ffmpeg");
+    await copyBundledFfmpeg(choice, outDir);
+  }
   if (bundledMpvOk) {
     console.log("[release] 复制 mpv");
     await copyBundledMpv(choice, outDir);
@@ -454,9 +516,16 @@ async function runRelease(choice, version) {
 }
 
 function ffprobeUrls(choice) {
-  const linked = FFPROBE_DOWNLOADS.get(choice.label);
+  const linked = FF_BINARY_DOWNLOADS.get(choice.label);
   return {
     urls: linked?.ffprobe ? [linked.ffprobe] : [],
+  };
+}
+
+function ffmpegUrls(choice) {
+  const linked = FF_BINARY_DOWNLOADS.get(choice.label);
+  return {
+    urls: linked?.ffmpeg ? [linked.ffmpeg] : [],
   };
 }
 
@@ -714,6 +783,56 @@ async function downloadFfprobe(choice) {
   }
 }
 
+async function downloadFfmpeg(choice) {
+  const ffmpegTarget = binFfmpegPath(choice);
+
+  if (await isBundledFfmpegReady(choice)) {
+    console.log(`[ffmpeg] 已存在：${platformBinDir(choice)}`);
+    return;
+  }
+
+  const { urls } = ffmpegUrls(choice);
+  if (!urls.length) {
+    throw new Error(`[ffmpeg] 未找到下载地址（${choice.label}）`);
+  }
+
+  await fsp.mkdir(platformBinDir(choice), { recursive: true });
+  const tmpBase = await fsp.mkdtemp(path.join(os.tmpdir(), "pornboss-ffmpeg-"));
+  try {
+    let installed = false;
+    for (const url of urls) {
+      console.log(`[ffmpeg] 下载 ${choice.label}：${url}`);
+      installed = await installBinaryFromUrl({
+        url,
+        target: ffmpegTarget,
+        binaryName: ffmpegBinName(choice.goos),
+        logLabel: "ffmpeg",
+        choice,
+        tmpBase,
+      });
+      if (installed) {
+        console.log(`[ffmpeg] 安装完成：${platformBinDir(choice)}`);
+        break;
+      }
+    }
+
+    if (!installed) {
+      throw new Error(`[ffmpeg] 下载失败，请检查脚本内置的 ${choice.label} 下载链接`);
+    }
+
+    const current = currentPlatformChoice();
+    if (current && current.label === choice.label) {
+      await fsp.mkdir(INTERNAL_BIN_DIR, { recursive: true });
+      await fsp.copyFile(ffmpegTarget, ffmpegPath(choice));
+      if (choice.goos !== "windows") {
+        await fsp.chmod(ffmpegPath(choice), 0o755);
+      }
+    }
+  } finally {
+    await fsp.rm(tmpBase, { recursive: true, force: true });
+  }
+}
+
 async function downloadMpv(choice) {
   if (await isBundledMpvReady(choice)) {
     console.log(`[mpv] 已存在：${binMpvDir(choice)}`);
@@ -816,6 +935,9 @@ async function downloadMpv(choice) {
 
 async function downloadDependencies(choice) {
   await downloadFfprobe(choice);
+  if (choice.goos === "darwin") {
+    await downloadFfmpeg(choice);
+  }
   await downloadMpv(choice);
 }
 

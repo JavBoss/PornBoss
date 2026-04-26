@@ -121,6 +121,10 @@ var (
 	ffprobeOnce sync.Once
 	ffprobePath string
 	ffprobeErr  error
+
+	ffmpegOnce sync.Once
+	ffmpegPath string
+	ffmpegErr  error
 )
 
 // ResolveFFprobePath resolves the ffprobe binary location.
@@ -131,15 +135,31 @@ func ResolveFFprobePath() (string, error) {
 	return ffprobePath, ffprobeErr
 }
 
+// ResolveFFmpegPath resolves the ffmpeg binary location.
+func ResolveFFmpegPath() (string, error) {
+	ffmpegOnce.Do(func() {
+		ffmpegPath, ffmpegErr = findFFmpegPath()
+	})
+	return ffmpegPath, ffmpegErr
+}
+
 func findFFprobePath() (string, error) {
+	return findFFBinaryPath("FFPROBE_PATH", "ffprobe")
+}
+
+func findFFmpegPath() (string, error) {
+	return findFFBinaryPath("FFMPEG_PATH", "ffmpeg")
+}
+
+func findFFBinaryPath(envKey, name string) (string, error) {
 	var candidates []string
-	if env := strings.TrimSpace(os.Getenv("FFPROBE_PATH")); env != "" {
+	if env := strings.TrimSpace(os.Getenv(envKey)); env != "" {
 		candidates = append(candidates, env)
 	}
 
-	binName := "ffprobe"
+	binName := name
 	if runtime.GOOS == "windows" {
-		binName = "ffprobe.exe"
+		binName = name + ".exe"
 	}
 
 	if wd, err := os.Getwd(); err == nil {
@@ -159,7 +179,7 @@ func findFFprobePath() (string, error) {
 			return resolved, nil
 		}
 	}
-	return "", errors.New("ffprobe not found; set FFPROBE_PATH or place binary at internal/bin/ffprobe")
+	return "", fmt.Errorf("%s not found; set %s or place binary at internal/bin/%s", name, envKey, binName)
 }
 
 // ProbeVideo extracts codec/resolution/fps/duration using ffprobe.
