@@ -329,21 +329,24 @@ func buildConfigContent() (string, error) {
 	}
 
 	lines := []string{
-		"auto-window-resize=no",
 		"keep-open=yes",
 		fmt.Sprintf("ontop=%s", mpvBool(ontop)),
 	}
 	if useAutofit {
-		lines = append(lines,
-			fmt.Sprintf("autofit=%d%%x%d%%", windowWidth, windowHeight),
-			"geometry=50%:50%",
-		)
+		lines = append(lines, fmt.Sprintf("autofit=%d%%x%d%%", windowWidth, windowHeight))
 	} else {
-		lines = append(lines, fmt.Sprintf("geometry=%d%%x%d%%", windowWidth, windowHeight))
+		lines = append(lines,
+			"auto-window-resize=no",
+			"geometry="+centeredWindowGeometry(windowWidth, windowHeight),
+		)
 	}
 	lines = append(lines, fmt.Sprintf("volume=%d", volume))
 
 	return strings.Join(lines, "\n") + "\n", nil
+}
+
+func centeredWindowGeometry(width, height int) string {
+	return fmt.Sprintf("%d%%x%d%%+50%%+50%%", width, height)
 }
 
 func loadConfiguredPlayerBaseSettings() (int, int, bool, int, bool, error) {

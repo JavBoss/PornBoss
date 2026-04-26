@@ -166,11 +166,11 @@ porn manager, jav manager, av manager, jav scraper, jav metadata, adult video ma
 - Backend: Go + Gin + GORM + SQLite
 - Frontend: React + Vite + Tailwind + Zustand
 - 媒体探测: `ffprobe`
-- 截图生成: `mpv`
+- 截图生成: macOS 使用 `ffmpeg`，其他平台使用 `mpv`
 
 ### 常用命令
 
-下载依赖（`ffprobe` + `mpv`）：
+下载依赖（`ffprobe` + `mpv`，macOS 额外下载 `ffmpeg`）：
 
 ```bash
 ./scripts/cli.sh download linux-x86_64

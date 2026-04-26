@@ -242,30 +242,29 @@ func (m *ScreenshotManager) capture(ctx context.Context, videoPath string, secon
 		return fmt.Errorf("ensure screenshot dir: %w", err)
 	}
 
-	mpvPath, pathErr := util.ResolveMPVPath()
-	if pathErr != nil {
-		return fmt.Errorf("resolve mpv path: %w", pathErr)
-	}
-	tempDir, err := os.MkdirTemp(filepath.Dir(outputPath), ".mpv-shot-*")
+	tempDir, err := os.MkdirTemp(filepath.Dir(outputPath), ".screenshot-*")
 	if err != nil {
-		return fmt.Errorf("create mpv temp dir: %w", err)
+		return fmt.Errorf("create screenshot temp dir: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(tempDir) }()
 	shotPath := filepath.Join(tempDir, "00000001.jpg")
 
-	args := []string{
-		"--no-config",
-		"--really-quiet",
-		"--msg-level=all=error",
-		"--ao=null",
-		"--hr-seek=yes",
-		"--start=" + strconv.Itoa(second),
-		"--frames=1",
-		"--vo=image",
-		"--vo-image-format=jpg",
-		"--vo-image-outdir=" + tempDir,
-		videoPath,
+	if runtime.GOOS == "darwin" {
+		ffmpegPath, err := util.ResolveFFmpegPath()
+		if err != nil {
+			return fmt.Errorf("resolve ffmpeg path: %w", err)
+		}
+		if err := runFFmpegScreenshot(ctx, ffmpegPath, videoPath, second, shotPath); err != nil {
+			return err
+		}
+		return moveScreenshot(shotPath, outputPath)
 	}
+
+	mpvPath, pathErr := util.ResolveMPVPath()
+	if pathErr != nil {
+		return fmt.Errorf("resolve mpv path: %w", pathErr)
+	}
+	args := buildMPVScreenshotArgs(second, tempDir, videoPath)
 
 	cmd := exec.CommandContext(ctx, mpvPath, args...)
 	out, err := cmd.CombinedOutput()
@@ -290,10 +289,69 @@ func (m *ScreenshotManager) capture(ctx context.Context, videoPath string, secon
 		return errors.New("mpv produced empty screenshot file")
 	}
 
+	return moveScreenshot(shotPath, outputPath)
+}
+
+func runFFmpegScreenshot(ctx context.Context, ffmpegPath string, videoPath string, second int, outputPath string) error {
+	args := buildFFmpegScreenshotArgs(second, outputPath, videoPath)
+	cmd := exec.CommandContext(ctx, ffmpegPath, args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		_ = os.Remove(outputPath)
+		lastOut := strings.TrimSpace(string(out))
+		if lastOut != "" {
+			return fmt.Errorf("ffmpeg screenshot failed: %w: %s", err, lastOut)
+		}
+		return fmt.Errorf("ffmpeg screenshot failed: %w", err)
+	}
+
+	info, err := os.Stat(outputPath)
+	if err != nil {
+		return errors.New("ffmpeg produced no screenshot file")
+	}
+	if info.Size() == 0 {
+		_ = os.Remove(outputPath)
+		return errors.New("ffmpeg produced empty screenshot file")
+	}
+	return nil
+}
+
+func moveScreenshot(shotPath string, outputPath string) error {
 	if err := os.Rename(shotPath, outputPath); err != nil {
 		return fmt.Errorf("rename screenshot: %w", err)
 	}
 	return nil
+}
+
+func buildFFmpegScreenshotArgs(second int, outputPath string, videoPath string) []string {
+	return []string{
+		"-nostdin",
+		"-hide_banner",
+		"-loglevel", "error",
+		"-y",
+		"-ss", strconv.Itoa(second),
+		"-i", videoPath,
+		"-map", "0:v:0",
+		"-frames:v", "1",
+		"-q:v", "2",
+		outputPath,
+	}
+}
+
+func buildMPVScreenshotArgs(second int, tempDir string, videoPath string) []string {
+	return []string{
+		"--no-config",
+		"--really-quiet",
+		"--msg-level=all=error",
+		"--ao=null",
+		"--hr-seek=yes",
+		"--start=" + strconv.Itoa(second),
+		"--frames=1",
+		"--vo=image",
+		"--vo-image-format=jpg",
+		"--vo-image-outdir=" + tempDir,
+		videoPath,
+	}
 }
 
 func resolveVideoPath(video *models.Video) (string, error) {
