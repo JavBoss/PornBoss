@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { zh } from '@/utils/i18n'
 
-export default function Toast({ open, message, onClose, duration = 6000 }) {
+export default function Toast({ open, message, onClose, duration = 10000 }) {
   useEffect(() => {
     if (!open || !message) return
     const timer = window.setTimeout(() => {
@@ -13,7 +13,7 @@ export default function Toast({ open, message, onClose, duration = 6000 }) {
   if (!open || !message) return null
 
   return (
-    <div className="pointer-events-none fixed right-4 top-20 z-[80] max-w-md">
+    <div className="pointer-events-none fixed bottom-4 right-4 z-[80] w-[calc(100vw-2rem)] max-w-md">
       <div className="pointer-events-auto rounded-lg border border-emerald-200 bg-white/95 px-4 py-3 shadow-xl backdrop-blur">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />

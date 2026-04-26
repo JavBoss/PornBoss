@@ -23,6 +23,14 @@ const SETTINGS_SECTIONS = [
   },
 ]
 
+const PLAYER_BASIC_DEFAULTS = {
+  windowWidth: 70,
+  windowHeight: 70,
+  windowUseAutofit: false,
+  ontop: true,
+  volume: 70,
+}
+
 export default function GlobalSettingsModal({
   open,
   onClose,
@@ -59,6 +67,16 @@ export default function GlobalSettingsModal({
 
   const normalizedPlayerHotkeys = parsePlayerHotkeys(playerHotkeys)
 
+  const resetPlayerBasicInputs = () => {
+    setPlayerWindowWidthInput(String(PLAYER_BASIC_DEFAULTS.windowWidth))
+    setPlayerWindowHeightInput(String(PLAYER_BASIC_DEFAULTS.windowHeight))
+    setPlayerWindowUseAutofitInput(PLAYER_BASIC_DEFAULTS.windowUseAutofit)
+    setPlayerOntopInput(PLAYER_BASIC_DEFAULTS.ontop)
+    setPlayerVolumeInput(String(PLAYER_BASIC_DEFAULTS.volume))
+    setPlayerBasicError('')
+    setPlayerBasicSuccess('')
+  }
+
   useEffect(() => {
     if (open) {
       setProxyInput(proxyPort ? String(proxyPort) : '')
@@ -68,11 +86,13 @@ export default function GlobalSettingsModal({
       setPlayerTab('basic')
       setPlayerBasicError('')
       setPlayerBasicSuccess('')
-      setPlayerWindowWidthInput(String(playerWindowWidth ?? 70))
-      setPlayerWindowHeightInput(String(playerWindowHeight ?? 70))
-      setPlayerWindowUseAutofitInput(playerWindowUseAutofit ?? false)
-      setPlayerOntopInput(playerOntop ?? true)
-      setPlayerVolumeInput(String(playerVolume ?? 70))
+      setPlayerWindowWidthInput(String(playerWindowWidth ?? PLAYER_BASIC_DEFAULTS.windowWidth))
+      setPlayerWindowHeightInput(String(playerWindowHeight ?? PLAYER_BASIC_DEFAULTS.windowHeight))
+      setPlayerWindowUseAutofitInput(
+        playerWindowUseAutofit ?? PLAYER_BASIC_DEFAULTS.windowUseAutofit
+      )
+      setPlayerOntopInput(playerOntop ?? PLAYER_BASIC_DEFAULTS.ontop)
+      setPlayerVolumeInput(String(playerVolume ?? PLAYER_BASIC_DEFAULTS.volume))
     }
   }, [
     open,
@@ -371,7 +391,15 @@ export default function GlobalSettingsModal({
               <div className="mt-3 text-sm text-emerald-600">{playerBasicSuccess}</div>
             )}
 
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={resetPlayerBasicInputs}
+                disabled={savingPlayerBasic}
+                className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
+              >
+                {zh('恢复默认', 'Restore Defaults')}
+              </button>
               <button
                 type="button"
                 onClick={async () => {
