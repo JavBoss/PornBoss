@@ -1,6 +1,6 @@
 <h1 align="center">Pornboss</h1>
 
-<p align="center">面向本地成人视频收藏的一站式解决方案，支持普通视频与日本 JAV 的整理、浏览与检索。</p>
+<p align="center">面向本地成人视频收藏的一站式媒体库：自动识别 JAV、抓取元数据、管理目录与标签，并通过内置 mpv 快速播放。</p>
 
 <p align="center">
   <a href="https://github.com/JavBoss/pornboss/releases"><img alt="Release" src="https://img.shields.io/github/v/release/JavBoss/pornboss?display_name=tag"></a>
@@ -15,51 +15,57 @@
 
 ## Keywords
 
-porn manager, jav manager, av manager, jav scraper, jav metadata, adult video manager, pornhub, jav library, javbus, 91, 日本av 
+porn manager, jav manager, av manager, jav scraper, jav metadata, adult video manager, pornhub, jav library, javbus, 91, 日本av
 
-## Why pornboss?
+## Pornboss 是什么？
 
-**如果你也有以下困扰，那么pornboss将是你的完美选择**：
+Pornboss 是一个本地媒体库管理工具，适合管理大量本地成人视频、JAV、短视频、合集与移动硬盘资源。它不会修改你的视频目录内容，而是把扫描索引、标签、封面、缩略图和元数据统一保存在项目的 `data/` 目录中。
 
-- 我是个仓鼠症患者，下了一大堆片，很多都来不及观看，也不知道怎么整理。
-- 我希望能向浏览javbus，javlibrary那样浏览我本地的jav（标签、封面、标题、演员）。
-- 目前已有的本地jav搜刮整理方案都太复杂，不仅会修改目录内容，还要折腾各种第三方工具，让人身心俱疲。
-- 我还有很多91的国产小视频，我希望给它们批量打上不同的标签，想看哪个合集就可以直接搜寻。
-- 我希望视频播放更加快捷，点击立刻播放，而不是打开一个很重的本地播放器。
-- 我希望有视频随机选取、展示功能。这样那些很久之前下载的被遗忘的视频也有机会能再次看到。
+如果你希望像浏览 JavBus / JavLibrary 一样浏览自己的本地收藏，又不想手动改文件、整理 NFO、配置一堆工具，Pornboss 会把这些流程集中到一个简单的 Web UI 里。
 
 ## 核心功能
 
-- **开箱即用**
-  不需要折腾任何复杂第三方工具，启动后添加目录就能开始扫描和整理，自动识别本地代理端口，小白也能轻松上手。
+### 1. JAV 自动识别与元数据抓取
 
-- **智能目录内容管理**
-  支持多个资源目录，任何对目录内容的修改都会自动同步（新增、删除、移动文件），实时更新媒体库状态。绝对不会主动修改你目录里的任何内容，所有的相关数据维护在pornboss自己的目录中。
+Pornboss 会从文件名中自动提取番号，例如 `IPX-633`、`SSIS-001`、`ipx633_ch` 等常见格式，并将识别出的影片归入 JAV 媒体库。
 
-- **简单易操作**
-  界面操作符合直觉，功能简洁但不简陋，没有各种冗余信息，追求快速定位视频和播放，
+- 自动抓取作品标题、发行时间、封面、演员、标签等 JAV 信息。
+- 自动补全女优资料，支持按女优聚合浏览本地作品。
+- 支持按番号、标题、女优、标签、时长、发行时间、播放次数等条件筛选和排序。
+- 普通视频和 JAV 分开管理，自拍、短视频、合集、无码片段不会和番号作品混在一起。
 
-- **自动识别番号抓取元数据**
-  从文件名提取 `IPX-633`、`SSIS-001`、`ipx633_ch` 这类常见格式，自动识别 JAV 作品，抓取元数据补全标题、发行时间、演员信息、作品标签，并自动下载封面。
+### 2. 智能目录管理与可迁移数据
 
-- **女优视角浏览**
-  不只按作品看，还可以按女优聚合浏览，快速进入某位女优的全部作品。女优信息也会自动抓取，支持多种方式排序（身高、年龄、三围等）
+添加本地视频目录后，Pornboss 会在后台持续同步目录内容。目录变化会被持续感知并及时刷新，新增、删除、移动文件都会自动反映到媒体库中，已经入库的视频可以立即浏览，扫描和资料补全会逐步完成。
 
-- **普通视频与 JAV 分开管理**
-  自拍、合集、无码片段、短视频可以走普通视频库；番号片则进入 JAV 库，结构更清晰。
+- 支持多个资源目录，适合本机硬盘、NAS 挂载目录、移动硬盘等场景。
+- 目录不可用时不会删除历史索引，移动硬盘重新接入后数据会恢复显示。
+- 标签、JAV 关联和视频指纹绑定，常见的视频移动、改名场景不用重新打标签。
+- 数据库、封面、缩略图等运行数据集中保存在 `data/`，升级或迁移时复制 `data/` 目录即可。
 
-- **截图缩略图 + 可自定义快捷键的站内播放器**
-  自动生成视频截图，浏览更高效；支持在页面里直接播放，也可以一键打开原文件或所在目录。站内播放器支持自定义快捷键，解放你的双手。
+### 3. 内置 mpv 播放器
 
-- **标签、搜索、随机、排序**
-  支持批量打标签、批量替换标签、按标签筛选查询。支持按标签、番号、标题、女优、播放次数等多种方式筛选，并支持随机浏览和多种排序。
+Pornboss 集成 mpv 播放能力，点击视频即可调用轻量、高性能的本地播放器，适合播放大文件、高码率和各种常见视频格式。
 
+- 通过 mpv 播放原始本地文件，避免浏览器格式兼容性限制。
+- 支持默认音量、窗口尺寸、置顶等播放配置。
+- 支持自定义快捷键，例如快进、快退、音量调整等。
+- 保留浏览器内预览能力，并支持打开原文件或定位到所在目录。
+
+### 4. 简单易用的 UI
+
+前端界面围绕“快速找到想看的视频”设计，不堆复杂设置，把常用操作放在筛选、排序、标签和随机浏览上。
+
+- 支持普通视频库、JAV 作品库、女优视角浏览。
+- 支持搜索、标签筛选、多选批量打标签、批量替换标签。
+- 支持随机浏览，让很久没看的旧视频重新浮现。
+- 支持按最近加入、文件名、时长、发行时间、播放次数等维度排序。
 
 ## 快速上手
 
 ### 1. 下载
 
-前往仓库的  [Releases](https://github.com/JavBoss/pornboss/releases)  页面，下载适合你系统的版本并解压：
+前往 [Releases](https://github.com/JavBoss/pornboss/releases) 页面，下载适合你系统的版本并解压：
 
 - `windows-x86_64`
 - `linux-x86_64`
@@ -68,91 +74,115 @@ porn manager, jav manager, av manager, jav scraper, jav metadata, adult video ma
 
 ### 2. 启动程序
 
-- Windows：双击 `pornboss.exe`。
-首次运行可能会被smartScreen阻止，点击更多信息->仍要运行。
-- macOS：双击 `pornboss.command`。
-如果提示`Apple无法验证“pornboss.command”是否包含可能危害Mac安全或泄漏隐私的恶意软件`，打开`系统设置`，选择`隐私与安全性`，滑到最底部，点击`仍要打开`。
+- Windows：双击 `pornboss.exe`。首次运行可能会被 SmartScreen 阻止，点击“更多信息” -> “仍要运行”。
+- macOS：双击 `pornboss.command`。如果提示无法验证，打开“系统设置” -> “隐私与安全性”，滑到最底部点击“仍要打开”。
 <p align="center">
   <img src="screenshot/macos1.png" style="width: 100%; height: auto;">
 </p>
 
 - Linux：打开终端运行 `pornboss`。
-</br>
 
-启动成功后，程序会自动尝试打开浏览器；如果没有自动打开，可以手动访问终端里显示的本地地址，运行过程中请不要关闭终端窗口。
+启动成功后，程序会自动尝试打开浏览器。如果没有自动打开，可以手动访问终端里显示的本地地址。运行过程中请不要关闭终端窗口。
 
-### 3. 添加你的资源目录
+### 3. 添加资源目录
 
-进入“全局设置” -> “目录管理”，把存放视频的本地文件夹加进去。扫描过程在后台静默进行，已经入库的视频可以立刻开始用，无需等待扫描彻底完成。
+进入“全局设置” -> “目录管理”，添加存放视频的本地文件夹。扫描任务会在后台运行，已入库的视频可以直接使用，不需要等待全部扫描完成。
 
 ### 4. 开始使用
 
-- 在视频模式里管理普通成人视频
-- 在 JAV 模式里按番号、作品、女优浏览
-- 给常看内容打上“收藏”“中文字幕”“无码”“必看”等自定义标签
-- 用搜索、随机和排序快速找到想看的内容
+- 在“视频”模式管理普通成人视频、短视频和合集。
+- 在“JAV”模式按番号、作品、标签和女优浏览。
+- 给常看内容打上“收藏”“中文字幕”“无码”“必看”等自定义标签。
+- 使用搜索、筛选、排序和随机浏览快速定位内容。
 
 ## 部分截图
 
 <p align="center">
-  <img src="screenshot/image1.png" style="width: 100%; height: auto;">
+  <img src="screenshot/image1_1.png" style="width: 100%; height: auto;">
 </p>
 
 <p align="center">
-  <img src="screenshot/image2.png" style="width: 100%; height: auto;">
+  <img src="screenshot/image1_2.png" style="width: 100%; height: auto;">
 </p>
 
 <p align="center">
-  <img src="screenshot/image3.png" style="width: 100%; height: auto;">
+  <img src="screenshot/image1_3.png" style="width: 100%; height: auto;">
 </p>
 
 <p align="center">
-  <img src="screenshot/image4.png" style="width: 100%; height: auto;">
+  <img src="screenshot/image1_4.png" style="width: 100%; height: auto;">
 </p>
 
 <p align="center">
-  <img src="screenshot/image5.png" style="width: 100%; height: auto;">
+  <img src="screenshot/image1_5.png" style="width: 100%; height: auto;">
 </p>
 
 <p align="center">
-  <img src="screenshot/image6.png" style="width: 100%; height: auto;">
+  <img src="screenshot/image1_6.png" style="width: 100%; height: auto;">
 </p>
 
 <p align="center">
-  <img src="screenshot/image7.png" style="width: 100%; height: auto;">
+  <img src="screenshot/image1_7.png" style="width: 100%; height: auto;">
 </p>
 
 <p align="center">
-  <img src="screenshot/image8.png" style="width: 100%; height: auto;">
+  <img src="screenshot/image1_8.png" style="width: 100%; height: auto;">
+</p>
+
+<p align="center">
+  <img src="screenshot/image1_9.png" style="width: 100%; height: auto;">
 </p>
 
 ## 如何升级版本
 
-下载解压新版本之后，复制当前版本的data目录到新版本目录下即可（请注意数据备份，不建议直接剪切过去，可以选择平稳运行新版本一段时间之后再将旧版本目录删除，以防新版本有严重bug导致数据丢失）
+下载并解压新版本后，把旧版本目录中的 `data/` 复制到新版本目录即可。建议先保留旧版本和旧数据备份，确认新版本稳定运行后再清理旧目录。
 
 ## 注意事项
 
-- 这是本地媒体库管理工具，不是在线视频站。
+- Pornboss 是本地媒体库管理工具，不是在线视频站。
 - JAV 元数据、封面和女优资料依赖外部站点可访问性，中国大陆地区请自备梯子。
-- 首次导入大库时，扫描、封面抓取、资料补全需要一些时间。
+- 首次导入大库时，扫描、封面抓取、资料补全和缩略图生成需要一些时间。
+- Pornboss 不会主动修改你的视频文件和目录结构，索引与扩展数据保存在 `data/`。
 
 ## Q&A
 
-- Q: 首次添加目录后，怎么知道扫描完成了，是否要一直等待？
-- A: Pornboss的扫描是定期在后台自动持续进行的，添加目录后可以直接开始使用，信息会逐渐补全。你可以随时关闭应用程序，下次启动后扫描会自动重启。
-</br>
+- Q: 为什么要做本地web应用而不做桌面端应用？
+- A: 这不是技术问题，纯粹是从用户体验角度出发。比如说以下场景都是浏览器的独有优势：
+  1. 想同时查看 女优A、女优B的jav，并检索包含关键词C的视频，只要打开多个浏览器标签即可。
+  2. 在当前页面想点击查看一个新页面内容，又不想丢失当前页，直接ctrl+鼠标左键或者右键点击选择在新页面中打开。
+  3. 不小心点错了，想回到上一页的内容，直接点击浏览器回退按钮。
+  4. 看到一个Jav或者女优，想检索一下相关信息，直接鼠标拖动选中文本，右键选择在Google中检索。
 
-- Q: 我有新下载的视频想入库，或者想移除一些不想看的视频，要怎么做？
-- A: 只需要把视频移动进被管理的文件目录，或者从将视频从文件目录移除即可，pornboss会定期全量同步目录里的最新内容。总之你可以放心的随意整理目录，包括移动、新增、删除视频，不用担心数据丢失。
-</br>
 
-- Q: 我的视频文件夹放在移动硬盘里，扫描完成之后，下次启动pornboss时没有插移动硬盘，会导致移动硬盘里的视频索引数据丢失吗？
-- A: 不会丢失，pornboss启动时会检查所有目录是否存在，并且已经入库的数据会长期存储，只要再次插入移动硬盘数据就会恢复。
-</br>
+<br>
 
-- Q: 我想移动一个被管理的目录要怎么做？
-- A: 直接移动，然后在目录管理里面修改目录地址。
+- Q: 添加目录后，怎么知道扫描完成了？需要一直等待吗？
+- A: 不需要。Pornboss 会在后台持续扫描和补全信息，添加目录后可以直接开始使用。你也可以随时关闭应用，下次启动后扫描会继续。
 
+<br>
+
+- Q: 添加目录后，为什么我的jav视频出现在了普通视频模式中？
+- A: 这是正常现象，jav元数据抓取相比于视频扫描有一定的延迟，所以jav视频也会被先当作普通视屏，只要你的外网访问通畅，稍等片刻此视频就会在普通模式中消失并出现在jav模式中。
+
+<br>
+
+- Q: 新下载的视频怎么入库？想删除一些视频怎么办？
+- A: 直接把视频移动进或移出被管理的目录即可。Pornboss 会同步目录状态，新增、移动、删除都会反映到媒体库。
+
+<br>
+
+- Q: 视频文件夹在移动硬盘里，没插硬盘时启动会丢数据吗？
+- A: 不会。目录不可用时，Pornboss 会保留已入库数据；移动硬盘再次接入后，数据会恢复显示。
+
+<br>
+
+- Q: 某个移动硬盘不够大了，文件夹要移动到新的硬盘里怎么办？
+- A: 直接移动文件夹，然后在“目录管理”里更新目录路径，不用担心数据丢失，pornboss会处理好这一切。
+
+<br>
+
+- Q: 换电脑时怎么迁移？
+- A: 同系统迁移直接复制整个pronboss目录到新电脑即可运行。跨系统迁移在新电脑下载对应系统的pornboss，然后将旧电脑的`data/`目录复制到新电脑的pornboss目录下即可。（注意如果视频目录也发生了变化，你还需要手动在目录管理中进行调整）
 
 ## 开发者说明
 
@@ -167,6 +197,7 @@ porn manager, jav manager, av manager, jav scraper, jav metadata, adult video ma
 - Frontend: React + Vite + Tailwind + Zustand
 - 媒体探测: `ffprobe`
 - 截图生成: macOS 使用 `ffmpeg`，其他平台使用 `mpv`
+- 播放: `mpv`
 
 ### 常用命令
 
@@ -195,8 +226,7 @@ npm install
 ./scripts/cli.sh dev frontend
 ```
 
-
-前端检查
+前端检查：
 
 ```bash
 cd web
@@ -204,7 +234,7 @@ npm run lint
 npm run build
 ```
 
-打包发布
+打包发布：
 
 ```bash
 scripts/cli.sh release linux-x86_64 v0.1.0
@@ -214,14 +244,17 @@ scripts/cli.sh release linux-x86_64 v0.1.0
 
 ```text
 cmd/server             Go 服务入口
-internal/db            数据库读写与查询
-internal/service       目录扫描、JAV 识别、女优资料补全
-internal/server        HTTP API
-internal/manager       封面下载、截图生成
-internal/jav           JAV 元数据抓取
-web/                   React 前端
-scripts/cli            开发/发布辅助 CLI
-data/                  运行期数据库与缓存
+cmd/javprovider        JAV 元数据 provider 调试入口
+internal/common        全局状态与共享配置
+internal/db            GORM 模型查询与 SQLite 存储
+internal/jav           JAV 元数据与女优资料抓取
+internal/manager       封面下载与截图任务
+internal/models        数据模型定义
+internal/mpv           mpv 播放与快捷键配置
+internal/server        HTTP API 与静态资源路由
+internal/service       目录扫描、JAV 识别、资料补全
+internal/util          文件、系统、代理、视频探测等工具
+web/                   React + Tailwind 前端
+scripts/cli            开发、依赖下载与发布辅助 CLI
+data/                  运行期数据库、封面、缩略图与缓存
 ```
-
-</details>

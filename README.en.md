@@ -1,6 +1,6 @@
 <h1 align="center">Pornboss</h1>
 
-<p align="center">An all-in-one solution for managing a local adult video collection, with support for organizing, browsing, and searching both general videos and Japanese JAV libraries.</p>
+<p align="center">An all-in-one local adult media library: detect JAV codes, fetch metadata, manage folders and tags, and play videos quickly through the bundled mpv integration.</p>
 
 <p align="center">
   <a href="https://github.com/JavBoss/pornboss/releases"><img alt="Release" src="https://img.shields.io/github/v/release/JavBoss/pornboss?display_name=tag"></a>
@@ -17,42 +17,49 @@
 
 porn manager, jav manager, av manager, jav scraper, jav metadata, adult video manager, pornhub, jav library, javbus, 91, Japanese AV
 
-## Why Pornboss?
+## What Is Pornboss?
 
-**Pornboss is built for people dealing with problems like these**:
+Pornboss is a local media library manager for large collections of adult videos, JAV titles, short clips, compilations, and removable-drive libraries. It does not modify your video folders. Instead, scan indexes, tags, covers, thumbnails, and metadata are stored inside the project's `data/` directory.
 
-- I hoard too many videos, do not have time to watch them all, and have no good way to organize them.
-- I want to browse my local JAV library the same way I browse sites like JavBus or JavLibrary, with covers, titles, actresses, and tags.
-- Existing local JAV scraping workflows are too complicated, often touch the contents of my folders, and still require too many third-party tools.
-- I also keep a lot of short local videos and want to tag them in batches and browse them by collection.
-- I want instant playback instead of opening a heavy local media player every time.
-- I want random discovery so older forgotten videos can surface again.
+If you want to browse your local collection like JavBus or JavLibrary, without manually editing files, maintaining NFO files, or wiring together multiple tools, Pornboss brings the workflow into a simple Web UI.
 
 ## Core Features
 
-- **Ready to use**
-  Add your media directories after launch and Pornboss starts scanning and organizing immediately. It can auto-detect a local proxy port, so setup stays simple.
+### 1. Automatic JAV Code Detection And Metadata Fetching
 
-- **Smart directory content management**
-  Supports multiple media directories and automatically syncs any changes to their contents, including new files, deletions, and moves. Pornboss never modifies anything inside your folders. All library data is maintained inside Pornboss's own data directory.
+Pornboss extracts JAV codes from filenames, including common patterns such as `IPX-633`, `SSIS-001`, and `ipx633_ch`, then places recognized videos into the JAV library.
 
-- **Simple and intuitive**
-  The interface is designed to stay straightforward and focused, without clutter or redundant information, so finding and playing videos stays fast.
+- Automatically fetches JAV title, release date, cover art, actresses, tags, and other metadata.
+- Automatically completes actress profiles and supports actress-centric browsing.
+- Supports filtering and sorting by code, title, actress, tag, duration, release date, play count, and more.
+- Keeps general videos and JAV titles separate, so homemade clips, short videos, compilations, and uncensored fragments do not get mixed with coded JAV titles.
 
-- **Actress-centric browsing**
-  Browse not only by title, but also by actress, and jump directly into one actress's full library. Actress profiles are fetched automatically and can be sorted in multiple ways, including height, age, and measurements.
+### 2. Smart Folder Management And Portable Data
 
-- **Automatic code detection and metadata fetching**
-  Extracts common JAV identifiers from filenames such as `IPX-633`, `SSIS-001`, and `ipx633_ch`, then fetches the title, release date, actress info, tags, and cover art automatically.
+After you add local media folders, Pornboss continuously syncs their contents in the background. Folder changes are detected and refreshed promptly, so newly added, removed, or moved files are reflected in the media library. Indexed videos can be browsed immediately while scanning and metadata completion continue in the background.
 
-- **Separate management for general videos and JAV**
-  Homemade clips, compilations, uncensored fragments, and short videos can stay in the regular library, while coded JAV titles go into the JAV library.
+- Supports multiple media folders, including local disks, NAS mounts, and removable drives.
+- Keeps historical index data when a folder is temporarily unavailable, so removable-drive libraries reappear after the drive is connected again.
+- Binds tags, JAV associations, and metadata to video fingerprints, so common move and rename workflows do not require retagging.
+- Stores the database, covers, thumbnails, and runtime data under `data/`; copy this directory to upgrade or migrate.
 
-- **Screenshot thumbnails and an in-site player with customizable hotkeys**
-  Generates preview screenshots for faster browsing, supports direct playback in the browser, and lets you open the original file or containing folder with one click.
+### 3. Built-In mpv Playback
 
-- **Tags, search, random, and sorting**
-  Supports batch tagging, bulk tag replacement, and tag-based filtering. You can filter by tags, code, title, actress, play count, and more, with random browsing and multiple sorting options.
+Pornboss integrates mpv playback, so clicking a video can launch a lightweight, high-performance local player that handles large files, high bitrates, and many common video formats.
+
+- Plays the original local file through mpv, avoiding browser playback format limitations.
+- Supports playback options such as default volume, window size, and always-on-top behavior.
+- Supports custom hotkeys for actions such as seeking and volume adjustment.
+- Keeps browser preview support, plus one-click actions to open the original file or reveal its containing folder.
+
+### 4. Simple, Practical UI
+
+The frontend is designed around finding the right video quickly. Common operations are centered on filtering, sorting, tagging, and random discovery instead of dense configuration screens.
+
+- Supports a general video library, a JAV title library, and actress-centric browsing.
+- Supports search, tag filters, multi-select batch tagging, and bulk tag replacement.
+- Supports random browsing so older forgotten videos can surface again.
+- Supports sorting by recently added, filename, duration, release date, play count, and more.
 
 ## Quick Start
 
@@ -65,71 +72,112 @@ Go to the [Releases](https://github.com/JavBoss/pornboss/releases) page, downloa
 - `macos-x86_64`
 - `macos-arm64`
 
-### 2. Start the App
+### 2. Start The App
 
-- Windows: double-click `pornboss.exe`.
-If SmartScreen blocks it on first launch, click "More info" and continue.
-- macOS: double-click `pornboss.command`.
-If macOS says it cannot verify whether `pornboss.command` contains malware that may harm your Mac or compromise your privacy, open `System Settings`, go to `Privacy & Security`, scroll to the bottom, click `Open Anyway`.
+- Windows: double-click `pornboss.exe`. If SmartScreen blocks it on first launch, click "More info" and continue.
+- macOS: double-click `pornboss.command`. If macOS cannot verify the file, open `System Settings` -> `Privacy & Security`, scroll to the bottom, and click `Open Anyway`.
 - Linux: open a terminal and run `pornboss`.
 
-After launch, Pornboss will try to open your browser automatically. If it does not, open the local address shown in the terminal manually, and do not close the terminal window while Pornboss is running.
+After launch, Pornboss will try to open your browser automatically. If it does not, open the local address shown in the terminal manually. Keep the terminal window open while Pornboss is running.
 
-### 3. Add Your Media Directories
+### 3. Add Your Media Folders
 
-Open `Global Settings` -> `Directory Management`, then add the local folders that store your videos. Scanning runs quietly in the background, and videos that are already indexed are available immediately.
+Open `Global Settings` -> `Directory Management`, then add the local folders that store your videos. Scanning runs in the background, and indexed videos are available immediately without waiting for the full scan to finish.
 
 ### 4. Start Using It
 
-- Manage general adult videos in video mode
-- Browse JAV titles by code, work, or actress in JAV mode
-- Add custom tags such as `favorite`, `subtitled`, `uncensored`, or `must-watch`
-- Use search, random browsing, and sorting to find what you want quickly
+- Manage general adult videos, short clips, and compilations in `Video` mode.
+- Browse JAV titles by code, title, tag, and actress in `JAV` mode.
+- Add custom tags such as `favorite`, `subtitled`, `uncensored`, or `must-watch`.
+- Use search, filters, sorting, and random browsing to find content quickly.
 
 ## Screenshots
 
 <p align="center">
-  <img src="screenshot/en/image1.png" style="width: 100%; height: auto;">
+  <img src="screenshot/en/image1_1.png" style="width: 100%; height: auto;">
 </p>
 
 <p align="center">
-  <img src="screenshot/en/image2.png" style="width: 100%; height: auto;">
+  <img src="screenshot/en/image1_2.png" style="width: 100%; height: auto;">
 </p>
 
 <p align="center">
-  <img src="screenshot/en/image3.png" style="width: 100%; height: auto;">
+  <img src="screenshot/en/image1_3.png" style="width: 100%; height: auto;">
 </p>
 
 <p align="center">
-  <img src="screenshot/en/image4.png" style="width: 100%; height: auto;">
+  <img src="screenshot/en/image1_4.png" style="width: 100%; height: auto;">
 </p>
 
-## How to Upgrade
+<p align="center">
+  <img src="screenshot/en/image1_5.png" style="width: 100%; height: auto;">
+</p>
 
-After downloading and extracting a new version, copy the current `data` directory into the new version directory. Keep a backup of your data. Do not move the old directory immediately; it is safer to keep the old version around for a while in case the new version has a serious bug.
+<p align="center">
+  <img src="screenshot/en/image1_6.png" style="width: 100%; height: auto;">
+</p>
+
+<p align="center">
+  <img src="screenshot/en/image1_7.png" style="width: 100%; height: auto;">
+</p>
+
+<p align="center">
+  <img src="screenshot/en/image1_8.png" style="width: 100%; height: auto;">
+</p>
+
+<p align="center">
+  <img src="screenshot/en/image1_9.png" style="width: 100%; height: auto;">
+</p>
+
+## How To Upgrade Versions
+
+After downloading and extracting a new version, copy the old version's `data/` directory into the new version directory. Keep the old version and a data backup until you confirm the new version runs correctly.
 
 ## Notes
 
 - Pornboss is a local media library manager, not an online streaming site.
-- JAV metadata, cover art, and actress information depend on the availability of external websites.
-- When importing a large library for the first time, scanning, cover downloads, and metadata completion will take some time.
+- JAV metadata, cover art, and actress information depend on external website availability. If access is restricted in your region, prepare a working network/proxy environment yourself.
+- When importing a large library for the first time, scanning, cover downloads, metadata completion, and thumbnail generation can take some time.
+- Pornboss does not modify your video files or folder structure. Indexes and extended data are stored under `data/`.
 
 ## Q&A
 
-- Q: After adding a directory for the first time, how do I know when scanning is finished? Do I need to wait?
-- A: Pornboss keeps scanning in the background on a schedule, so you can start using it right after adding a directory and metadata will fill in gradually. You can close the app at any time. Scanning will resume automatically the next time you start it.
-</br>
+- Q: Why is Pornboss a local web app instead of a desktop app?
+- A: This is not a technical limitation. It is mainly a user experience choice. For example, browsers have several unique advantages:
+  1. If you want to view JAV titles from actress A and actress B while searching for videos containing keyword C, you can simply open multiple browser tabs.
+  2. If you want to open a new page without losing the current page, use Ctrl + click or right-click and choose to open it in a new tab.
+  3. If you click the wrong thing, the browser back button takes you back immediately.
+  4. If you see a JAV title or actress name and want to search for it, select the text, right-click, and search it with Google.
 
-- Q: I downloaded new videos and want them added to the library, or I want to remove videos I no longer want. What should I do?
-- A: Just move videos into or out of a managed directory. Pornboss periodically resyncs the full directory state, so you can safely add, move, or delete files without worrying about losing library data.
-</br>
+<br>
 
-- Q: My video folder is on an external drive. If I launch Pornboss without that drive connected, will the index data be lost?
-- A: No. Pornboss checks whether each directory exists at startup, and indexed data is stored persistently. Once the drive is connected again, the data will show up normally.
-</br>
+- Q: After adding a folder, how do I know when scanning is finished? Do I need to wait?
+- A: No. Pornboss scans and completes metadata in the background, so you can start using it right after adding a folder. You can also close the app at any time; scanning will continue the next time it starts.
 
-- Q: How do I move a managed directory?
-- A: Move it directly, then update the directory path in directory management.
+<br>
+
+- Q: After adding a folder, why do my JAV videos appear in regular video mode?
+- A: This is expected. JAV metadata fetching has some delay compared with video scanning, so JAV videos may first appear as regular videos. If external network access is working, wait a moment and they will disappear from regular video mode and appear in JAV mode.
+
+<br>
+
+- Q: How do I add newly downloaded videos or remove videos I no longer want?
+- A: Move videos into or out of a managed folder. Pornboss syncs folder state, so additions, moves, and removals are reflected in the library.
+
+<br>
+
+- Q: My video folder is on a removable drive. Will data be lost if I start Pornboss without the drive connected?
+- A: No. When a folder is unavailable, Pornboss keeps the indexed data. The library will reappear after the drive is connected again.
+
+<br>
+
+- Q: One removable drive is running out of space. What should I do if I need to move the folder to a new drive?
+- A: Move the folder directly, then update its path in `Directory Management`. You do not need to worry about data loss; Pornboss will handle it.
+
+<br>
+
+- Q: How do I migrate to another computer?
+- A: For the same operating system, copy the entire Pornboss directory to the new computer and run it directly. For cross-platform migration, download the matching Pornboss package on the new computer, then copy the old computer's `data/` directory into the new Pornboss directory. If your video folder paths also changed, update them manually in `Directory Management`.
 
 ## Developer Notes
 
@@ -144,6 +192,7 @@ After downloading and extracting a new version, copy the current `data` director
 - Frontend: React + Vite + Tailwind + Zustand
 - Media probing: `ffprobe`
 - Screenshot generation: `ffmpeg` on macOS, `mpv` on other platforms
+- Playback: `mpv`
 
 ### Common Commands
 
@@ -190,14 +239,17 @@ scripts/cli.sh release linux-x86_64 v0.1.0
 
 ```text
 cmd/server             Go server entrypoint
-internal/db            Database reads and queries
-internal/service       Directory scanning, JAV detection, actress info completion
-internal/server        HTTP API
-internal/manager       Cover downloads and screenshot generation
-internal/jav           JAV metadata fetching
-web/                   React frontend
-scripts/cli            Development and release helper CLI
-data/                  Runtime database and cache
+cmd/javprovider        JAV metadata provider debug entrypoint
+internal/common        Shared global state and configuration
+internal/db            GORM queries and SQLite storage
+internal/jav           JAV metadata and actress profile fetching
+internal/manager       Cover download and screenshot jobs
+internal/models        Data model definitions
+internal/mpv           mpv playback and hotkey configuration
+internal/server        HTTP API and static asset routing
+internal/service       Folder scanning, JAV detection, metadata completion
+internal/util          File, system, proxy, and video probing utilities
+web/                   React + Tailwind frontend
+scripts/cli            Development, dependency download, and release helper CLI
+data/                  Runtime database, covers, thumbnails, and cache
 ```
-
-</details>
