@@ -204,7 +204,14 @@ async function isBundledFfmpegReady(choice) {
 }
 
 async function isBundledMpvReady(choice) {
-  return exists(binMpvPath(choice));
+  if (!(await exists(binMpvPath(choice)))) return false;
+  if (choice.goos === "linux") {
+    return (
+      (await exists(path.join(binMpvDir(choice), "bin", "mpv-bin"))) &&
+      (await exists(path.join(binMpvDir(choice), "lib", "ld-linux-x86-64.so.2")))
+    );
+  }
+  return true;
 }
 
 function runCommand(cmd, args, options = {}) {
@@ -216,6 +223,28 @@ function runCommand(cmd, args, options = {}) {
         resolve();
       } else {
         reject(new Error(`${cmd} exited with code ${code}`));
+      }
+    });
+  });
+}
+
+function runCommandCapture(cmd, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"], ...options });
+    let stdout = "";
+    let stderr = "";
+    child.stdout?.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.stderr?.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve({ stdout, stderr });
+      } else {
+        reject(new Error(`${cmd} exited with code ${code}: ${stderr || stdout}`));
       }
     });
   });
@@ -687,6 +716,176 @@ async function findDirectory(dir, dirname) {
   return null;
 }
 
+async function indexLibraryFiles(dir, index = new Map()) {
+  let entries;
+  try {
+    entries = await fsp.readdir(dir, { withFileTypes: true });
+  } catch {
+    return index;
+  }
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      await indexLibraryFiles(fullPath, index);
+      continue;
+    }
+    if ((entry.isFile() || entry.isSymbolicLink()) && !index.has(entry.name)) {
+      index.set(entry.name, fullPath);
+    }
+  }
+  return index;
+}
+
+async function readElfNeeded(filePath) {
+  const { stdout } = await runCommandCapture("readelf", ["-d", filePath]);
+  return Array.from(stdout.matchAll(/Shared library: \[([^\]]+)\]/g), (match) => match[1]);
+}
+
+async function rewriteAbsoluteNeeded(binaryPath, neededPath) {
+  if (!path.isAbsolute(neededPath)) return;
+
+  const replacementName = path.basename(neededPath);
+  const needle = Buffer.from(`${neededPath}\0`);
+  if (Buffer.byteLength(replacementName) + 1 > needle.length) {
+    throw new Error(`[mpv] 无法重写绝对依赖路径：${neededPath}`);
+  }
+
+  const replacement = Buffer.alloc(needle.length);
+  replacement.write(`${replacementName}\0`);
+  const content = await fsp.readFile(binaryPath);
+  let offset = content.indexOf(needle);
+  if (offset < 0) return;
+  while (offset >= 0) {
+    replacement.copy(content, offset);
+    offset = content.indexOf(needle, offset + needle.length);
+  }
+  await fsp.writeFile(binaryPath, content);
+}
+
+async function copyLinuxMpvDependency({ libraryRoot, libraryIndex, destLibDir, needed }) {
+  const filename = path.basename(needed);
+  const dest = path.join(destLibDir, filename);
+  if (await exists(dest)) return dest;
+
+  const direct = path.join(libraryRoot, filename);
+  const src = (await exists(direct)) ? direct : libraryIndex.get(filename);
+  if (!src) {
+    throw new Error(`[mpv] AppImage 内缺少运行库：${needed}`);
+  }
+
+  const realSrc = await fsp.realpath(src).catch(() => src);
+  await fsp.copyFile(realSrc, dest);
+  return dest;
+}
+
+async function collectLinuxMpvDependencies({
+  queue,
+  seen,
+  libraryRoot,
+  libraryIndex,
+  destLibDir,
+}) {
+  while (queue.length) {
+    const current = queue.shift();
+    if (seen.has(current)) continue;
+    seen.add(current);
+
+    const neededLibraries = await readElfNeeded(current);
+    for (const needed of neededLibraries) {
+      await rewriteAbsoluteNeeded(current, needed);
+      const copied = await copyLinuxMpvDependency({
+        libraryRoot,
+        libraryIndex,
+        destLibDir,
+        needed,
+      });
+      if (!seen.has(copied)) queue.push(copied);
+    }
+  }
+}
+
+async function installLinuxMpvFromAppImage(archive, choice, tmpBase) {
+  if (!(await commandExists("readelf"))) {
+    throw new Error("[mpv] 精简 Linux AppImage 需要 readelf，请先安装 binutils");
+  }
+
+  await fsp.chmod(archive, 0o755).catch(() => {});
+
+  const extractDir = path.join(tmpBase, "appimage-extract");
+  await fsp.rm(extractDir, { recursive: true, force: true });
+  await fsp.mkdir(extractDir, { recursive: true });
+  await runCommand(archive, ["--appimage-extract"], { cwd: extractDir });
+
+  const appRoot = path.join(extractDir, "squashfs-root");
+  const junestRoot = path.join(appRoot, ".junest");
+  const sourceMpv = path.join(junestRoot, "usr", "bin", "mpv");
+  const sourceLibDir = path.join(junestRoot, "usr", "lib");
+  const sourceLoader = path.join(sourceLibDir, "ld-linux-x86-64.so.2");
+  if (!(await exists(sourceMpv)) || !(await exists(sourceLoader))) {
+    throw new Error("[mpv] AppImage 结构不符合预期，未找到 .junest/usr/bin/mpv");
+  }
+
+  const installDir = path.join(tmpBase, "mpv-slim");
+  const installBinDir = path.join(installDir, "bin");
+  const installLibDir = path.join(installDir, "lib");
+  await fsp.rm(installDir, { recursive: true, force: true });
+  await fsp.mkdir(installBinDir, { recursive: true });
+  await fsp.mkdir(installLibDir, { recursive: true });
+
+  const bundledMpv = path.join(installBinDir, "mpv-bin");
+  const bundledLoader = path.join(installLibDir, "ld-linux-x86-64.so.2");
+  await fsp.copyFile(sourceMpv, bundledMpv);
+  await fsp.copyFile(sourceLoader, bundledLoader);
+  await fsp.chmod(bundledMpv, 0o755);
+  await fsp.chmod(bundledLoader, 0o755);
+
+  const libraryIndex = await indexLibraryFiles(sourceLibDir);
+  const queue = [bundledMpv, bundledLoader];
+  const seen = new Set();
+  const extraRuntimeLibs = ["libSDL3.so.0"];
+
+  await collectLinuxMpvDependencies({
+    queue,
+    seen,
+    libraryRoot: sourceLibDir,
+    libraryIndex,
+    destLibDir: installLibDir,
+  });
+
+  for (const needed of extraRuntimeLibs) {
+    const copied = await copyLinuxMpvDependency({
+      libraryRoot: sourceLibDir,
+      libraryIndex,
+      destLibDir: installLibDir,
+      needed,
+    });
+    if (!seen.has(copied)) queue.push(copied);
+    await collectLinuxMpvDependencies({
+      queue,
+      seen,
+      libraryRoot: sourceLibDir,
+      libraryIndex,
+      destLibDir: installLibDir,
+    });
+  }
+
+  const wrapper = [
+    "#!/bin/sh",
+    'HERE=$(CDPATH= cd "$(dirname "$0")" && pwd -P)',
+    'LIB="$HERE/lib"',
+    'export LD_LIBRARY_PATH="$LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"',
+    'exec "$LIB/ld-linux-x86-64.so.2" --library-path "$LD_LIBRARY_PATH" "$HERE/bin/mpv-bin" "$@"',
+    "",
+  ].join("\n");
+  await fsp.writeFile(path.join(installDir, "mpv"), wrapper);
+  await fsp.chmod(path.join(installDir, "mpv"), 0o755);
+
+  await fsp.rm(binMpvDir(choice), { recursive: true, force: true });
+  await copyDir(installDir, binMpvDir(choice));
+  await fsp.chmod(binMpvPath(choice), 0o755);
+}
+
 function isArchiveName(name) {
   return (
     name.endsWith(".zip") ||
@@ -851,7 +1050,7 @@ async function downloadMpv(choice) {
     let installed = false;
     for (const url of urls) {
       console.log(`[mpv] 下载 ${choice.label}：${url}`);
-      const archive = path.join(tmpBase, path.basename(url));
+      const archive = path.join(tmpBase, downloadFilename(url, "mpv-download"));
       const extractDir = path.join(tmpBase, "extract");
       await fsp.rm(extractDir, { recursive: true, force: true });
       await fsp.mkdir(extractDir, { recursive: true });
@@ -863,10 +1062,13 @@ async function downloadMpv(choice) {
         continue;
       }
 
-      if (archive.endsWith(".AppImage")) {
-        await fsp.rm(binMpvDir(choice), { recursive: true, force: true });
-        await fsp.mkdir(binMpvDir(choice), { recursive: true });
-        await fsp.copyFile(archive, binMpvPath(choice));
+      if (archive.toLowerCase().endsWith(".appimage")) {
+        try {
+          await installLinuxMpvFromAppImage(archive, choice, tmpBase);
+        } catch (err) {
+          console.warn(err?.message || "[mpv] AppImage 精简失败，尝试下一个来源");
+          continue;
+        }
       } else {
         try {
           await extractArchive(archive, extractDir);
