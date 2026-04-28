@@ -1,4 +1,55 @@
+import SwapVertIcon from '@mui/icons-material/SwapVert'
+import {
+  IDOL_SORT_OPTIONS,
+  JAV_SORT_OPTIONS,
+  findSortOption,
+  reverseSortValue,
+  sortLabelParts,
+} from '@/constants/jav'
 import { zh } from '@/utils/i18n'
+
+function SortText({ option, value }) {
+  const parts = sortLabelParts(option, value, zh)
+
+  return (
+    <span className="truncate text-sm font-semibold">
+      <span>{parts.label}</span>
+      <span className="font-normal text-gray-500">{parts.separator}</span>
+      <span className="font-normal text-gray-500">{parts.direction}</span>
+    </span>
+  )
+}
+
+function SortOptionRow({ option, name, inputValue, onChange }) {
+  const active = findSortOption([option], inputValue)
+  const displayValue = active ? inputValue : option.defaultValue
+  const id = `${name}-${option.base}`
+
+  return (
+    <div className="flex items-center gap-2 rounded border bg-white px-3 py-1.5 hover:border-blue-500">
+      <label htmlFor={id} className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+        <input
+          id={id}
+          type="radio"
+          name={name}
+          value={displayValue}
+          checked={Boolean(active)}
+          onChange={() => onChange?.(displayValue)}
+        />
+        <SortText option={option} value={displayValue} />
+      </label>
+      <button
+        type="button"
+        onClick={() => onChange?.(reverseSortValue([option], displayValue, option.defaultValue))}
+        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border border-gray-200 text-gray-500 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700"
+        title={zh('反转排序', 'Reverse sort')}
+        aria-label={zh(`反转${option.label[0]}排序`, `Reverse ${option.label[1]} sort`)}
+      >
+        <SwapVertIcon fontSize="inherit" />
+      </button>
+    </div>
+  )
+}
 
 export default function JavSettingsModal({
   open,
@@ -46,106 +97,15 @@ export default function JavSettingsModal({
             <div className="text-sm font-medium text-gray-700">
               {zh('默认排序', 'Default sort')}
             </div>
-            <label
-              htmlFor="jav-sort-recent"
-              className="flex cursor-pointer items-center gap-3 rounded border bg-white px-3 py-1.5 hover:border-blue-500"
-              aria-label={zh('按加入时间排序', 'Sort by import time')}
-            >
-              <input
-                id="jav-sort-recent"
-                type="radio"
+            {JAV_SORT_OPTIONS.map((option) => (
+              <SortOptionRow
+                key={option.base}
+                option={option}
                 name="jav-sort"
-                value="recent"
-                checked={javSortInput === 'recent'}
-                onChange={() => onJavSortChange?.('recent')}
+                inputValue={javSortInput}
+                onChange={onJavSortChange}
               />
-              <div className="text-sm font-semibold">
-                {zh('加入时间（默认）', 'Added time (default)')}
-                <span className="ml-2 text-xs font-normal text-gray-500">
-                  {zh('最近入库的 JAV 优先', 'Recently imported first')}
-                </span>
-              </div>
-            </label>
-            <label
-              htmlFor="jav-sort-code"
-              className="flex cursor-pointer items-center gap-3 rounded border bg-white px-3 py-1.5 hover:border-blue-500"
-              aria-label={zh('按番号排序', 'Sort by code')}
-            >
-              <input
-                id="jav-sort-code"
-                type="radio"
-                name="jav-sort"
-                value="code"
-                checked={javSortInput === 'code'}
-                onChange={() => onJavSortChange?.('code')}
-              />
-              <div className="text-sm font-semibold">
-                {zh('番号', 'Code')}
-                <span className="ml-2 text-xs font-normal text-gray-500">
-                  {zh('按番号字母顺序', 'Alphabetical by code')}
-                </span>
-              </div>
-            </label>
-            <label
-              htmlFor="jav-sort-duration"
-              className="flex cursor-pointer items-center gap-3 rounded border bg-white px-3 py-1.5 hover:border-blue-500"
-              aria-label={zh('按时长排序', 'Sort by duration')}
-            >
-              <input
-                id="jav-sort-duration"
-                type="radio"
-                name="jav-sort"
-                value="duration"
-                checked={javSortInput === 'duration'}
-                onChange={() => onJavSortChange?.('duration')}
-              />
-              <div className="text-sm font-semibold">
-                {zh('时长（长→短）', 'Duration (long to short)')}
-                <span className="ml-2 text-xs font-normal text-gray-500">
-                  {zh('按 JAV 时长降序', 'By JAV duration descending')}
-                </span>
-              </div>
-            </label>
-            <label
-              htmlFor="jav-sort-release"
-              className="flex cursor-pointer items-center gap-3 rounded border bg-white px-3 py-1.5 hover:border-blue-500"
-              aria-label={zh('按发行时间排序', 'Sort by release date')}
-            >
-              <input
-                id="jav-sort-release"
-                type="radio"
-                name="jav-sort"
-                value="release"
-                checked={javSortInput === 'release'}
-                onChange={() => onJavSortChange?.('release')}
-              />
-              <div className="text-sm font-semibold">
-                {zh('发行时间', 'Release date')}
-                <span className="ml-2 text-xs font-normal text-gray-500">
-                  {zh('最新发行优先', 'Newest releases first')}
-                </span>
-              </div>
-            </label>
-            <label
-              htmlFor="jav-sort-play-count"
-              className="flex cursor-pointer items-center gap-3 rounded border bg-white px-3 py-1.5 hover:border-blue-500"
-              aria-label={zh('按播放次数排序', 'Sort by play count')}
-            >
-              <input
-                id="jav-sort-play-count"
-                type="radio"
-                name="jav-sort"
-                value="play_count"
-                checked={javSortInput === 'play_count'}
-                onChange={() => onJavSortChange?.('play_count')}
-              />
-              <div className="text-sm font-semibold">
-                {zh('播放次数（多→少）', 'Play count (high to low)')}
-                <span className="ml-2 text-xs font-normal text-gray-500">
-                  {zh('按作品累计播放次数', 'By total plays across files')}
-                </span>
-              </div>
-            </label>
+            ))}
           </section>
 
           <section className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/60 p-3">
@@ -165,146 +125,15 @@ export default function JavSettingsModal({
             <div className="text-sm font-medium text-gray-700">
               {zh('女优排序', 'Idol sorting')}
             </div>
-            <label
-              htmlFor="idol-sort-work"
-              className="flex cursor-pointer items-center gap-3 rounded border bg-white px-3 py-1.5 hover:border-blue-500"
-              aria-label={zh('按作品数量排序', 'Sort by work count')}
-            >
-              <input
-                id="idol-sort-work"
-                type="radio"
+            {IDOL_SORT_OPTIONS.map((option) => (
+              <SortOptionRow
+                key={option.base}
+                option={option}
                 name="idol-sort"
-                value="work"
-                checked={idolSortInput === 'work'}
-                onChange={() => onIdolSortChange?.('work')}
+                inputValue={idolSortInput}
+                onChange={onIdolSortChange}
               />
-              <div className="text-sm font-semibold">
-                {zh('作品数量（默认）', 'Work count (default)')}
-                <span className="ml-2 text-xs font-normal text-gray-500">
-                  {zh('作品越多越靠前', 'More works first')}
-                </span>
-              </div>
-            </label>
-            <label
-              htmlFor="idol-sort-birth"
-              className="flex cursor-pointer items-center gap-3 rounded border bg-white px-3 py-1.5 hover:border-blue-500"
-              aria-label={zh('按出生日期排序', 'Sort by birth date')}
-            >
-              <input
-                id="idol-sort-birth"
-                type="radio"
-                name="idol-sort"
-                value="birth"
-                checked={idolSortInput === 'birth'}
-                onChange={() => onIdolSortChange?.('birth')}
-              />
-              <div className="text-sm font-semibold">
-                {zh('年龄', 'Age')}
-                <span className="ml-2 text-xs font-normal text-gray-500">
-                  {zh('由小到大（更年轻优先）', 'Younger first')}
-                </span>
-              </div>
-            </label>
-            <label
-              htmlFor="idol-sort-height"
-              className="flex cursor-pointer items-center gap-3 rounded border bg-white px-3 py-1.5 hover:border-blue-500"
-              aria-label={zh('按身高排序', 'Sort by height')}
-            >
-              <input
-                id="idol-sort-height"
-                type="radio"
-                name="idol-sort"
-                value="height"
-                checked={idolSortInput === 'height'}
-                onChange={() => onIdolSortChange?.('height')}
-              />
-              <div className="text-sm font-semibold">
-                {zh('身高', 'Height')}
-                <span className="ml-2 text-xs font-normal text-gray-500">
-                  {zh('由低到高', 'Low to high')}
-                </span>
-              </div>
-            </label>
-            <label
-              htmlFor="idol-sort-bust"
-              className="flex cursor-pointer items-center gap-3 rounded border bg-white px-3 py-1.5 hover:border-blue-500"
-              aria-label={zh('按胸围排序', 'Sort by bust')}
-            >
-              <input
-                id="idol-sort-bust"
-                type="radio"
-                name="idol-sort"
-                value="bust"
-                checked={idolSortInput === 'bust'}
-                onChange={() => onIdolSortChange?.('bust')}
-              />
-              <div className="text-sm font-semibold">
-                {zh('胸围', 'Bust')}
-                <span className="ml-2 text-xs font-normal text-gray-500">
-                  {zh('由大到小', 'High to low')}
-                </span>
-              </div>
-            </label>
-            <label
-              htmlFor="idol-sort-hips"
-              className="flex cursor-pointer items-center gap-3 rounded border bg-white px-3 py-1.5 hover:border-blue-500"
-              aria-label={zh('按臀围排序', 'Sort by hips')}
-            >
-              <input
-                id="idol-sort-hips"
-                type="radio"
-                name="idol-sort"
-                value="hips"
-                checked={idolSortInput === 'hips'}
-                onChange={() => onIdolSortChange?.('hips')}
-              />
-              <div className="text-sm font-semibold">
-                {zh('臀围', 'Hips')}
-                <span className="ml-2 text-xs font-normal text-gray-500">
-                  {zh('由大到小', 'High to low')}
-                </span>
-              </div>
-            </label>
-            <label
-              htmlFor="idol-sort-waist"
-              className="flex cursor-pointer items-center gap-3 rounded border bg-white px-3 py-1.5 hover:border-blue-500"
-              aria-label={zh('按腰围排序', 'Sort by waist')}
-            >
-              <input
-                id="idol-sort-waist"
-                type="radio"
-                name="idol-sort"
-                value="waist"
-                checked={idolSortInput === 'waist'}
-                onChange={() => onIdolSortChange?.('waist')}
-              />
-              <div className="text-sm font-semibold">
-                {zh('腰围', 'Waist')}
-                <span className="ml-2 text-xs font-normal text-gray-500">
-                  {zh('由小到大', 'Low to high')}
-                </span>
-              </div>
-            </label>
-            <label
-              htmlFor="idol-sort-cup"
-              className="flex cursor-pointer items-center gap-3 rounded border bg-white px-3 py-1.5 hover:border-blue-500"
-              aria-label={zh('按罩杯排序', 'Sort by cup')}
-            >
-              <input
-                id="idol-sort-cup"
-                type="radio"
-                name="idol-sort"
-                value="cup"
-                checked={idolSortInput === 'cup'}
-                onChange={() => onIdolSortChange?.('cup')}
-              />
-              <div className="text-sm font-semibold">
-                {zh('罩杯', 'Cup')}
-                <span className="ml-2 text-xs font-normal text-gray-500">
-                  {zh('由大到小', 'High to low')}
-                </span>
-              </div>
-            </label>
+            ))}
           </section>
         </div>
         <div className="mt-3 flex justify-end">

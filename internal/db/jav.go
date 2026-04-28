@@ -62,14 +62,24 @@ func SearchJav(ctx context.Context, actors []string, tagIDs []int64, search, sor
 	var orderExpr clause.Expr
 	useExpr := false
 	switch sort {
-	case "code":
+	case "code", "code_asc":
 		order = "jav.code"
-	case "duration":
+	case "code_desc":
+		order = "jav.code DESC"
+	case "duration", "duration_desc":
 		order = "jav.duration_min DESC, jav.created_at DESC, jav.id DESC"
-	case "release":
+	case "duration_asc":
+		order = "jav.duration_min ASC, jav.created_at ASC, jav.id ASC"
+	case "release", "release_desc":
 		order = "jav.release_unix DESC, jav.code"
-	case "play_count":
+	case "release_asc":
+		order = "jav.release_unix IS NULL, jav.release_unix ASC, jav.code"
+	case "play_count", "play_count_desc":
 		order = "COALESCE((SELECT SUM(COALESCE(v.play_count, 0)) FROM video v WHERE v.jav_id = jav.id AND COALESCE(v.hidden, 0) = 0), 0) DESC, jav.created_at DESC, jav.id DESC"
+	case "play_count_asc":
+		order = "COALESCE((SELECT SUM(COALESCE(v.play_count, 0)) FROM video v WHERE v.jav_id = jav.id AND COALESCE(v.hidden, 0) = 0), 0) ASC, jav.created_at ASC, jav.id ASC"
+	case "recent_asc":
+		order = "jav.created_at ASC, jav.id ASC"
 	case "random":
 		if seed != nil && *seed > 0 {
 			orderExpr = clause.Expr{
@@ -469,21 +479,35 @@ func ListJavIdols(ctx context.Context, search, sort string, limit, offset int) (
 	var items []JavIdolSummary
 	order := "work_count DESC, ji.name ASC"
 	switch sort {
-	case "birth", "birth_date", "age":
+	case "birth", "birth_date", "age", "birth_desc", "birth_date_desc", "age_asc":
 		order = "ji.birth_date IS NULL, ji.birth_date DESC, ji.name ASC"
-	case "height":
+	case "birth_asc", "birth_date_asc", "age_desc":
+		order = "ji.birth_date IS NULL, ji.birth_date ASC, ji.name ASC"
+	case "height", "height_asc":
 		order = "ji.height_cm IS NULL, ji.height_cm ASC, ji.name ASC"
-	case "bust":
+	case "height_desc":
+		order = "ji.height_cm IS NULL, ji.height_cm DESC, ji.name ASC"
+	case "bust", "bust_desc":
 		order = "ji.bust IS NULL, ji.bust DESC, ji.name ASC"
-	case "hips", "hip":
+	case "bust_asc":
+		order = "ji.bust IS NULL, ji.bust ASC, ji.name ASC"
+	case "hips", "hip", "hips_desc", "hip_desc":
 		order = "ji.hips IS NULL, ji.hips DESC, ji.name ASC"
-	case "waist":
+	case "hips_asc", "hip_asc":
+		order = "ji.hips IS NULL, ji.hips ASC, ji.name ASC"
+	case "waist", "waist_asc":
 		order = "ji.waist IS NULL, ji.waist ASC, ji.name ASC"
+	case "waist_desc":
+		order = "ji.waist IS NULL, ji.waist DESC, ji.name ASC"
 	case "measurements", "measure", "bwh":
 		order = "ji.bust IS NULL, ji.bust DESC, ji.hips IS NULL, ji.hips DESC, ji.waist IS NULL, ji.waist ASC, ji.name ASC"
-	case "cup":
+	case "cup", "cup_desc":
 		order = "ji.cup IS NULL, ji.cup DESC, ji.name ASC"
-	case "work", "work_count", "count", "":
+	case "cup_asc":
+		order = "ji.cup IS NULL, ji.cup ASC, ji.name ASC"
+	case "work_asc", "work_count_asc", "count_asc":
+		order = "work_count ASC, ji.name ASC"
+	case "work", "work_desc", "work_count", "work_count_desc", "count", "count_desc", "":
 		// default order
 	default:
 		// ignore unknown values

@@ -16,7 +16,7 @@ import {
   fetchJavTags,
   fetchConfig,
 } from '@/api'
-import { normalizeJavSort } from '@/constants/jav'
+import { normalizeIdolSort, normalizeJavSort } from '@/constants/jav'
 import { zh } from '@/utils/i18n'
 
 const VIDEO_PAGE_SIZE = 25
@@ -48,7 +48,7 @@ export const useStore = create((set, get) => ({
   selectedVideoMeta: {},
   searchTerm: '',
   sortOrder: 'recent', // recent | filename | duration | play_count
-  javSort: 'recent', // recent | code | duration | release | play_count
+  javSort: 'recent',
   javPageSort: '',
   randomMode: false,
   randomSeed: null,
@@ -77,7 +77,7 @@ export const useStore = create((set, get) => ({
   javError: null,
   idolPage: 1,
   idolPageSize: JAV_PAGE_SIZE,
-  idolSort: 'work', // work | birth | height | bust | hips | waist | cup
+  idolSort: 'work',
   idolItems: [],
   idolTotal: 0,
   idolLoading: false,
@@ -87,20 +87,7 @@ export const useStore = create((set, get) => ({
     set({ idolPageSize: next, idolPage: 1 })
   },
   setIdolSort: (sort) => {
-    const normalized =
-      sort === 'birth'
-        ? 'birth'
-        : sort === 'height'
-          ? 'height'
-          : sort === 'bust'
-            ? 'bust'
-            : sort === 'hips'
-              ? 'hips'
-              : sort === 'waist'
-                ? 'waist'
-                : sort === 'cup'
-                  ? 'cup'
-                  : 'work'
+    const normalized = normalizeIdolSort(sort)
     set({ idolSort: normalized, idolPage: 1 })
   },
 
@@ -272,7 +259,7 @@ export const useStore = create((set, get) => ({
       const javSize = clamp(cfg?.jav_page_size)
       const idolSize = clamp(cfg?.idol_page_size)
       const javSort = normalizeJavSort((cfg?.jav_sort || '').toLowerCase(), '')
-      const idolSort = (cfg?.idol_sort || '').toLowerCase()
+      const idolSort = normalizeIdolSort((cfg?.idol_sort || '').toLowerCase(), '')
       if (videoSize && videoSize !== state.pageSize) {
         updates.pageSize = videoSize
       }
@@ -287,18 +274,8 @@ export const useStore = create((set, get) => ({
       if (javSort) {
         updates.javSort = javSort
       }
-      if (
-        idolSort === 'work' ||
-        idolSort === 'birth' ||
-        idolSort === 'height' ||
-        idolSort === 'bust' ||
-        idolSort === 'hips' ||
-        idolSort === 'waist' ||
-        idolSort === 'cup'
-      ) {
+      if (idolSort) {
         updates.idolSort = idolSort
-      } else if (idolSort === 'measurements') {
-        updates.idolSort = 'bust'
       }
       if (javSize && javSize !== state.javPageSize) {
         updates.javPageSize = javSize

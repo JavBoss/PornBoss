@@ -247,6 +247,106 @@ func TestSearchJavSortByDurationDesc(t *testing.T) {
 	if items[1].ID != shortJav.ID {
 		t.Fatalf("unexpected second jav: got %d want %d", items[1].ID, shortJav.ID)
 	}
+
+	items, total, err = SearchJav(ctx, nil, nil, "", "duration_asc", 20, 0, nil)
+	if err != nil {
+		t.Fatalf("SearchJav duration_asc: %v", err)
+	}
+	if total != 2 {
+		t.Fatalf("unexpected asc total: got %d want 2", total)
+	}
+	if len(items) != 2 {
+		t.Fatalf("unexpected asc item count: got %d want 2", len(items))
+	}
+	if items[0].ID != shortJav.ID {
+		t.Fatalf("unexpected asc first jav: got %d want %d", items[0].ID, shortJav.ID)
+	}
+	if items[1].ID != longJav.ID {
+		t.Fatalf("unexpected asc second jav: got %d want %d", items[1].ID, longJav.ID)
+	}
+}
+
+func TestListJavIdolsSortByAgeDirections(t *testing.T) {
+	db := openTestDB(t)
+	ctx := context.Background()
+	now := time.Unix(1710000000, 0).UTC()
+	oldBirth := time.Date(1988, 1, 1, 0, 0, 0, 0, time.UTC)
+	youngBirth := time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	dir := models.Directory{Path: "/tmp/media"}
+	if err := db.Create(&dir).Error; err != nil {
+		t.Fatalf("create directory: %v", err)
+	}
+
+	oldIdol := models.JavIdol{Name: "Old Idol", BirthDate: &oldBirth}
+	youngIdol := models.JavIdol{Name: "Young Idol", BirthDate: &youngBirth}
+	if err := db.Create(&oldIdol).Error; err != nil {
+		t.Fatalf("create old idol: %v", err)
+	}
+	if err := db.Create(&youngIdol).Error; err != nil {
+		t.Fatalf("create young idol: %v", err)
+	}
+
+	oldJav := models.Jav{Code: "HHH-001", Title: "Old Solo", Provider: 1, FetchedAt: now}
+	youngJav := models.Jav{Code: "III-001", Title: "Young Solo", Provider: 1, FetchedAt: now}
+	if err := db.Create(&oldJav).Error; err != nil {
+		t.Fatalf("create old jav: %v", err)
+	}
+	if err := db.Create(&youngJav).Error; err != nil {
+		t.Fatalf("create young jav: %v", err)
+	}
+
+	maps := []models.JavIdolMap{
+		{JavID: oldJav.ID, JavIdolID: oldIdol.ID},
+		{JavID: youngJav.ID, JavIdolID: youngIdol.ID},
+	}
+	if err := db.Create(&maps).Error; err != nil {
+		t.Fatalf("create idol maps: %v", err)
+	}
+
+	videos := []models.Video{
+		{
+			DirectoryID: dir.ID,
+			Path:        "old.mp4",
+			Filename:    "old.mp4",
+			Fingerprint: "fp-old",
+			JavID:       int64Ptr(oldJav.ID),
+			ModifiedAt:  now,
+		},
+		{
+			DirectoryID: dir.ID,
+			Path:        "young.mp4",
+			Filename:    "young.mp4",
+			Fingerprint: "fp-young",
+			JavID:       int64Ptr(youngJav.ID),
+			ModifiedAt:  now,
+		},
+	}
+	if err := db.Create(&videos).Error; err != nil {
+		t.Fatalf("create videos: %v", err)
+	}
+
+	items, total, err := ListJavIdols(ctx, "", "birth", 20, 0)
+	if err != nil {
+		t.Fatalf("ListJavIdols birth: %v", err)
+	}
+	if total != 2 || len(items) != 2 {
+		t.Fatalf("unexpected birth result size: len=%d total=%d", len(items), total)
+	}
+	if items[0].ID != youngIdol.ID {
+		t.Fatalf("unexpected birth first idol: got %d want %d", items[0].ID, youngIdol.ID)
+	}
+
+	items, total, err = ListJavIdols(ctx, "", "birth_asc", 20, 0)
+	if err != nil {
+		t.Fatalf("ListJavIdols birth_asc: %v", err)
+	}
+	if total != 2 || len(items) != 2 {
+		t.Fatalf("unexpected birth_asc result size: len=%d total=%d", len(items), total)
+	}
+	if items[0].ID != oldIdol.ID {
+		t.Fatalf("unexpected birth_asc first idol: got %d want %d", items[0].ID, oldIdol.ID)
+	}
 }
 
 func openTestDB(t *testing.T) *gorm.DB {

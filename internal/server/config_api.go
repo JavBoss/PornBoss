@@ -90,7 +90,7 @@ func updateConfig(c *gin.Context) {
 	}
 	if s := strings.ToLower(strings.TrimSpace(req.JavSort)); s != "" {
 		switch s {
-		case "recent", "code", "duration", "release", "play_count":
+		case "recent", "recent_asc", "code", "code_desc", "duration", "duration_asc", "release", "release_asc", "play_count", "play_count_asc":
 			entries["jav_sort"] = s
 		default:
 			// ignore invalid values
@@ -98,7 +98,7 @@ func updateConfig(c *gin.Context) {
 	}
 	if s := strings.ToLower(strings.TrimSpace(req.IdolSort)); s != "" {
 		switch s {
-		case "work", "birth", "height", "bust", "hips", "waist", "measurements", "cup":
+		case "work", "work_asc", "birth", "birth_asc", "height", "height_desc", "bust", "bust_asc", "hips", "hips_asc", "waist", "waist_desc", "measurements", "cup", "cup_asc":
 			entries["idol_sort"] = s
 		default:
 			// ignore invalid values

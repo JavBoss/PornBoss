@@ -1,4 +1,4 @@
-import { normalizeJavSort } from '@/constants/jav'
+import { normalizeIdolSort, normalizeJavSort } from '@/constants/jav'
 
 const RANDOM_SEED_MAX = 2147483646
 
@@ -44,20 +44,7 @@ export const parseUrlState = (searchString = window.location.search) => {
 
   const sortParam = (sp.get('sort') || '').trim().toLowerCase()
   const javSort = normalizeJavSort(sortParam)
-  const idolSort =
-    sortParam === 'birth'
-      ? 'birth'
-      : sortParam === 'height'
-        ? 'height'
-        : sortParam === 'bust' || sortParam === 'measurements'
-          ? 'bust'
-          : sortParam === 'hips'
-            ? 'hips'
-            : sortParam === 'waist'
-              ? 'waist'
-              : sortParam === 'cup'
-                ? 'cup'
-                : 'work'
+  const idolSort = normalizeIdolSort(sortParam)
 
   const jav = {
     tab: sp.get('tab') === 'idol' ? 'idol' : 'list',

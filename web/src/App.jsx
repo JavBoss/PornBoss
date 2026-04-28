@@ -32,7 +32,7 @@ import TopBar from '@/components/TopBar'
 import VideoSettingsModal from '@/components/VideoSettingsModal'
 import VideoTagModal from '@/components/VideoTagModal'
 import VideoView from '@/components/VideoView'
-import { isUserJavTag, normalizeJavSort } from '@/constants/jav'
+import { isUserJavTag, normalizeIdolSort, normalizeJavSort } from '@/constants/jav'
 import { isChineseLocale, zh } from '@/utils/i18n'
 import { useStore } from '@/store'
 
@@ -385,7 +385,11 @@ export default function App() {
         sp.set('tag_ids', tagList.join(','))
       }
       const hasSortOverride = Object.prototype.hasOwnProperty.call(options, 'sort')
-      const normalizedSortOverride = hasSortOverride ? normalizeJavSort(sortOverride, null) : null
+      const normalizedSortOverride = hasSortOverride
+        ? tab === 'idol'
+          ? normalizeIdolSort(sortOverride, null)
+          : normalizeJavSort(sortOverride, null)
+        : null
       const sortVal =
         tab === 'idol'
           ? String(normalizedSortOverride ?? idolSort ?? '').trim()
@@ -861,20 +865,7 @@ export default function App() {
     const javSize = Math.max(1, parseInt(javPageSizeInput, 10) || javPageSize)
     const idolSize = Math.max(1, parseInt(idolPageSizeInput, 10) || idolPageSize)
     const normalizedSort = normalizeJavSort(javSortInput)
-    const normalizedIdolSort =
-      idolSortInput === 'birth'
-        ? 'birth'
-        : idolSortInput === 'height'
-          ? 'height'
-          : idolSortInput === 'bust'
-            ? 'bust'
-            : idolSortInput === 'hips'
-              ? 'hips'
-              : idolSortInput === 'waist'
-                ? 'waist'
-                : idolSortInput === 'cup'
-                  ? 'cup'
-                  : 'work'
+    const normalizedIdolSort = normalizeIdolSort(idolSortInput)
     try {
       await updateConfig({
         jav_page_size: javSize,

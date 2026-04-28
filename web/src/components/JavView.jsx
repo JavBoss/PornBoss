@@ -1,8 +1,22 @@
+import SwapVertIcon from '@mui/icons-material/SwapVert'
 import { Popover } from '@mui/material'
 import { useState } from 'react'
 import JavGrid from '@/components/JavGrid'
 import Pagination from '@/components/Pagination'
+import { JAV_SORT_OPTIONS, findSortOption, reverseSortValue, sortLabelParts } from '@/constants/jav'
 import { zh } from '@/utils/i18n'
+
+function SortText({ option, value, className = '' }) {
+  const parts = sortLabelParts(option, value, zh)
+
+  return (
+    <span className={`truncate font-semibold ${className}`}>
+      <span>{parts.label}</span>
+      <span className="font-normal text-gray-500">{parts.separator}</span>
+      <span className="font-normal text-gray-500">{parts.direction}</span>
+    </span>
+  )
+}
 
 export default function JavView({
   javPage,
@@ -27,19 +41,10 @@ export default function JavView({
   const contentClass = javRandomMode ? 'mt-4' : ''
   const [sortAnchorEl, setSortAnchorEl] = useState(null)
   const effectiveSort = javPageSort || javGlobalSort
-  const sortOptions = [
-    { value: 'recent', label: zh('加入时间', 'Added time') },
-    { value: 'code', label: zh('番号', 'Code') },
-    { value: 'duration', label: zh('时长', 'Duration') },
-    { value: 'release', label: zh('发行时间', 'Release date') },
-    { value: 'play_count', label: zh('播放次数', 'Play count') },
-  ]
-  const currentSortLabel =
-    sortOptions.find((option) => option.value === effectiveSort)?.label ||
-    zh('加入时间', 'Added time')
+  const currentOption = findSortOption(JAV_SORT_OPTIONS, effectiveSort) || JAV_SORT_OPTIONS[0]
 
-  const isOptionActive = (value) => {
-    return effectiveSort === value
+  const isOptionActive = (option) => {
+    return findSortOption([option], effectiveSort)
   }
 
   const openSortMenu = (event) => {
@@ -85,7 +90,7 @@ export default function JavView({
                 aria-label={zh('修改当前 JAV 排序方式', 'Change current JAV sort')}
                 className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-sm hover:border-gray-400"
               >
-                <span>{currentSortLabel}</span>
+                <SortText option={currentOption} value={effectiveSort} />
                 <span
                   aria-hidden="true"
                   className="block h-1.5 w-1.5 rotate-45 border-b border-r border-gray-400"
@@ -100,24 +105,47 @@ export default function JavView({
               anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
               transformOrigin={{ vertical: 'top', horizontal: 'right' }}
             >
-              <div className="flex min-w-[120px] flex-col p-1">
-                {sortOptions.map((option) => (
-                  <button
-                    key={option.value || 'default'}
-                    type="button"
-                    onClick={() => {
-                      closeSortMenu()
-                      setJavPageSort?.(option.value)
-                    }}
-                    className={`rounded px-2 py-1 text-left text-xs ${
-                      isOptionActive(option.value)
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+              <div className="flex min-w-[180px] flex-col p-1">
+                {JAV_SORT_OPTIONS.map((option) => {
+                  const active = isOptionActive(option)
+                  const displayValue = active ? effectiveSort : option.defaultValue
+                  return (
+                    <div
+                      key={option.base}
+                      className={`flex items-center gap-1 rounded ${
+                        active ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          closeSortMenu()
+                          setJavPageSort?.(displayValue)
+                        }}
+                        className="min-w-0 flex-1 px-2 py-1 text-left text-xs"
+                      >
+                        <SortText option={option} value={displayValue} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          closeSortMenu()
+                          setJavPageSort?.(
+                            reverseSortValue([option], displayValue, option.defaultValue)
+                          )
+                        }}
+                        className="mr-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-500 hover:bg-white hover:text-blue-700"
+                        title={zh('反转排序', 'Reverse sort')}
+                        aria-label={zh(
+                          `反转${option.label[0]}排序`,
+                          `Reverse ${option.label[1]} sort`
+                        )}
+                      >
+                        <SwapVertIcon fontSize="inherit" />
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
             </Popover>
           </div>
