@@ -202,8 +202,8 @@ export default function GlobalSettingsModal({
             <div>
               <p className="mt-1 text-sm text-zinc-500">
                 {zh(
-                  '默认播放按钮使用所选播放器，底部快捷按钮使用另一个播放器。',
-                  'The primary play button uses the selected player, while the bottom shortcut uses the other player.'
+                  '默认播放按钮使用所选播放器，底部播放按钮使用另一个播放器。',
+                  'The primary play button uses the selected player, while the bottom play button uses the other player.'
                 )}
               </p>
             </div>
