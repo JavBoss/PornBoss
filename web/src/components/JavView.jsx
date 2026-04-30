@@ -36,6 +36,7 @@ export default function JavView({
   onTagClick,
   onEditTags,
   onOpenFile,
+  openFileLabel,
   onRevealFile,
 }) {
   const contentClass = javRandomMode ? 'mt-4' : ''
@@ -166,6 +167,7 @@ export default function JavView({
             onTagClick={onTagClick}
             onEditTags={onEditTags}
             onOpenFile={onOpenFile}
+            openFileLabel={openFileLabel}
             onRevealFile={onRevealFile}
           />
         </div>

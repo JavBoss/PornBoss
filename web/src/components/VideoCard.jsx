@@ -2,7 +2,7 @@ import { IconButton, Tooltip } from '@mui/material'
 import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
-import { openVideoFile, revealVideoLocation } from '@/api'
+import { revealVideoLocation } from '@/api'
 import { formatBytes, getVideoDisplayName, parseVideoFingerprint } from '@/utils/display'
 import { zh } from '@/utils/i18n'
 
@@ -11,6 +11,8 @@ export default function VideoCard({
   checked,
   onToggle,
   onPlay,
+  onOpenFile,
+  openFileLabel,
   onOpenTagPicker,
   onTagClick,
 }) {
@@ -34,7 +36,7 @@ export default function VideoCard({
     event.stopPropagation()
     if (!canOpen) return
     try {
-      await openVideoFile({ path: videoPath, dirPath: directoryPath })
+      await onOpenFile?.(video)
     } catch (err) {
       console.error(zh('打开文件失败', 'Open file failed'), err)
     }
@@ -136,12 +138,12 @@ export default function VideoCard({
               <LocalOfferOutlinedIcon fontSize="inherit" />
             </IconButton>
           </Tooltip>
-          <Tooltip title={zh('用默认程序打开', 'Open with default app')}>
+          <Tooltip title={openFileLabel || zh('用默认程序打开', 'Open with default app')}>
             <IconButton
               size="small"
               onClick={handleOpenFile}
               disabled={!canOpen}
-              aria-label={zh('打开文件', 'Open file')}
+              aria-label={openFileLabel || zh('打开文件', 'Open file')}
               className="h-6 w-6"
             >
               <PlayArrowIcon fontSize="inherit" />

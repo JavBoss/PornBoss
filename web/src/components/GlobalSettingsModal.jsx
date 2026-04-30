@@ -7,6 +7,11 @@ import { zh } from '@/utils/i18n'
 
 const SETTINGS_SECTIONS = [
   {
+    id: 'basic',
+    title: { zh: '基础设置', en: 'Basic Settings' },
+    summary: { zh: '默认播放器与基础行为', en: 'Default player and basic behavior' },
+  },
+  {
     id: 'directories',
     title: { zh: '目录管理', en: 'Directory Management' },
     summary: { zh: '管理扫描目录与路径', en: 'Manage watched folders and paths' },
@@ -18,7 +23,7 @@ const SETTINGS_SECTIONS = [
   },
   {
     id: 'player',
-    title: { zh: '播放器设置', en: 'Player Settings' },
+    title: { zh: 'MPV播放器', en: 'MPV Player' },
     summary: { zh: 'mpv 快捷键与播放控制', en: 'mpv shortcuts and playback controls' },
   },
 ]
@@ -40,6 +45,8 @@ export default function GlobalSettingsModal({
   onDeleteDirectory,
   proxyPort,
   onSaveProxyPort,
+  defaultPlayer,
+  onSaveDefaultPlayer,
   playerWindowWidth,
   playerWindowHeight,
   playerWindowUseAutofit,
@@ -54,7 +61,10 @@ export default function GlobalSettingsModal({
   const [savingProxy, setSavingProxy] = useState(false)
   const [proxyEditing, setProxyEditing] = useState(false)
   const [proxyEnabledInput, setProxyEnabledInput] = useState(false)
-  const [activeSection, setActiveSection] = useState('directories')
+  const [activeSection, setActiveSection] = useState('basic')
+  const [defaultPlayerInput, setDefaultPlayerInput] = useState('mpv')
+  const [defaultPlayerError, setDefaultPlayerError] = useState('')
+  const [savingDefaultPlayer, setSavingDefaultPlayer] = useState(false)
   const [playerTab, setPlayerTab] = useState('basic')
   const [playerBasicError, setPlayerBasicError] = useState('')
   const [playerBasicSuccess, setPlayerBasicSuccess] = useState('')
@@ -83,6 +93,8 @@ export default function GlobalSettingsModal({
       setProxyEnabledInput(Boolean(proxyPort))
       setProxyEditing(false)
       setProxyError('')
+      setDefaultPlayerInput(defaultPlayer === 'system' ? 'system' : 'mpv')
+      setDefaultPlayerError('')
       setPlayerTab('basic')
       setPlayerBasicError('')
       setPlayerBasicSuccess('')
@@ -97,6 +109,7 @@ export default function GlobalSettingsModal({
   }, [
     open,
     proxyPort,
+    defaultPlayer,
     playerWindowWidth,
     playerWindowHeight,
     playerWindowUseAutofit,
@@ -141,6 +154,76 @@ export default function GlobalSettingsModal({
   const activeTitle = SETTINGS_SECTIONS.find((item) => item.id === activeSection)?.title || {
     zh: '全局设置',
     en: 'Global Settings',
+  }
+
+  const handleSaveDefaultPlayer = async () => {
+    const next = defaultPlayerInput === 'system' ? 'system' : 'mpv'
+    setDefaultPlayerError('')
+    setSavingDefaultPlayer(true)
+    try {
+      await onSaveDefaultPlayer?.(next)
+    } catch (err) {
+      setDefaultPlayerError(err.message || zh('保存失败', 'Save failed'))
+    } finally {
+      setSavingDefaultPlayer(false)
+    }
+  }
+
+  const renderBasicPanel = () => {
+    const currentDefaultPlayer = defaultPlayer === 'system' ? 'system' : 'mpv'
+    const unchanged = defaultPlayerInput === currentDefaultPlayer
+
+    return (
+      <div className="space-y-5">
+        <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <h4 className="text-sm font-semibold text-zinc-800">
+                {zh('默认播放器', 'Default Player')}
+              </h4>
+              <span className="relative inline-block">
+                <select
+                  value={defaultPlayerInput}
+                  onChange={(event) => {
+                    setDefaultPlayerInput(event.target.value === 'system' ? 'system' : 'mpv')
+                    setDefaultPlayerError('')
+                  }}
+                  className="w-auto appearance-none rounded-xl border border-zinc-200 bg-white py-1.5 pl-3 pr-7 text-sm text-zinc-800 outline-none focus:border-zinc-200 focus:outline-none focus:ring-0 focus-visible:outline-none"
+                >
+                  <option value="mpv">{zh('MPV播放器', 'MPV Player')}</option>
+                  <option value="system">{zh('系统播放器', 'System Player')}</option>
+                </select>
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-4 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rotate-45 border-b border-r border-zinc-500"
+                />
+              </span>
+            </div>
+            <div>
+              <p className="mt-1 text-sm text-zinc-500">
+                {zh(
+                  '默认播放按钮使用所选播放器，底部播放按钮使用另一个播放器。',
+                  'The primary play button uses the selected player, while the bottom play button uses the other player.'
+                )}
+              </p>
+            </div>
+
+            {defaultPlayerError && <div className="text-sm text-red-600">{defaultPlayerError}</div>}
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleSaveDefaultPlayer}
+                disabled={savingDefaultPlayer || unchanged}
+                className="rounded-xl bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-60"
+              >
+                {savingDefaultPlayer ? zh('保存中…', 'Saving...') : zh('保存', 'Save')}
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
   }
 
   const renderProxyPanel = () => (
@@ -514,7 +597,9 @@ export default function GlobalSettingsModal({
                       : zh('自动', 'Auto')
                     : section.id === 'player'
                       ? ''
-                      : String(directories.length)
+                      : section.id === 'directories'
+                        ? String(directories.length)
+                        : ''
 
                 return (
                   <button
@@ -546,6 +631,7 @@ export default function GlobalSettingsModal({
           </aside>
 
           <section className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
+            {activeSection === 'basic' && renderBasicPanel()}
             {activeSection === 'proxy' && renderProxyPanel()}
             {activeSection === 'player' && renderPlayerPanel()}
             {activeSection === 'directories' && renderDirectoriesPanel()}

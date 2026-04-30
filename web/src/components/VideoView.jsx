@@ -44,6 +44,8 @@ export default function VideoView({
   toggleSelectVideo,
   onToggleSelectPage,
   openPlayer,
+  openAlternatePlayer,
+  alternatePlayerLabel,
   setTagPickerFor,
   onTagClick,
 }) {
@@ -211,6 +213,8 @@ export default function VideoView({
           selectedIds={selectedVideoIds}
           onToggleSelect={toggleSelectVideo}
           onPlay={(video) => openPlayer(video)}
+          onOpenFile={(video) => openAlternatePlayer?.(video)}
+          openFileLabel={alternatePlayerLabel}
           onOpenTagPicker={(vid) => setTagPickerFor(vid)}
           onTagClick={onTagClick}
         />

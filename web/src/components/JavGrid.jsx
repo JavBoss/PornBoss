@@ -67,6 +67,7 @@ export default function JavGrid({
   onTagClick,
   onEditTags,
   onOpenFile,
+  openFileLabel,
   onRevealFile,
 }) {
   const idolPreviewCacheRef = useRef(new Map())
@@ -120,6 +121,7 @@ export default function JavGrid({
           onTagClick={onTagClick}
           onEditTags={onEditTags}
           onOpenFile={onOpenFile}
+          openFileLabel={openFileLabel}
           onRevealFile={onRevealFile}
           loadIdolPreview={loadIdolPreview}
         />
@@ -135,6 +137,7 @@ function JavCard({
   onTagClick,
   onEditTags,
   onOpenFile,
+  openFileLabel,
   onRevealFile,
   loadIdolPreview,
 }) {
@@ -422,12 +425,12 @@ function JavCard({
               </div>
             </div>
           )}
-          <Tooltip title={zh('用默认程序打开', 'Open with default app')}>
+          <Tooltip title={openFileLabel || zh('用默认程序打开', 'Open with default app')}>
             <IconButton
               size="small"
               onClick={handleOpenFile}
               disabled={!canOpen}
-              aria-label={zh('打开文件', 'Open file')}
+              aria-label={openFileLabel || zh('打开文件', 'Open file')}
               className="h-6 w-6"
             >
               <PlayArrowIcon fontSize="inherit" />

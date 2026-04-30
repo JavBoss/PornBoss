@@ -678,6 +678,7 @@ func ListVideosForJavScan(ctx context.Context) ([]JavScanVideo, error) {
 		Joins("LEFT JOIN jav ON jav.id = video.jav_id").
 		Where("COALESCE(hidden, 0) = 0").
 		Select("video.id, video.filename, video.jav_id, video.updated_at, video.duration_sec, COALESCE(jav.provider, 0) AS jav_provider").
+		Order("video.updated_at DESC, video.id DESC").
 		Find(&videos).Error; err != nil {
 		return nil, fmt.Errorf("list videos for jav scan: %w", err)
 	}

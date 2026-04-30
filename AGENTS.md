@@ -23,7 +23,3 @@
 ## Testing Guidelines
 - Go: add table-driven `_test.go` files near the code under test; prefer integration tests around `internal/db` and handler tests via `httptest`. Use the repo-local `GOCACHE` path.
 - Frontend: no unit tests today; at minimum run `npm run lint` and `npm run build` before PRs. When adding tests, colocate under `web/src` using Jest/Vitest conventions and match component names.
-
-## Commit & Pull Request Guidelines
-- Commits: short, imperative subjects (`add thumbnail retry logging`), optional scope; group related changes. Reference issues in the body when relevant.
-- PRs: include intent, main changes, and tests run (`go test ./...`, `npm run lint`, `npm run build`). For UI updates, attach before/after notes or screenshots and call out config or schema impacts. Keep diffs focused; avoid committing generated assets (DB files, `.gocache`, `web/dist` unless part of release output).

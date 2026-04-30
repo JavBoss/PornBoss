@@ -40,6 +40,7 @@ func updateConfig(c *gin.Context) {
 		VideoSort              string                `json:"video_sort"`
 		JavSort                string                `json:"jav_sort"`
 		IdolSort               string                `json:"idol_sort"`
+		DefaultPlayer          string                `json:"default_player"`
 		ProxyPort              *int                  `json:"proxy_port"`
 		PlayerWindowSize       *int                  `json:"player_window_size"`
 		PlayerWindowWidth      *int                  `json:"player_window_width"`
@@ -102,6 +103,15 @@ func updateConfig(c *gin.Context) {
 			entries["idol_sort"] = s
 		default:
 			// ignore invalid values
+		}
+	}
+	if s := strings.ToLower(strings.TrimSpace(req.DefaultPlayer)); s != "" {
+		switch s {
+		case "mpv", "system":
+			entries["default_player"] = s
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid default player"})
+			return
 		}
 	}
 	if req.ProxyPort != nil {

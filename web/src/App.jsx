@@ -37,6 +37,13 @@ import { normalizeVideoSort } from '@/constants/video'
 import { isChineseLocale, zh } from '@/utils/i18n'
 import { useStore } from '@/store'
 
+const normalizeDefaultPlayer = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase() === 'system'
+    ? 'system'
+    : 'mpv'
+
 export default function App() {
   const isPoppingRef = useRef(false)
   const lastUrlRef = useRef(window.location.pathname + window.location.search)
@@ -150,6 +157,12 @@ export default function App() {
   const [idolSortInput, setIdolSortInput] = useState(idolSort)
   const [toastMessage, setToastMessage] = useState('')
   const javVideoChoices = javVideoPickerItem?.videos || []
+  const defaultPlayer = normalizeDefaultPlayer(config?.default_player)
+  const alternatePlayer = defaultPlayer === 'system' ? 'mpv' : 'system'
+  const alternatePlayerLabel =
+    alternatePlayer === 'mpv'
+      ? zh('使用MPV播放器播放', 'Play with MPV player')
+      : zh('用默认程序打开', 'Open with default app')
   const showToast = useCallback((message) => {
     setToastMessage(String(message || '').trim())
   }, [])
@@ -193,14 +206,36 @@ export default function App() {
     [getVideoDirPath, getVideoRelPath]
   )
 
-  const handleOpenPlayer = useCallback(
-    (video) => {
+  const playVideoWith = useCallback(
+    (video, player) => {
       if (!video || !isVideoOpenable(video)) return
-      playVideoFile({ path: getVideoRelPath(video), dirPath: getVideoDirPath(video) }).catch(
-        (err) => console.error(zh('播放文件失败', 'Failed to play file'), err)
+      const payload = { path: getVideoRelPath(video), dirPath: getVideoDirPath(video) }
+      const useSystemPlayer = player === 'system'
+      const action = useSystemPlayer ? openVideoFile : playVideoFile
+      action(payload).catch((err) =>
+        console.error(
+          useSystemPlayer
+            ? zh('打开文件失败', 'Failed to open file')
+            : zh('播放文件失败', 'Failed to play file'),
+          err
+        )
       )
     },
     [getVideoDirPath, getVideoRelPath, isVideoOpenable]
+  )
+
+  const handleOpenPlayer = useCallback(
+    (video) => {
+      playVideoWith(video, defaultPlayer)
+    },
+    [defaultPlayer, playVideoWith]
+  )
+
+  const handleOpenAlternatePlayer = useCallback(
+    (video) => {
+      playVideoWith(video, alternatePlayer)
+    },
+    [alternatePlayer, playVideoWith]
   )
 
   const closeJavVideoPicker = useCallback(() => {
@@ -246,11 +281,9 @@ export default function App() {
       }
       const target = video && isVideoOpenable(video) ? video : videos.find(isVideoOpenable)
       if (!target) return
-      openVideoFile({ path: getVideoRelPath(target), dirPath: getVideoDirPath(target) }).catch(
-        (err) => console.error(zh('打开文件失败', 'Failed to open file'), err)
-      )
+      playVideoWith(target, alternatePlayer)
     },
-    [getVideoDirPath, getVideoRelPath, isVideoOpenable]
+    [alternatePlayer, isVideoOpenable, playVideoWith]
   )
 
   const handleJavRevealFile = useCallback(
@@ -280,12 +313,15 @@ export default function App() {
         closeJavVideoPicker()
         return
       }
+      if (javVideoPickerAction === 'open') {
+        handleOpenAlternatePlayer(video)
+        closeJavVideoPicker()
+        return
+      }
       if (!isVideoOpenable(video)) return
       const payload = { path: getVideoRelPath(video), dirPath: getVideoDirPath(video) }
       try {
-        if (javVideoPickerAction === 'open') {
-          await openVideoFile(payload)
-        } else if (javVideoPickerAction === 'reveal') {
+        if (javVideoPickerAction === 'reveal') {
           await revealVideoLocation(payload)
         }
       } catch (err) {
@@ -306,6 +342,7 @@ export default function App() {
       isVideoOpenable,
       javVideoPickerAction,
       handleOpenPlayer,
+      handleOpenAlternatePlayer,
     ]
   )
   useEffect(() => {
@@ -1303,10 +1340,14 @@ export default function App() {
   const activeJavLoading = javTab === 'idol' ? idolLoading : javLoading
   const javVideoPickerTitle =
     javVideoPickerAction === 'open'
-      ? zh('选择打开文件', 'Choose a file to open')
+      ? alternatePlayer === 'mpv'
+        ? zh('选择使用MPV播放器播放的文件', 'Choose a file to play with MPV player')
+        : zh('选择使用系统播放器播放的文件', 'Choose a file to play with system player')
       : javVideoPickerAction === 'reveal'
         ? zh('选择定位文件', 'Choose a file to reveal')
-        : zh('选择播放文件', 'Choose a file to play')
+        : defaultPlayer === 'system'
+          ? zh('选择使用系统播放器播放的文件', 'Choose a file to play with system player')
+          : zh('选择使用MPV播放器播放的文件', 'Choose a file to play with MPV player')
   const javVideoPickerEmptyText =
     javVideoPickerAction === 'play'
       ? zh('暂无可播放文件', 'No playable files')
@@ -1392,6 +1433,7 @@ export default function App() {
               javItems={javItems}
               onPlay={handleJavPlay}
               onOpenFile={handleJavOpenFile}
+              openFileLabel={alternatePlayerLabel}
               onRevealFile={handleJavRevealFile}
               onIdolClick={handleJavActorClick}
               onTagClick={handleJavTagClick}
@@ -1420,6 +1462,8 @@ export default function App() {
             toggleSelectVideo={toggleSelectVideo}
             onToggleSelectPage={handleToggleSelectPage}
             openPlayer={handleOpenPlayer}
+            openAlternatePlayer={handleOpenAlternatePlayer}
+            alternatePlayerLabel={alternatePlayerLabel}
             setTagPickerFor={openTagEditor}
             onTagClick={handleVideoTagClick}
           />
@@ -1640,6 +1684,11 @@ export default function App() {
         proxyPort={Number.parseInt(config?.proxy_port, 10) || 0}
         onSaveProxyPort={async (port) => {
           const cfg = await updateConfig({ proxy_port: port })
+          useStore.setState({ config: cfg })
+        }}
+        defaultPlayer={defaultPlayer}
+        onSaveDefaultPlayer={async (player) => {
+          const cfg = await updateConfig({ default_player: normalizeDefaultPlayer(player) })
           useStore.setState({ config: cfg })
         }}
         playerWindowWidth={

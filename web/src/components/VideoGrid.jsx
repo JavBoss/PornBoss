@@ -5,6 +5,8 @@ export default function VideoGrid({
   selectedIds,
   onToggleSelect,
   onPlay,
+  onOpenFile,
+  openFileLabel,
   onOpenTagPicker,
   onTagClick,
 }) {
@@ -17,6 +19,8 @@ export default function VideoGrid({
           checked={selectedIds.has(v.id)}
           onToggle={() => onToggleSelect(v)}
           onPlay={onPlay}
+          onOpenFile={onOpenFile}
+          openFileLabel={openFileLabel}
           onOpenTagPicker={() => onOpenTagPicker(v.id)}
           onTagClick={onTagClick}
         />
