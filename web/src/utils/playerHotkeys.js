@@ -1,6 +1,7 @@
 export const PLAYER_HOTKEY_ACTIONS = {
   SEEK: 'seek',
   VOLUME: 'volume',
+  SCREENSHOT: 'screenshot',
 }
 
 export const DEFAULT_PLAYER_HOTKEYS = [
@@ -14,6 +15,7 @@ export const DEFAULT_PLAYER_HOTKEYS = [
   { key: 'v', action: PLAYER_HOTKEY_ACTIONS.SEEK, amount: 300 },
   { key: 'q', action: PLAYER_HOTKEY_ACTIONS.VOLUME, amount: -5 },
   { key: 'w', action: PLAYER_HOTKEY_ACTIONS.VOLUME, amount: 5 },
+  { key: 'e', action: PLAYER_HOTKEY_ACTIONS.SCREENSHOT, amount: 0 },
 ]
 
 const INVALID_SINGLE_KEYS = new Set([''])
@@ -71,9 +73,14 @@ export function normalizePlayerHotkey(entry) {
       ? PLAYER_HOTKEY_ACTIONS.VOLUME
       : entry.action === PLAYER_HOTKEY_ACTIONS.SEEK
         ? PLAYER_HOTKEY_ACTIONS.SEEK
-        : ''
+        : entry.action === PLAYER_HOTKEY_ACTIONS.SCREENSHOT
+          ? PLAYER_HOTKEY_ACTIONS.SCREENSHOT
+          : ''
   const amount = Number(entry.amount)
-  if (!key || !action || !Number.isFinite(amount) || amount === 0) {
+  if (!key || !action || !Number.isFinite(amount)) {
+    return null
+  }
+  if (action !== PLAYER_HOTKEY_ACTIONS.SCREENSHOT && amount === 0) {
     return null
   }
   if (!isSupportedPlayerHotkeyKey(key) || isReservedPlayerHotkeyKey(key)) {
@@ -82,7 +89,7 @@ export function normalizePlayerHotkey(entry) {
   if (action === PLAYER_HOTKEY_ACTIONS.VOLUME && Math.abs(amount) > 100) {
     return null
   }
-  return { key, action, amount }
+  return { key, action, amount: action === PLAYER_HOTKEY_ACTIONS.SCREENSHOT ? 0 : amount }
 }
 
 export function normalizePlayerHotkeysList(entries) {
@@ -94,6 +101,12 @@ export function normalizePlayerHotkeysList(entries) {
     if (!item || seen.has(item.key)) continue
     seen.add(item.key)
     normalized.push(item)
+  }
+  if (
+    !normalized.some((item) => item.action === PLAYER_HOTKEY_ACTIONS.SCREENSHOT) &&
+    !seen.has('e')
+  ) {
+    normalized.push({ key: 'e', action: PLAYER_HOTKEY_ACTIONS.SCREENSHOT, amount: 0 })
   }
   return normalized
 }

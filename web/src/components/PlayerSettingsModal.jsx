@@ -54,6 +54,8 @@ export default function PlayerSettingsModal({ hotkeys, onSave }) {
     setSuccess('')
   }
 
+  const actionNeedsAmount = (action) => action !== PLAYER_HOTKEY_ACTIONS.SCREENSHOT
+
   const handleReset = () => {
     setRows(createRows(DEFAULT_PLAYER_HOTKEYS))
     setError('')
@@ -102,7 +104,7 @@ export default function PlayerSettingsModal({ hotkeys, onSave }) {
       const item = normalizePlayerHotkey({
         key,
         action: row.action,
-        amount: row.amount,
+        amount: actionNeedsAmount(row.action) ? row.amount : 0,
       })
       if (!item) {
         setError(
@@ -128,57 +130,63 @@ export default function PlayerSettingsModal({ hotkeys, onSave }) {
   }
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <div className="space-y-3">
-        <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 px-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-          <div>{zh('按键', 'Key')}</div>
-          <div>{zh('动作', 'Action')}</div>
-          <div>{zh('变化值', 'Amount')}</div>
-          <div>{zh('操作', 'Operation')}</div>
-        </div>
+    <div className="space-y-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.9fr)_auto] gap-2 px-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+        <div>{zh('按键', 'Key')}</div>
+        <div>{zh('动作', 'Action')}</div>
+        <div>{zh('变化值', 'Amount')}</div>
+        <div>{zh('操作', 'Operation')}</div>
+      </div>
 
-        {rows.length === 0 ? (
-          <div className="rounded border border-dashed px-4 py-6 text-center text-sm text-gray-500">
-            {zh('当前没有自定义快捷键', 'No custom shortcuts')}
-          </div>
-        ) : (
-          rows.map((row) => (
-            <div
-              key={row.id}
-              className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-zinc-50/60 p-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
+      {rows.length === 0 ? (
+        <div className="rounded border border-dashed px-4 py-5 text-center text-sm text-gray-500">
+          {zh('当前没有自定义快捷键', 'No custom shortcuts')}
+        </div>
+      ) : (
+        rows.map((row) => (
+          <div
+            key={row.id}
+            className="grid grid-cols-1 gap-2 rounded-lg border border-zinc-200 bg-white p-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.9fr)_auto]"
+          >
+            <input
+              value={formatPlayerHotkeyKey(row.key)}
+              readOnly
+              onKeyDown={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                const nextKey = normalizePlayerHotkeyKey(event.key)
+                if (!nextKey) return
+                setRowValue(row.id, { key: nextKey })
+                setError('')
+                setSuccess('')
+              }}
+              onFocus={() => setError('')}
+              placeholder={zh('聚焦后按键', 'Press a key')}
+              className="rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <select
+              value={row.action}
+              onChange={(event) => {
+                const nextAction = event.target.value
+                setRowValue(row.id, {
+                  action: nextAction,
+                  amount:
+                    nextAction === PLAYER_HOTKEY_ACTIONS.SCREENSHOT
+                      ? '0'
+                      : nextAction === PLAYER_HOTKEY_ACTIONS.VOLUME
+                        ? '10'
+                        : '5',
+                })
+                setError('')
+                setSuccess('')
+              }}
+              className="rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-sm"
             >
-              <input
-                value={formatPlayerHotkeyKey(row.key)}
-                readOnly
-                onKeyDown={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  const nextKey = normalizePlayerHotkeyKey(event.key)
-                  if (!nextKey) return
-                  setRowValue(row.id, { key: nextKey })
-                  setError('')
-                  setSuccess('')
-                }}
-                onFocus={() => setError('')}
-                placeholder={zh('聚焦后按下按键', 'Focus then press a key')}
-                className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <select
-                value={row.action}
-                onChange={(event) => {
-                  const nextAction = event.target.value
-                  setRowValue(row.id, {
-                    action: nextAction,
-                    amount: nextAction === PLAYER_HOTKEY_ACTIONS.VOLUME ? '10' : '5',
-                  })
-                  setError('')
-                  setSuccess('')
-                }}
-                className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
-              >
-                <option value={PLAYER_HOTKEY_ACTIONS.SEEK}>{zh('调节进度', 'Seek')}</option>
-                <option value={PLAYER_HOTKEY_ACTIONS.VOLUME}>{zh('调节音量', 'Volume')}</option>
-              </select>
+              <option value={PLAYER_HOTKEY_ACTIONS.SEEK}>{zh('调节进度', 'Seek')}</option>
+              <option value={PLAYER_HOTKEY_ACTIONS.VOLUME}>{zh('调节音量', 'Volume')}</option>
+              <option value={PLAYER_HOTKEY_ACTIONS.SCREENSHOT}>{zh('截图', 'Screenshot')}</option>
+            </select>
+            {actionNeedsAmount(row.action) ? (
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -189,58 +197,60 @@ export default function PlayerSettingsModal({ hotkeys, onSave }) {
                     setError('')
                     setSuccess('')
                   }}
-                  className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-sm"
                 />
                 <span className="shrink-0 text-sm text-gray-500">
                   {row.action === PLAYER_HOTKEY_ACTIONS.VOLUME ? '%' : zh('秒', 'sec')}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setRows((current) => current.filter((item) => item.id !== row.id))
-                  setError('')
-                  setSuccess('')
-                }}
-                className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-              >
-                {zh('删除', 'Delete')}
-              </button>
-            </div>
-          ))
-        )}
-      </div>
+            ) : (
+              <div className="flex items-center rounded-lg border border-zinc-100 bg-zinc-50 px-2.5 py-2 text-sm text-zinc-400">
+                -
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setRows((current) => current.filter((item) => item.id !== row.id))
+                setError('')
+                setSuccess('')
+              }}
+              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+            >
+              {zh('删除', 'Delete')}
+            </button>
+          </div>
+        ))
+      )}
 
-      {error && <div className="mt-2 text-sm text-red-600">{error}</div>}
-      {success && <div className="mt-2 text-sm text-emerald-600">{success}</div>}
+      {error && <div className="text-sm text-red-600">{error}</div>}
+      {success && <div className="text-sm text-emerald-600">{success}</div>}
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={handleAdd}
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm hover:bg-zinc-50"
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm hover:bg-zinc-50"
           >
             {zh('新增快捷键', 'Add shortcut')}
           </button>
           <button
             type="button"
             onClick={handleReset}
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm hover:bg-zinc-50"
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm hover:bg-zinc-50"
           >
             {zh('恢复默认', 'Restore defaults')}
           </button>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-xl bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
-          >
-            {saving ? zh('保存中…', 'Saving...') : zh('保存', 'Save')}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
+        >
+          {saving ? zh('保存中…', 'Saving...') : zh('保存', 'Save')}
+        </button>
       </div>
     </div>
   )

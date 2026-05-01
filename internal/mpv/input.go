@@ -49,6 +49,7 @@ var defaultHotkeys = []hotkeyConfig{
 	{Key: "v", Action: "seek", Amount: 300},
 	{Key: "q", Action: "volume", Amount: -5},
 	{Key: "w", Action: "volume", Amount: 5},
+	{Key: "e", Action: "screenshot", Amount: 0},
 }
 
 var (
@@ -128,25 +129,22 @@ func buildInputConfContent() (string, error) {
 	}
 
 	var lines []string
-	usedKeys := make(map[string]struct{}, len(hotkeys)+1)
 	for _, item := range hotkeys {
 		keyName, ok := keyName(item.Key)
 		if !ok {
 			continue
 		}
-		usedKeys[keyName] = struct{}{}
 
 		switch item.Action {
 		case "seek":
 			lines = append(lines, fmt.Sprintf("%s no-osd seek %s exact", keyName, formatAmount(item.Amount)))
 		case "volume":
 			lines = append(lines, fmt.Sprintf("%s add volume %s", keyName, formatAmount(item.Amount)))
+		case "screenshot":
+			lines = append(lines, fmt.Sprintf("%s screenshot", keyName))
 		}
 	}
 
-	if _, exists := usedKeys["e"]; !exists {
-		lines = append(lines, "e screenshot")
-	}
 	lines = append(lines, "ESC quit")
 	return strings.Join(lines, "\n") + "\n", nil
 }
@@ -176,26 +174,14 @@ func buildStartupHotkeyHint() (string, error) {
 			parts = append(parts, fmt.Sprintf("%s：进度 %s 秒", keyName, formatSignedAmount(item.Amount)))
 		case "volume":
 			parts = append(parts, fmt.Sprintf("%s：音量 %s%%", keyName, formatSignedAmount(item.Amount)))
+		case "screenshot":
+			parts = append(parts, fmt.Sprintf("%s：截图", keyName))
 		}
-	}
-	if _, exists := hotkeyKeySet(hotkeys)["e"]; !exists {
-		parts = append(parts, "e：截图")
 	}
 	parts = append(parts, "空格：暂停/继续")
 	parts = append(parts, "ESC：退出")
 	parts = append(parts, "你可在「全局设置 → MPV播放器 → 基础设置」里关闭此信息显示")
 	return strings.Join(parts, "\n"), nil
-}
-
-func hotkeyKeySet(hotkeys []hotkeyConfig) map[string]struct{} {
-	usedKeys := make(map[string]struct{}, len(hotkeys))
-	for _, item := range hotkeys {
-		keyName, ok := keyName(item.Key)
-		if ok {
-			usedKeys[keyName] = struct{}{}
-		}
-	}
-	return usedKeys
 }
 
 func loadConfiguredHotkeys() ([]hotkeyConfig, error) {
@@ -243,10 +229,10 @@ func normalizeHotkeys(items []hotkeyConfig) []hotkeyConfig {
 		}
 
 		action := strings.ToLower(strings.TrimSpace(item.Action))
-		if action != "seek" && action != "volume" {
+		if action != "seek" && action != "volume" && action != "screenshot" {
 			continue
 		}
-		if item.Amount == 0 {
+		if action != "screenshot" && item.Amount == 0 {
 			continue
 		}
 		if action == "volume" && (item.Amount < -100 || item.Amount > 100) {
@@ -262,11 +248,18 @@ func normalizeHotkeys(items []hotkeyConfig) []hotkeyConfig {
 		normalized = append(normalized, hotkeyConfig{
 			Key:    key,
 			Action: action,
-			Amount: item.Amount,
+			Amount: normalizedHotkeyAmount(action, item.Amount),
 		})
 	}
 
 	return normalized
+}
+
+func normalizedHotkeyAmount(action string, amount float64) float64 {
+	if action == "screenshot" {
+		return 0
+	}
+	return amount
 }
 
 func normalizeHotkeyKey(raw string) string {

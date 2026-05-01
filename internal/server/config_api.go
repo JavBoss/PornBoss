@@ -185,11 +185,11 @@ func updateConfig(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "duplicate player hotkeys"})
 				return
 			}
-			if action != "seek" && action != "volume" {
+			if action != "seek" && action != "volume" && action != "screenshot" {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid player hotkey action"})
 				return
 			}
-			if item.Amount == 0 {
+			if action != "screenshot" && item.Amount == 0 {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "player hotkey amount required"})
 				return
 			}
@@ -201,7 +201,7 @@ func updateConfig(c *gin.Context) {
 			clean = append(clean, playerHotkeyPayload{
 				Key:    key,
 				Action: action,
-				Amount: item.Amount,
+				Amount: normalizedPlayerHotkeyAmount(action, item.Amount),
 			})
 		}
 		raw, err := json.Marshal(clean)
@@ -237,4 +237,11 @@ func updateConfig(c *gin.Context) {
 	}
 	util.SetProxyPortFromString(cfg["proxy_port"])
 	c.JSON(http.StatusOK, cfg)
+}
+
+func normalizedPlayerHotkeyAmount(action string, amount float64) float64 {
+	if action == "screenshot" {
+		return 0
+	}
+	return amount
 }
