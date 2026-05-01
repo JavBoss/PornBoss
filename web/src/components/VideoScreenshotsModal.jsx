@@ -147,27 +147,25 @@ export default function VideoScreenshotsModal({ video, onClose, onPlayAtTime }) 
                           <DeleteOutlineIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
-                      <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 transition group-hover:bg-black/35 group-hover:opacity-100">
+                      <div className="absolute inset-0 flex items-center justify-center gap-5 bg-black/0 opacity-0 transition group-hover:bg-black/35 group-hover:opacity-100">
                         <Tooltip title={zh('放大图片', 'Enlarge image')}>
                           <IconButton
-                            size="small"
                             onClick={() => setPreviewItem(item)}
                             aria-label={zh('放大图片', 'Enlarge image')}
-                            className="!bg-white/90 !text-gray-900 hover:!bg-white"
+                            className="!h-12 !w-12 !bg-white/90 !text-gray-900 hover:!bg-white"
                           >
-                            <ZoomInIcon fontSize="small" />
+                            <ZoomInIcon fontSize="medium" />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title={zh('从此处播放', 'Play from here')}>
                           <span>
                             <IconButton
-                              size="small"
                               onClick={() => onPlayAtTime?.(video, startTime)}
                               disabled={startTime == null}
                               aria-label={zh('从此处播放', 'Play from here')}
-                              className="!bg-white/90 !text-gray-900 hover:!bg-white disabled:!opacity-50"
+                              className="!h-12 !w-12 !bg-white/90 !text-gray-900 hover:!bg-white disabled:!opacity-50"
                             >
-                              <PlayArrowIcon fontSize="small" />
+                              <PlayArrowIcon fontSize="medium" />
                             </IconButton>
                           </span>
                         </Tooltip>
