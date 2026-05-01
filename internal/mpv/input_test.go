@@ -30,6 +30,9 @@ func TestBuildConfigContentIncludesRequiredDefaults(t *testing.T) {
 	if !strings.Contains(content, "ontop=yes\n") {
 		t.Fatalf("expected ontop=yes in mpv config, got %q", content)
 	}
+	if !strings.Contains(content, "osd-playing-msg-duration=5000\n") {
+		t.Fatalf("expected osd-playing-msg-duration=5000 in mpv config, got %q", content)
+	}
 	if !strings.Contains(content, "geometry=70%x70%+50%+50%\n") {
 		t.Fatalf("expected centered default geometry in mpv config, got %q", content)
 	}
@@ -49,6 +52,34 @@ func TestBuildInputConfContentIncludesDefaultScreenshotKey(t *testing.T) {
 
 	if !strings.Contains(content, "e screenshot\n") {
 		t.Fatalf("expected e screenshot in mpv input config, got %q", content)
+	}
+}
+
+func TestBuildStartupHotkeyHintIncludesDefaultHotkeys(t *testing.T) {
+	prevDB := common.DB
+	common.DB = nil
+	defer func() {
+		common.DB = prevDB
+	}()
+
+	content, err := buildStartupHotkeyHint()
+	if err != nil {
+		t.Fatalf("buildStartupHotkeyHint returned error: %v", err)
+	}
+
+	expected := []string{
+		"a：进度 -1 秒",
+		"x：进度 +5 秒",
+		"q：音量 -5%",
+		"w：音量 +5%",
+		"e：截图",
+		"空格：暂停/继续",
+		"ESC：退出",
+	}
+	for _, line := range expected {
+		if !strings.Contains(content, line) {
+			t.Fatalf("expected %q in mpv hotkey hint, got %q", line, content)
+		}
 	}
 }
 

@@ -28,6 +28,7 @@ const (
 	defaultWindowHeight = 70
 	defaultVolume       = 70
 	defaultOntop        = true
+	startupHintDuration = 5000
 )
 
 type hotkeyConfig struct {
@@ -147,6 +148,44 @@ func buildInputConfContent() (string, error) {
 	}
 	lines = append(lines, "ESC quit")
 	return strings.Join(lines, "\n") + "\n", nil
+}
+
+func buildStartupHotkeyHint() (string, error) {
+	hotkeys, err := loadConfiguredHotkeys()
+	if err != nil {
+		return "", err
+	}
+
+	parts := make([]string, 0, len(hotkeys)+2)
+	for _, item := range hotkeys {
+		keyName, ok := keyName(item.Key)
+		if !ok {
+			continue
+		}
+		switch item.Action {
+		case "seek":
+			parts = append(parts, fmt.Sprintf("%s：进度 %s 秒", keyName, formatSignedAmount(item.Amount)))
+		case "volume":
+			parts = append(parts, fmt.Sprintf("%s：音量 %s%%", keyName, formatSignedAmount(item.Amount)))
+		}
+	}
+	if _, exists := hotkeyKeySet(hotkeys)["e"]; !exists {
+		parts = append(parts, "e：截图")
+	}
+	parts = append(parts, "空格：暂停/继续")
+	parts = append(parts, "ESC：退出")
+	return strings.Join(parts, "\n"), nil
+}
+
+func hotkeyKeySet(hotkeys []hotkeyConfig) map[string]struct{} {
+	usedKeys := make(map[string]struct{}, len(hotkeys))
+	for _, item := range hotkeys {
+		keyName, ok := keyName(item.Key)
+		if ok {
+			usedKeys[keyName] = struct{}{}
+		}
+	}
+	return usedKeys
 }
 
 func loadConfiguredHotkeys() ([]hotkeyConfig, error) {
@@ -286,6 +325,13 @@ func formatAmount(amount float64) string {
 	return strconv.FormatFloat(amount, 'f', -1, 64)
 }
 
+func formatSignedAmount(amount float64) string {
+	if amount > 0 {
+		return "+" + formatAmount(amount)
+	}
+	return formatAmount(amount)
+}
+
 func ensureConfig() (string, error) {
 	configMu.Lock()
 	defer configMu.Unlock()
@@ -336,6 +382,7 @@ func buildConfigContent() (string, error) {
 	lines := []string{
 		"keep-open=yes",
 		fmt.Sprintf("ontop=%s", mpvBool(ontop)),
+		fmt.Sprintf("osd-playing-msg-duration=%d", startupHintDuration),
 	}
 	if useAutofit {
 		lines = append(lines, fmt.Sprintf("autofit=%d%%x%d%%", windowWidth, windowHeight))

@@ -60,6 +60,11 @@ func buildCommand(path string, options PlayOptions) (*exec.Cmd, error) {
 	} else if len(screenshotArgs) > 0 {
 		args = append(args, screenshotArgs...)
 	}
+	if hotkeyHint, err := buildStartupHotkeyHint(); err != nil {
+		return nil, err
+	} else if hotkeyHint != "" {
+		args = append(args, "--osd-playing-msg="+hotkeyHint)
+	}
 	args = append(args, buildPlaybackStartArgs(options)...)
 	args = append(args, "--input-conf="+inputConfPath)
 	args = append(args, "--", path)
