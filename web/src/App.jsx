@@ -30,6 +30,7 @@ import TagPickerModal from '@/components/TagPickerModal'
 import Toast from '@/components/Toast'
 import TopBar from '@/components/TopBar'
 import VideoSettingsModal from '@/components/VideoSettingsModal'
+import VideoScreenshotsModal from '@/components/VideoScreenshotsModal'
 import VideoTagModal from '@/components/VideoTagModal'
 import VideoView from '@/components/VideoView'
 import { isUserJavTag, normalizeIdolSort, normalizeJavSort } from '@/constants/jav'
@@ -125,6 +126,7 @@ export default function App() {
   const [javVideoPickerOpen, setJavVideoPickerOpen] = useState(false)
   const [javVideoPickerItem, setJavVideoPickerItem] = useState(null)
   const [javVideoPickerAction, setJavVideoPickerAction] = useState('play')
+  const [screenshotsVideo, setScreenshotsVideo] = useState(null)
   const [searchInput, setSearchInput] = useState('')
   const [javSearchInput, setJavSearchInput] = useState('')
   const [hydrated, setHydrated] = useState(false)
@@ -1469,6 +1471,7 @@ export default function App() {
             openAlternatePlayer={handleOpenAlternatePlayer}
             alternatePlayerLabel={alternatePlayerLabel}
             setTagPickerFor={openTagEditor}
+            onOpenScreenshots={setScreenshotsVideo}
             onTagClick={handleVideoTagClick}
           />
         )}
@@ -1483,6 +1486,8 @@ export default function App() {
         onSortChange={setVideoSortInput}
         onSave={handleSaveVideoSettings}
       />
+
+      <VideoScreenshotsModal video={screenshotsVideo} onClose={() => setScreenshotsVideo(null)} />
 
       <JavSettingsModal
         open={javSettingsOpen}

@@ -17,6 +17,8 @@ func RegisterRoutes(router *gin.Engine) {
 	router.GET("/videos/:id/streams", getVideoStreams)
 	router.GET("/videos/:id/stream", streamVideo)
 	router.GET("/videos/:id/thumbnail", getThumbnail)
+	router.GET("/videos/:id/screenshots", listVideoScreenshots)
+	router.GET("/videos/:id/screenshots/:name", getVideoScreenshot)
 	router.POST("/videos/:id/play", incrementVideoPlayCount)
 	router.POST("/videos/play", playVideoFile)
 	router.POST("/videos/open", openVideoFile)

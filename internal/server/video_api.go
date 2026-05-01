@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -102,6 +105,13 @@ type playbackInfo struct {
 	VideoID       int64            `json:"video_id"`
 	PreferredKind string           `json:"preferred_kind"`
 	Sources       []playbackSource `json:"sources"`
+}
+
+type videoScreenshotInfo struct {
+	Name       string    `json:"name"`
+	URL        string    `json:"url"`
+	Size       int64     `json:"size"`
+	ModifiedAt time.Time `json:"modified_at"`
 }
 
 func getVideoStreams(c *gin.Context) {
@@ -463,4 +473,116 @@ func getThumbnail(c *gin.Context) {
 	}
 
 	c.File(screenshotPath)
+}
+
+func listVideoScreenshots(c *gin.Context) {
+	id, screenshotDir, ok := resolveVideoScreenshotDir(c)
+	if !ok {
+		return
+	}
+
+	entries, err := os.ReadDir(screenshotDir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			c.JSON(http.StatusOK, gin.H{"items": []videoScreenshotInfo{}})
+			return
+		}
+		logging.Error("read video screenshots error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	items := make([]videoScreenshotInfo, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() || !isScreenshotImageName(entry.Name()) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			logging.Error("stat video screenshot error: %v", err)
+			continue
+		}
+		name := entry.Name()
+		imageURL := "/videos/" + strconv.FormatInt(id, 10) + "/screenshots/" + url.PathEscape(name)
+		imageURL += "?mtime=" + strconv.FormatInt(info.ModTime().UnixNano(), 10)
+		items = append(items, videoScreenshotInfo{
+			Name:       name,
+			URL:        imageURL,
+			Size:       info.Size(),
+			ModifiedAt: info.ModTime(),
+		})
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		if !items[i].ModifiedAt.Equal(items[j].ModifiedAt) {
+			return items[i].ModifiedAt.After(items[j].ModifiedAt)
+		}
+		return items[i].Name > items[j].Name
+	})
+
+	c.JSON(http.StatusOK, gin.H{"items": items})
+}
+
+func getVideoScreenshot(c *gin.Context) {
+	_, screenshotDir, ok := resolveVideoScreenshotDir(c)
+	if !ok {
+		return
+	}
+
+	name := filepath.Base(strings.TrimSpace(c.Param("name")))
+	if !isScreenshotImageName(name) || name != strings.TrimSpace(c.Param("name")) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid screenshot name"})
+		return
+	}
+
+	screenshotPath := filepath.Join(screenshotDir, name)
+	if _, err := os.Stat(screenshotPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		logging.Error("stat video screenshot error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	c.File(screenshotPath)
+}
+
+func resolveVideoScreenshotDir(c *gin.Context) (int64, string, bool) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return 0, "", false
+	}
+
+	video, err := dbpkg.GetVideo(c.Request.Context(), id)
+	if err != nil {
+		logging.Error("get video for screenshots error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return 0, "", false
+	}
+	if video == nil {
+		c.Status(http.StatusNotFound)
+		return 0, "", false
+	}
+	if common.AppConfig == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return 0, "", false
+	}
+
+	dataDir := filepath.Dir(common.AppConfig.DatabasePath)
+	return id, filepath.Join(dataDir, "video", strconv.FormatInt(id, 10), "screenshot"), true
+}
+
+func isScreenshotImageName(name string) bool {
+	if strings.TrimSpace(name) == "" || filepath.Base(name) != name {
+		return false
+	}
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".jpg", ".jpeg", ".png", ".webp":
+		return true
+	default:
+		return false
+	}
 }

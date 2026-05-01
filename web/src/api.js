@@ -186,6 +186,16 @@ export async function fetchPlaybackInfo(id) {
   return res.json()
 }
 
+export async function fetchVideoScreenshots(id) {
+  const res = await fetch(`/videos/${id}/screenshots`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || zh('加载截图失败', 'Failed to load screenshots'))
+  }
+  const data = await res.json()
+  return Array.isArray(data?.items) ? data.items : []
+}
+
 // Directories
 export async function fetchDirectories() {
   const res = await fetch('/directories')
