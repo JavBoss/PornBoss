@@ -22,12 +22,14 @@ const playerWindowHeightConfigKey = "player_window_height"
 const playerWindowUseAutofitConfigKey = "player_window_use_autofit"
 const playerVolumeConfigKey = "player_volume"
 const playerOntopConfigKey = "player_ontop"
+const playerShowHotkeyHintConfigKey = "player_show_hotkey_hint"
 
 const (
 	defaultWindowWidth  = 70
 	defaultWindowHeight = 70
 	defaultVolume       = 70
 	defaultOntop        = true
+	startupHintDuration = 5000
 )
 
 type hotkeyConfig struct {
@@ -47,6 +49,7 @@ var defaultHotkeys = []hotkeyConfig{
 	{Key: "v", Action: "seek", Amount: 300},
 	{Key: "q", Action: "volume", Amount: -5},
 	{Key: "w", Action: "volume", Amount: 5},
+	{Key: "e", Action: "screenshot", Amount: 0},
 }
 
 var (
@@ -137,11 +140,48 @@ func buildInputConfContent() (string, error) {
 			lines = append(lines, fmt.Sprintf("%s no-osd seek %s exact", keyName, formatAmount(item.Amount)))
 		case "volume":
 			lines = append(lines, fmt.Sprintf("%s add volume %s", keyName, formatAmount(item.Amount)))
+		case "screenshot":
+			lines = append(lines, fmt.Sprintf("%s screenshot", keyName))
 		}
 	}
 
 	lines = append(lines, "ESC quit")
 	return strings.Join(lines, "\n") + "\n", nil
+}
+
+func buildStartupHotkeyHint() (string, error) {
+	showHint, err := loadConfiguredPlayerShowHotkeyHint()
+	if err != nil {
+		return "", err
+	}
+	if !showHint {
+		return "", nil
+	}
+
+	hotkeys, err := loadConfiguredHotkeys()
+	if err != nil {
+		return "", err
+	}
+
+	parts := make([]string, 0, len(hotkeys)+2)
+	for _, item := range hotkeys {
+		keyName, ok := keyName(item.Key)
+		if !ok {
+			continue
+		}
+		switch item.Action {
+		case "seek":
+			parts = append(parts, fmt.Sprintf("%s：进度 %s 秒", keyName, formatSignedAmount(item.Amount)))
+		case "volume":
+			parts = append(parts, fmt.Sprintf("%s：音量 %s%%", keyName, formatSignedAmount(item.Amount)))
+		case "screenshot":
+			parts = append(parts, fmt.Sprintf("%s：截图", keyName))
+		}
+	}
+	parts = append(parts, "空格：暂停/继续")
+	parts = append(parts, "ESC：退出")
+	parts = append(parts, "你可在「全局设置 → MPV播放器 → 基础设置」里关闭此信息显示")
+	return strings.Join(parts, "\n"), nil
 }
 
 func loadConfiguredHotkeys() ([]hotkeyConfig, error) {
@@ -189,10 +229,10 @@ func normalizeHotkeys(items []hotkeyConfig) []hotkeyConfig {
 		}
 
 		action := strings.ToLower(strings.TrimSpace(item.Action))
-		if action != "seek" && action != "volume" {
+		if action != "seek" && action != "volume" && action != "screenshot" {
 			continue
 		}
-		if item.Amount == 0 {
+		if action != "screenshot" && item.Amount == 0 {
 			continue
 		}
 		if action == "volume" && (item.Amount < -100 || item.Amount > 100) {
@@ -208,11 +248,18 @@ func normalizeHotkeys(items []hotkeyConfig) []hotkeyConfig {
 		normalized = append(normalized, hotkeyConfig{
 			Key:    key,
 			Action: action,
-			Amount: item.Amount,
+			Amount: normalizedHotkeyAmount(action, item.Amount),
 		})
 	}
 
 	return normalized
+}
+
+func normalizedHotkeyAmount(action string, amount float64) float64 {
+	if action == "screenshot" {
+		return 0
+	}
+	return amount
 }
 
 func normalizeHotkeyKey(raw string) string {
@@ -281,6 +328,13 @@ func formatAmount(amount float64) string {
 	return strconv.FormatFloat(amount, 'f', -1, 64)
 }
 
+func formatSignedAmount(amount float64) string {
+	if amount > 0 {
+		return "+" + formatAmount(amount)
+	}
+	return formatAmount(amount)
+}
+
 func ensureConfig() (string, error) {
 	configMu.Lock()
 	defer configMu.Unlock()
@@ -331,6 +385,7 @@ func buildConfigContent() (string, error) {
 	lines := []string{
 		"keep-open=yes",
 		fmt.Sprintf("ontop=%s", mpvBool(ontop)),
+		fmt.Sprintf("osd-playing-msg-duration=%d", startupHintDuration),
 	}
 	if useAutofit {
 		lines = append(lines, fmt.Sprintf("autofit=%d%%x%d%%", windowWidth, windowHeight))
@@ -407,6 +462,31 @@ func loadConfiguredPlayerBaseSettings() (int, int, bool, int, bool, error) {
 	}
 
 	return windowWidth, windowHeight, useAutofit, volume, ontop, nil
+}
+
+func loadConfiguredPlayerShowHotkeyHint() (bool, error) {
+	if common.DB == nil {
+		return true, nil
+	}
+
+	cfg, err := dbpkg.ListConfig(context.Background())
+	if err != nil {
+		logging.Error("list player hotkey hint config failed, using defaults: %v", err)
+		return true, nil
+	}
+
+	raw := strings.TrimSpace(cfg[playerShowHotkeyHintConfigKey])
+	if raw == "" {
+		return true, nil
+	}
+	switch strings.ToLower(raw) {
+	case "0", "false", "no", "off":
+		return false, nil
+	case "1", "true", "yes", "on":
+		return true, nil
+	default:
+		return true, nil
+	}
 }
 
 func mpvBool(value bool) string {

@@ -4,14 +4,25 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 
 	"pornboss/internal/common/logging"
 )
 
+const playbackScreenshotTemplate = "mpv_%wH-%wM-%wS.%wT"
+
+type PlayOptions struct {
+	DataDir      string
+	VideoID      int64
+	StartTimeSec float64
+}
+
 // PlayVideo launches mpv to play the given file path.
-func PlayVideo(path string) error {
-	cmd, err := buildCommand(path)
+func PlayVideo(path string, options PlayOptions) error {
+	cmd, err := buildCommand(path, options)
 	if err != nil {
 		return err
 	}
@@ -21,7 +32,7 @@ func PlayVideo(path string) error {
 	return nil
 }
 
-func buildCommand(path string) (*exec.Cmd, error) {
+func buildCommand(path string, options PlayOptions) (*exec.Cmd, error) {
 	mpvPath, err := ResolvePath()
 	if err != nil {
 		return nil, err
@@ -44,9 +55,54 @@ func buildCommand(path string) (*exec.Cmd, error) {
 		"--script-opt=osc-layout=bottombar",
 		"--script-opt=osc-boxvideo=yes",
 	)
+	if screenshotArgs, err := buildPlaybackScreenshotArgs(options); err != nil {
+		return nil, err
+	} else if len(screenshotArgs) > 0 {
+		args = append(args, screenshotArgs...)
+	}
+	if hotkeyHint, err := buildStartupHotkeyHint(); err != nil {
+		return nil, err
+	} else if hotkeyHint != "" {
+		args = append(args, "--osd-playing-msg="+hotkeyHint)
+	}
+	args = append(args, buildPlaybackStartArgs(options)...)
 	args = append(args, "--input-conf="+inputConfPath)
 	args = append(args, "--", path)
 	return exec.Command(mpvPath, args...), nil
+}
+
+func buildPlaybackStartArgs(options PlayOptions) []string {
+	if options.StartTimeSec <= 0 {
+		return nil
+	}
+	return []string{"--start=" + strconv.FormatFloat(options.StartTimeSec, 'f', -1, 64)}
+}
+
+func buildPlaybackScreenshotArgs(options PlayOptions) ([]string, error) {
+	screenshotDir, err := ensurePlaybackScreenshotDir(options)
+	if err != nil {
+		return nil, err
+	}
+	if screenshotDir == "" {
+		return nil, nil
+	}
+	return []string{
+		"--screenshot-directory=" + screenshotDir,
+		"--screenshot-template=" + playbackScreenshotTemplate,
+	}, nil
+}
+
+func ensurePlaybackScreenshotDir(options PlayOptions) (string, error) {
+	dataDir := strings.TrimSpace(options.DataDir)
+	if dataDir == "" || options.VideoID <= 0 {
+		return "", nil
+	}
+
+	dir := filepath.Join(dataDir, "video", strconv.FormatInt(options.VideoID, 10), "screenshot")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("create mpv screenshot directory: %w", err)
+	}
+	return dir, nil
 }
 
 func startCommand(cmd *exec.Cmd, label string) error {

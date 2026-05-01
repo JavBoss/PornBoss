@@ -50,6 +50,8 @@ Pornboss integrates mpv playback, so clicking a video can launch a lightweight, 
 - Plays the original local file through mpv, avoiding browser playback format limitations.
 - Supports playback options such as default volume, window size, and always-on-top behavior.
 - Supports custom hotkeys for actions such as seeking and volume adjustment.
+- Supports taking screenshots at any moment during mpv playback, saved per video under `data/video/{video_id}/screenshot/`.
+- In both the video library and JAV library, you can view mpv screenshots, enlarge them, delete them, or resume playback from the screenshot timestamp.
 - Keeps browser preview support, plus one-click actions to open the original file or reveal its containing folder.
 
 ### 4. Simple, Practical UI
@@ -197,8 +199,8 @@ After downloading and extracting a new version, copy the old version's `data/` d
 - Backend: Go + Gin + GORM + SQLite
 - Frontend: React + Vite + Tailwind + Zustand
 - Media probing: `ffprobe`
-- Screenshot generation: `ffmpeg` on macOS, `mpv` on other platforms
-- Playback: `mpv`
+- Thumbnail screenshot generation: `ffmpeg` on macOS, `mpv` on other platforms
+- Playback and manual screenshots: `mpv`
 
 ### Common Commands
 
@@ -251,7 +253,7 @@ internal/db            GORM queries and SQLite storage
 internal/jav           JAV metadata and actress profile fetching
 internal/manager       Cover download and screenshot jobs
 internal/models        Data model definitions
-internal/mpv           mpv playback and hotkey configuration
+internal/mpv           mpv playback, hotkey, and manual screenshot configuration
 internal/server        HTTP API and static asset routing
 internal/service       Folder scanning, JAV detection, metadata completion
 internal/util          File, system, proxy, and video probing utilities

@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -102,6 +105,13 @@ type playbackInfo struct {
 	VideoID       int64            `json:"video_id"`
 	PreferredKind string           `json:"preferred_kind"`
 	Sources       []playbackSource `json:"sources"`
+}
+
+type videoScreenshotInfo struct {
+	Name       string    `json:"name"`
+	URL        string    `json:"url"`
+	Size       int64     `json:"size"`
+	ModifiedAt time.Time `json:"modified_at"`
 }
 
 func getVideoStreams(c *gin.Context) {
@@ -252,7 +262,7 @@ func openVideoFile(c *gin.Context) {
 }
 
 func playVideoFile(c *gin.Context) {
-	fullPath, dirPath, err := resolveVideoPathFromBody(c)
+	req, fullPath, dirPath, err := resolveVideoPathRequestFromBody(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -260,7 +270,16 @@ func playVideoFile(c *gin.Context) {
 	if err := ensureVideoFileExists(c, fullPath); err != nil {
 		return
 	}
-	if err := mpv.PlayVideo(fullPath); err != nil {
+	videoID := resolvePlaybackVideoID(c.Request.Context(), req.VideoID, dirPath, fullPath)
+	dataDir := ""
+	if common.AppConfig != nil {
+		dataDir = filepath.Dir(common.AppConfig.DatabasePath)
+	}
+	if err := mpv.PlayVideo(fullPath, mpv.PlayOptions{
+		DataDir:      dataDir,
+		VideoID:      videoID,
+		StartTimeSec: req.StartTimeSec,
+	}); err != nil {
 		logging.Error("play video file error: %v", err)
 		if strings.Contains(err.Error(), "mpv not found") {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
@@ -269,7 +288,11 @@ func playVideoFile(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "play file failed"})
 		return
 	}
-	incrementPlayCountByPath(c.Request.Context(), dirPath, fullPath)
+	if videoID > 0 {
+		if err := dbpkg.IncrementVideoPlayCount(c.Request.Context(), videoID); err != nil {
+			logging.Error("increment play count error: %v", err)
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
@@ -291,17 +314,27 @@ func revealVideoLocation(c *gin.Context) {
 }
 
 type videoPathRequest struct {
-	Path    string `json:"path"`
-	DirPath string `json:"dir_path"`
+	VideoID      int64   `json:"video_id"`
+	Path         string  `json:"path"`
+	DirPath      string  `json:"dir_path"`
+	StartTimeSec float64 `json:"start_time"`
 }
 
 func resolveVideoPathFromBody(c *gin.Context) (string, string, error) {
+	_, fullPath, dirPath, err := resolveVideoPathRequestFromBody(c)
+	return fullPath, dirPath, err
+}
+
+func resolveVideoPathRequestFromBody(c *gin.Context) (videoPathRequest, string, string, error) {
 	var req videoPathRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		return "", "", errors.New("invalid payload")
+		return req, "", "", errors.New("invalid payload")
+	}
+	if req.StartTimeSec < 0 {
+		return req, "", "", errors.New("invalid start_time")
 	}
 	fullPath, dirPath, err := resolveVideoPath(req.Path, req.DirPath)
-	return fullPath, dirPath, err
+	return req, fullPath, dirPath, err
 }
 
 func resolveVideoPath(rawPath, rawDirPath string) (string, string, error) {
@@ -362,6 +395,42 @@ func incrementPlayCountByPath(ctx context.Context, dirPath, fullPath string) {
 	}
 }
 
+func resolvePlaybackVideoID(ctx context.Context, requestedID int64, dirPath, fullPath string) int64 {
+	if requestedID > 0 {
+		video, err := dbpkg.GetVideo(ctx, requestedID)
+		if err != nil {
+			logging.Error("get playback video error: %v", err)
+		} else if video != nil {
+			if candidate, _, err := resolveVideoPath(video.Path, video.DirectoryRef.Path); err == nil && sameCleanPath(candidate, fullPath) {
+				return video.ID
+			}
+		}
+	}
+
+	if strings.TrimSpace(dirPath) == "" || strings.TrimSpace(fullPath) == "" {
+		return 0
+	}
+	relPath, err := filepath.Rel(dirPath, fullPath)
+	if err != nil {
+		logging.Error("resolve relative path for playback video id: %v", err)
+		return 0
+	}
+	relPath = filepath.ToSlash(filepath.Clean(relPath))
+	if relPath == "." || strings.HasPrefix(relPath, "..") {
+		return 0
+	}
+	videoID, err := dbpkg.GetVideoIDByPath(ctx, dirPath, relPath)
+	if err != nil {
+		logging.Error("lookup playback video id by path error: %v", err)
+		return 0
+	}
+	return videoID
+}
+
+func sameCleanPath(a, b string) bool {
+	return filepath.Clean(a) == filepath.Clean(b)
+}
+
 func getThumbnail(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -409,4 +478,145 @@ func getThumbnail(c *gin.Context) {
 	}
 
 	c.File(screenshotPath)
+}
+
+func listVideoScreenshots(c *gin.Context) {
+	id, screenshotDir, ok := resolveVideoScreenshotDir(c)
+	if !ok {
+		return
+	}
+
+	entries, err := os.ReadDir(screenshotDir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			c.JSON(http.StatusOK, gin.H{"items": []videoScreenshotInfo{}})
+			return
+		}
+		logging.Error("read video screenshots error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	items := make([]videoScreenshotInfo, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() || !isScreenshotImageName(entry.Name()) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			logging.Error("stat video screenshot error: %v", err)
+			continue
+		}
+		name := entry.Name()
+		imageURL := "/videos/" + strconv.FormatInt(id, 10) + "/screenshots/" + url.PathEscape(name)
+		imageURL += "?mtime=" + strconv.FormatInt(info.ModTime().UnixNano(), 10)
+		items = append(items, videoScreenshotInfo{
+			Name:       name,
+			URL:        imageURL,
+			Size:       info.Size(),
+			ModifiedAt: info.ModTime(),
+		})
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Name != items[j].Name {
+			return items[i].Name < items[j].Name
+		}
+		return items[i].ModifiedAt.Before(items[j].ModifiedAt)
+	})
+
+	c.JSON(http.StatusOK, gin.H{"items": items})
+}
+
+func getVideoScreenshot(c *gin.Context) {
+	_, screenshotDir, ok := resolveVideoScreenshotDir(c)
+	if !ok {
+		return
+	}
+
+	name := filepath.Base(strings.TrimSpace(c.Param("name")))
+	if !isScreenshotImageName(name) || name != strings.TrimSpace(c.Param("name")) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid screenshot name"})
+		return
+	}
+
+	screenshotPath := filepath.Join(screenshotDir, name)
+	if _, err := os.Stat(screenshotPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		logging.Error("stat video screenshot error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	c.File(screenshotPath)
+}
+
+func deleteVideoScreenshot(c *gin.Context) {
+	_, screenshotDir, ok := resolveVideoScreenshotDir(c)
+	if !ok {
+		return
+	}
+
+	name := filepath.Base(strings.TrimSpace(c.Param("name")))
+	if !isScreenshotImageName(name) || name != strings.TrimSpace(c.Param("name")) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid screenshot name"})
+		return
+	}
+
+	screenshotPath := filepath.Join(screenshotDir, name)
+	if err := os.Remove(screenshotPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		logging.Error("delete video screenshot error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func resolveVideoScreenshotDir(c *gin.Context) (int64, string, bool) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return 0, "", false
+	}
+
+	video, err := dbpkg.GetVideo(c.Request.Context(), id)
+	if err != nil {
+		logging.Error("get video for screenshots error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return 0, "", false
+	}
+	if video == nil {
+		c.Status(http.StatusNotFound)
+		return 0, "", false
+	}
+	if common.AppConfig == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return 0, "", false
+	}
+
+	dataDir := filepath.Dir(common.AppConfig.DatabasePath)
+	return id, filepath.Join(dataDir, "video", strconv.FormatInt(id, 10), "screenshot"), true
+}
+
+func isScreenshotImageName(name string) bool {
+	if strings.TrimSpace(name) == "" || filepath.Base(name) != name {
+		return false
+	}
+	if !strings.HasPrefix(name, "mpv_") {
+		return false
+	}
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".jpg", ".jpeg", ".png", ".webp":
+		return true
+	default:
+		return false
+	}
 }

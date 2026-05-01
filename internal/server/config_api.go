@@ -48,6 +48,7 @@ func updateConfig(c *gin.Context) {
 		PlayerWindowUseAutofit *bool                 `json:"player_window_use_autofit"`
 		PlayerVolume           *int                  `json:"player_volume"`
 		PlayerOntop            *bool                 `json:"player_ontop"`
+		PlayerShowHotkeyHint   *bool                 `json:"player_show_hotkey_hint"`
 		PlayerHotkeys          []playerHotkeyPayload `json:"player_hotkeys"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -160,6 +161,9 @@ func updateConfig(c *gin.Context) {
 	if req.PlayerOntop != nil {
 		entries["player_ontop"] = strconv.FormatBool(*req.PlayerOntop)
 	}
+	if req.PlayerShowHotkeyHint != nil {
+		entries["player_show_hotkey_hint"] = strconv.FormatBool(*req.PlayerShowHotkeyHint)
+	}
 	if req.PlayerHotkeys != nil {
 		clean := make([]playerHotkeyPayload, 0, len(req.PlayerHotkeys))
 		seen := make(map[string]struct{}, len(req.PlayerHotkeys))
@@ -181,11 +185,11 @@ func updateConfig(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "duplicate player hotkeys"})
 				return
 			}
-			if action != "seek" && action != "volume" {
+			if action != "seek" && action != "volume" && action != "screenshot" {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid player hotkey action"})
 				return
 			}
-			if item.Amount == 0 {
+			if action != "screenshot" && item.Amount == 0 {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "player hotkey amount required"})
 				return
 			}
@@ -197,7 +201,7 @@ func updateConfig(c *gin.Context) {
 			clean = append(clean, playerHotkeyPayload{
 				Key:    key,
 				Action: action,
-				Amount: item.Amount,
+				Amount: normalizedPlayerHotkeyAmount(action, item.Amount),
 			})
 		}
 		raw, err := json.Marshal(clean)
@@ -233,4 +237,11 @@ func updateConfig(c *gin.Context) {
 	}
 	util.SetProxyPortFromString(cfg["proxy_port"])
 	c.JSON(http.StatusOK, cfg)
+}
+
+func normalizedPlayerHotkeyAmount(action string, amount float64) float64 {
+	if action == "screenshot" {
+		return 0
+	}
+	return amount
 }

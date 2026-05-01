@@ -50,6 +50,8 @@ Pornboss 集成 mpv 播放能力，点击视频即可调用轻量、高性能的
 - 通过 mpv 播放原始本地文件，避免浏览器格式兼容性限制。
 - 支持默认音量、窗口尺寸、置顶等播放配置。
 - 支持自定义快捷键，例如快进、快退、音量调整等。
+- 播放时可随时截图，截图按视频保存在 `data/video/{video_id}/screenshot/`。
+- 在普通视频库和 JAV 作品库中都可以查看 mpv 截图、放大预览、删除截图，或从截图对应时刻继续播放。
 - 保留浏览器内预览能力，并支持打开原文件或定位到所在目录。
 
 ### 4. 简单易用的 UI
@@ -139,6 +141,10 @@ port = 17654
   <img src="screenshot/image1_9.png" style="width: 100%; height: auto;">
 </p>
 
+<p align="center">
+  <img src="screenshot/image1_10.png" style="width: 100%; height: auto;">
+</p>
+
 ## 如何升级版本
 
 下载并解压新版本后，把旧版本目录中的 `data/` 复制到新版本目录即可。建议先保留旧版本和旧数据备份，确认新版本稳定运行后再清理旧目录。
@@ -202,8 +208,8 @@ port = 17654
 - Backend: Go + Gin + GORM + SQLite
 - Frontend: React + Vite + Tailwind + Zustand
 - 媒体探测: `ffprobe`
-- 截图生成: macOS 使用 `ffmpeg`，其他平台使用 `mpv`
-- 播放: `mpv`
+- 缩略图截图生成: macOS 使用 `ffmpeg`，其他平台使用 `mpv`
+- 播放与手动截图: `mpv`
 
 ### 常用命令
 
@@ -256,7 +262,7 @@ internal/db            GORM 模型查询与 SQLite 存储
 internal/jav           JAV 元数据与女优资料抓取
 internal/manager       封面下载与截图任务
 internal/models        数据模型定义
-internal/mpv           mpv 播放与快捷键配置
+internal/mpv           mpv 播放、快捷键与手动截图配置
 internal/server        HTTP API 与静态资源路由
 internal/service       目录扫描、JAV 识别、资料补全
 internal/util          文件、系统、代理、视频探测等工具

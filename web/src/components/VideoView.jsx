@@ -47,6 +47,7 @@ export default function VideoView({
   openAlternatePlayer,
   alternatePlayerLabel,
   setTagPickerFor,
+  onOpenScreenshots,
   onTagClick,
 }) {
   const [sortAnchorEl, setSortAnchorEl] = useState(null)
@@ -216,6 +217,7 @@ export default function VideoView({
           onOpenFile={(video) => openAlternatePlayer?.(video)}
           openFileLabel={alternatePlayerLabel}
           onOpenTagPicker={(vid) => setTagPickerFor(vid)}
+          onOpenScreenshots={onOpenScreenshots}
           onTagClick={onTagClick}
         />
       )}

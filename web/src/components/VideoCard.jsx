@@ -5,6 +5,7 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import { revealVideoLocation } from '@/api'
 import { formatBytes, getVideoDisplayName, parseVideoFingerprint } from '@/utils/display'
 import { zh } from '@/utils/i18n'
+import PhotoLibraryOutlinedIcon from '@mui/icons-material/PhotoLibraryOutlined'
 
 export default function VideoCard({
   video,
@@ -14,6 +15,7 @@ export default function VideoCard({
   onOpenFile,
   openFileLabel,
   onOpenTagPicker,
+  onOpenScreenshots,
   onTagClick,
 }) {
   const displayName = getVideoDisplayName(video)
@@ -158,6 +160,19 @@ export default function VideoCard({
               className="h-6 w-6"
             >
               <FolderOpenIcon fontSize="inherit" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={zh('查看截图', 'View screenshots')}>
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenScreenshots?.(video)
+              }}
+              aria-label={zh('查看截图', 'View screenshots')}
+              className="h-6 w-6"
+            >
+              <PhotoLibraryOutlinedIcon fontSize="inherit" />
             </IconButton>
           </Tooltip>
         </div>

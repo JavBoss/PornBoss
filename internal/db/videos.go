@@ -245,8 +245,21 @@ func IncrementVideoPlayCount(ctx context.Context, id int64) error {
 
 // IncrementVideoPlayCountByPath increments the play count for a video located at a directory path + relative path.
 func IncrementVideoPlayCountByPath(ctx context.Context, dirPath, relPath string) error {
+	videoID, err := GetVideoIDByPath(ctx, dirPath, relPath)
+	if err != nil {
+		return err
+	}
+	if videoID == 0 {
+		return nil
+	}
+
+	return IncrementVideoPlayCount(ctx, videoID)
+}
+
+// GetVideoIDByPath returns the ID for a video located at a directory path + relative path.
+func GetVideoIDByPath(ctx context.Context, dirPath, relPath string) (int64, error) {
 	if strings.TrimSpace(dirPath) == "" || strings.TrimSpace(relPath) == "" {
-		return errors.New("directory path and relative path are required")
+		return 0, errors.New("directory path and relative path are required")
 	}
 
 	var video models.Video
@@ -260,10 +273,10 @@ func IncrementVideoPlayCountByPath(ctx context.Context, dirPath, relPath string)
 		First(&video).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil
+			return 0, nil
 		}
-		return fmt.Errorf("lookup video by path: %w", err)
+		return 0, fmt.Errorf("lookup video by path: %w", err)
 	}
 
-	return IncrementVideoPlayCount(ctx, video.ID)
+	return video.ID, nil
 }

@@ -130,7 +130,11 @@ export default function PlayerModal({ video, onClose, hotkeys = [] }) {
       }
       const key = normalizePlayerHotkeyKey(event.key || '')
       const configured = hotkeyMapRef.current.get(key)
-      if (configured) {
+      if (
+        configured &&
+        (configured.action === PLAYER_HOTKEY_ACTIONS.SEEK ||
+          configured.action === PLAYER_HOTKEY_ACTIONS.VOLUME)
+      ) {
         event.preventDefault()
         if (configured.action === PLAYER_HOTKEY_ACTIONS.SEEK) {
           seekBy(configured.amount)

@@ -30,6 +30,7 @@ import TagPickerModal from '@/components/TagPickerModal'
 import Toast from '@/components/Toast'
 import TopBar from '@/components/TopBar'
 import VideoSettingsModal from '@/components/VideoSettingsModal'
+import VideoScreenshotsModal from '@/components/VideoScreenshotsModal'
 import VideoTagModal from '@/components/VideoTagModal'
 import VideoView from '@/components/VideoView'
 import { isUserJavTag, normalizeIdolSort, normalizeJavSort } from '@/constants/jav'
@@ -125,6 +126,7 @@ export default function App() {
   const [javVideoPickerOpen, setJavVideoPickerOpen] = useState(false)
   const [javVideoPickerItem, setJavVideoPickerItem] = useState(null)
   const [javVideoPickerAction, setJavVideoPickerAction] = useState('play')
+  const [screenshotsVideo, setScreenshotsVideo] = useState(null)
   const [searchInput, setSearchInput] = useState('')
   const [javSearchInput, setJavSearchInput] = useState('')
   const [hydrated, setHydrated] = useState(false)
@@ -209,7 +211,11 @@ export default function App() {
   const playVideoWith = useCallback(
     (video, player) => {
       if (!video || !isVideoOpenable(video)) return
-      const payload = { path: getVideoRelPath(video), dirPath: getVideoDirPath(video) }
+      const payload = {
+        id: video.id,
+        path: getVideoRelPath(video),
+        dirPath: getVideoDirPath(video),
+      }
       const useSystemPlayer = player === 'system'
       const action = useSystemPlayer ? openVideoFile : playVideoFile
       action(payload).catch((err) =>
@@ -220,6 +226,19 @@ export default function App() {
           err
         )
       )
+    },
+    [getVideoDirPath, getVideoRelPath, isVideoOpenable]
+  )
+
+  const playVideoFromTime = useCallback(
+    (video, startTime) => {
+      if (!video || !isVideoOpenable(video)) return
+      playVideoFile({
+        id: video.id,
+        path: getVideoRelPath(video),
+        dirPath: getVideoDirPath(video),
+        startTime,
+      }).catch((err) => console.error(zh('播放文件失败', 'Failed to play file'), err))
     },
     [getVideoDirPath, getVideoRelPath, isVideoOpenable]
   )
@@ -305,6 +324,22 @@ export default function App() {
     [getVideoDirPath, getVideoRelPath, isVideoOpenable]
   )
 
+  const handleJavOpenScreenshots = useCallback(
+    (video, item) => {
+      const videos = item?.videos || (video ? [video] : [])
+      if (videos.length > 1) {
+        setJavVideoPickerAction('screenshots')
+        setJavVideoPickerItem(item)
+        setJavVideoPickerOpen(true)
+        return
+      }
+      const target = video && isVideoOpenable(video) ? video : videos.find(isVideoOpenable)
+      if (!target) return
+      setScreenshotsVideo(target)
+    },
+    [isVideoOpenable]
+  )
+
   const handleSelectJavVideo = useCallback(
     async (video) => {
       if (!video) return
@@ -316,6 +351,13 @@ export default function App() {
       if (javVideoPickerAction === 'open') {
         handleOpenAlternatePlayer(video)
         closeJavVideoPicker()
+        return
+      }
+      if (javVideoPickerAction === 'screenshots') {
+        if (isVideoOpenable(video)) {
+          setScreenshotsVideo(video)
+          closeJavVideoPicker()
+        }
         return
       }
       if (!isVideoOpenable(video)) return
@@ -1343,15 +1385,19 @@ export default function App() {
       ? alternatePlayer === 'mpv'
         ? zh('选择使用MPV播放器播放的文件', 'Choose a file to play with MPV player')
         : zh('选择使用系统播放器播放的文件', 'Choose a file to play with system player')
-      : javVideoPickerAction === 'reveal'
-        ? zh('选择定位文件', 'Choose a file to reveal')
-        : defaultPlayer === 'system'
-          ? zh('选择使用系统播放器播放的文件', 'Choose a file to play with system player')
-          : zh('选择使用MPV播放器播放的文件', 'Choose a file to play with MPV player')
+      : javVideoPickerAction === 'screenshots'
+        ? zh('选择查看截图的文件', 'Choose a file to view screenshots')
+        : javVideoPickerAction === 'reveal'
+          ? zh('选择定位文件', 'Choose a file to reveal')
+          : defaultPlayer === 'system'
+            ? zh('选择使用系统播放器播放的文件', 'Choose a file to play with system player')
+            : zh('选择使用MPV播放器播放的文件', 'Choose a file to play with MPV player')
   const javVideoPickerEmptyText =
     javVideoPickerAction === 'play'
       ? zh('暂无可播放文件', 'No playable files')
-      : zh('暂无可用文件', 'No available files')
+      : javVideoPickerAction === 'screenshots'
+        ? zh('暂无可查看截图的文件', 'No files with screenshots available')
+        : zh('暂无可用文件', 'No available files')
 
   return (
     <div className="min-h-screen">
@@ -1435,6 +1481,7 @@ export default function App() {
               onOpenFile={handleJavOpenFile}
               openFileLabel={alternatePlayerLabel}
               onRevealFile={handleJavRevealFile}
+              onOpenScreenshots={handleJavOpenScreenshots}
               onIdolClick={handleJavActorClick}
               onTagClick={handleJavTagClick}
               onEditTags={openJavTagEditor}
@@ -1465,6 +1512,7 @@ export default function App() {
             openAlternatePlayer={handleOpenAlternatePlayer}
             alternatePlayerLabel={alternatePlayerLabel}
             setTagPickerFor={openTagEditor}
+            onOpenScreenshots={setScreenshotsVideo}
             onTagClick={handleVideoTagClick}
           />
         )}
@@ -1478,6 +1526,13 @@ export default function App() {
         sortInput={videoSortInput}
         onSortChange={setVideoSortInput}
         onSave={handleSaveVideoSettings}
+      />
+
+      <VideoScreenshotsModal
+        video={screenshotsVideo}
+        playerHotkeys={config?.player_hotkeys}
+        onClose={() => setScreenshotsVideo(null)}
+        onPlayAtTime={playVideoFromTime}
       />
 
       <JavSettingsModal
@@ -1717,6 +1772,13 @@ export default function App() {
         }
         playerVolume={
           config?.player_volume === '0' ? 0 : Number.parseInt(config?.player_volume, 10) || 70
+        }
+        playerShowHotkeyHint={
+          config?.player_show_hotkey_hint == null
+            ? true
+            : !['0', 'false', 'no', 'off'].includes(
+                String(config.player_show_hotkey_hint).trim().toLowerCase()
+              )
         }
         onSavePlayerBasicSettings={async (payload) => {
           const cfg = await updateConfig(payload)

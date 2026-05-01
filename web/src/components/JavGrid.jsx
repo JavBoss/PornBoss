@@ -5,6 +5,7 @@ import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
+import PhotoLibraryOutlinedIcon from '@mui/icons-material/PhotoLibraryOutlined'
 
 import { fetchJavIdolPreview } from '@/api'
 import { IdolCard, getIdolCardLayoutProps } from '@/components/JavIdolGrid'
@@ -69,6 +70,7 @@ export default function JavGrid({
   onOpenFile,
   openFileLabel,
   onRevealFile,
+  onOpenScreenshots,
 }) {
   const idolPreviewCacheRef = useRef(new Map())
   const idolPreviewInflightRef = useRef(new Map())
@@ -123,6 +125,7 @@ export default function JavGrid({
           onOpenFile={onOpenFile}
           openFileLabel={openFileLabel}
           onRevealFile={onRevealFile}
+          onOpenScreenshots={onOpenScreenshots}
           loadIdolPreview={loadIdolPreview}
         />
       ))}
@@ -139,6 +142,7 @@ function JavCard({
   onOpenFile,
   openFileLabel,
   onRevealFile,
+  onOpenScreenshots,
   loadIdolPreview,
 }) {
   const primaryVideo = useMemo(() => (item?.videos || [])[0], [item])
@@ -202,6 +206,12 @@ function JavCard({
     event.stopPropagation()
     if (!canOpen) return
     onRevealFile?.(openableVideos[0] || primaryVideo, item)
+  }
+
+  const handleOpenScreenshots = (event) => {
+    event.stopPropagation()
+    if (!canOpen) return
+    onOpenScreenshots?.(openableVideos[0] || primaryVideo, item)
   }
 
   const canPlay = Boolean(primaryVideo && primaryVideo.id)
@@ -445,6 +455,17 @@ function JavCard({
               className="h-6 w-6"
             >
               <FolderOpenIcon fontSize="inherit" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={zh('查看截图', 'View screenshots')}>
+            <IconButton
+              size="small"
+              onClick={handleOpenScreenshots}
+              disabled={!canOpen}
+              aria-label={zh('查看截图', 'View screenshots')}
+              className="h-6 w-6"
+            >
+              <PhotoLibraryOutlinedIcon fontSize="inherit" />
             </IconButton>
           </Tooltip>
           {showEditTags && (

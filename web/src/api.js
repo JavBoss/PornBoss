@@ -145,11 +145,11 @@ export async function openVideoFile({ path, dirPath }) {
   }
 }
 
-export async function playVideoFile({ path, dirPath }) {
+export async function playVideoFile({ id, path, dirPath, startTime }) {
   const res = await fetch('/videos/play', {
     method: 'POST',
     headers: jsonHeaders,
-    body: JSON.stringify({ path, dir_path: dirPath }),
+    body: JSON.stringify({ video_id: id, path, dir_path: dirPath, start_time: startTime }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -184,6 +184,26 @@ export async function fetchPlaybackInfo(id) {
     throw new Error(err.error || zh('加载播放信息失败', 'Failed to load playback info'))
   }
   return res.json()
+}
+
+export async function fetchVideoScreenshots(id) {
+  const res = await fetch(`/videos/${id}/screenshots`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || zh('加载截图失败', 'Failed to load screenshots'))
+  }
+  const data = await res.json()
+  return Array.isArray(data?.items) ? data.items : []
+}
+
+export async function deleteVideoScreenshot(videoId, name) {
+  const res = await fetch(`/videos/${videoId}/screenshots/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || zh('删除截图失败', 'Failed to delete screenshot'))
+  }
 }
 
 // Directories
