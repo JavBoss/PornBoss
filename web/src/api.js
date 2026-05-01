@@ -145,11 +145,11 @@ export async function openVideoFile({ path, dirPath }) {
   }
 }
 
-export async function playVideoFile({ id, path, dirPath }) {
+export async function playVideoFile({ id, path, dirPath, startTime }) {
   const res = await fetch('/videos/play', {
     method: 'POST',
     headers: jsonHeaders,
-    body: JSON.stringify({ video_id: id, path, dir_path: dirPath }),
+    body: JSON.stringify({ video_id: id, path, dir_path: dirPath, start_time: startTime }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))

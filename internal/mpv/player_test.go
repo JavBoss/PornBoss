@@ -47,3 +47,10 @@ func TestBuildPlaybackScreenshotArgsIncludeTimeTemplate(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildPlaybackStartArgsIncludesStartTime(t *testing.T) {
+	args := buildPlaybackStartArgs(PlayOptions{StartTimeSec: 12.345})
+	if len(args) != 1 || args[0] != "--start=12.345" {
+		t.Fatalf("expected start args, got %v", args)
+	}
+}

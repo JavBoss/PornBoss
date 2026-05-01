@@ -230,6 +230,19 @@ export default function App() {
     [getVideoDirPath, getVideoRelPath, isVideoOpenable]
   )
 
+  const playVideoFromTime = useCallback(
+    (video, startTime) => {
+      if (!video || !isVideoOpenable(video)) return
+      playVideoFile({
+        id: video.id,
+        path: getVideoRelPath(video),
+        dirPath: getVideoDirPath(video),
+        startTime,
+      }).catch((err) => console.error(zh('播放文件失败', 'Failed to play file'), err))
+    },
+    [getVideoDirPath, getVideoRelPath, isVideoOpenable]
+  )
+
   const handleOpenPlayer = useCallback(
     (video) => {
       playVideoWith(video, defaultPlayer)
@@ -1487,7 +1500,11 @@ export default function App() {
         onSave={handleSaveVideoSettings}
       />
 
-      <VideoScreenshotsModal video={screenshotsVideo} onClose={() => setScreenshotsVideo(null)} />
+      <VideoScreenshotsModal
+        video={screenshotsVideo}
+        onClose={() => setScreenshotsVideo(null)}
+        onPlayAtTime={playVideoFromTime}
+      />
 
       <JavSettingsModal
         open={javSettingsOpen}

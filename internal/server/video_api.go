@@ -276,8 +276,9 @@ func playVideoFile(c *gin.Context) {
 		dataDir = filepath.Dir(common.AppConfig.DatabasePath)
 	}
 	if err := mpv.PlayVideo(fullPath, mpv.PlayOptions{
-		DataDir: dataDir,
-		VideoID: videoID,
+		DataDir:      dataDir,
+		VideoID:      videoID,
+		StartTimeSec: req.StartTimeSec,
 	}); err != nil {
 		logging.Error("play video file error: %v", err)
 		if strings.Contains(err.Error(), "mpv not found") {
@@ -313,9 +314,10 @@ func revealVideoLocation(c *gin.Context) {
 }
 
 type videoPathRequest struct {
-	VideoID int64  `json:"video_id"`
-	Path    string `json:"path"`
-	DirPath string `json:"dir_path"`
+	VideoID      int64   `json:"video_id"`
+	Path         string  `json:"path"`
+	DirPath      string  `json:"dir_path"`
+	StartTimeSec float64 `json:"start_time"`
 }
 
 func resolveVideoPathFromBody(c *gin.Context) (string, string, error) {
@@ -327,6 +329,9 @@ func resolveVideoPathRequestFromBody(c *gin.Context) (videoPathRequest, string, 
 	var req videoPathRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		return req, "", "", errors.New("invalid payload")
+	}
+	if req.StartTimeSec < 0 {
+		return req, "", "", errors.New("invalid start_time")
 	}
 	fullPath, dirPath, err := resolveVideoPath(req.Path, req.DirPath)
 	return req, fullPath, dirPath, err
@@ -514,10 +519,10 @@ func listVideoScreenshots(c *gin.Context) {
 	}
 
 	sort.Slice(items, func(i, j int) bool {
-		if !items[i].ModifiedAt.Equal(items[j].ModifiedAt) {
-			return items[i].ModifiedAt.After(items[j].ModifiedAt)
+		if items[i].Name != items[j].Name {
+			return items[i].Name < items[j].Name
 		}
-		return items[i].Name > items[j].Name
+		return items[i].ModifiedAt.Before(items[j].ModifiedAt)
 	})
 
 	c.JSON(http.StatusOK, gin.H{"items": items})

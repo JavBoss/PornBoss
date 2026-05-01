@@ -15,8 +15,9 @@ import (
 const playbackScreenshotTemplate = "mpv_%wH-%wM-%wS.%wT"
 
 type PlayOptions struct {
-	DataDir string
-	VideoID int64
+	DataDir      string
+	VideoID      int64
+	StartTimeSec float64
 }
 
 // PlayVideo launches mpv to play the given file path.
@@ -59,9 +60,17 @@ func buildCommand(path string, options PlayOptions) (*exec.Cmd, error) {
 	} else if len(screenshotArgs) > 0 {
 		args = append(args, screenshotArgs...)
 	}
+	args = append(args, buildPlaybackStartArgs(options)...)
 	args = append(args, "--input-conf="+inputConfPath)
 	args = append(args, "--", path)
 	return exec.Command(mpvPath, args...), nil
+}
+
+func buildPlaybackStartArgs(options PlayOptions) []string {
+	if options.StartTimeSec <= 0 {
+		return nil
+	}
+	return []string{"--start=" + strconv.FormatFloat(options.StartTimeSec, 'f', -1, 64)}
 }
 
 func buildPlaybackScreenshotArgs(options PlayOptions) ([]string, error) {

@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
+import CloseIcon from '@mui/icons-material/Close'
+import PlayArrowIcon from '@mui/icons-material/PlayArrow'
+import ZoomInIcon from '@mui/icons-material/ZoomIn'
+import { IconButton, Tooltip } from '@mui/material'
 import { fetchVideoScreenshots } from '@/api'
 import { getVideoDisplayName } from '@/utils/display'
 import { zh } from '@/utils/i18n'
 
-export default function VideoScreenshotsModal({ video, onClose }) {
+export default function VideoScreenshotsModal({ video, onClose, onPlayAtTime }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [previewItem, setPreviewItem] = useState(null)
   const open = Boolean(video?.id)
   const title = useMemo(() => getVideoDisplayName(video), [video])
 
@@ -17,6 +22,7 @@ export default function VideoScreenshotsModal({ video, onClose }) {
     setLoading(true)
     setError('')
     setItems([])
+    setPreviewItem(null)
     fetchVideoScreenshots(video.id)
       .then((nextItems) => {
         if (!cancelled) setItems(nextItems)
@@ -45,6 +51,20 @@ export default function VideoScreenshotsModal({ video, onClose }) {
     return `${match[1]}:${match[2]}:${match[3]}${match[4] || ''}`
   }
 
+  const screenshotStartTime = (name) => {
+    const stem = String(name || '')
+      .replace(/\.[^.]+$/, '')
+      .replace(/^mpv_/, '')
+    const match = stem.match(/^(\d{2})-(\d{2})-(\d{2})(\.\d+)?$/)
+    if (!match) return null
+    return (
+      Number.parseInt(match[1], 10) * 3600 +
+      Number.parseInt(match[2], 10) * 60 +
+      Number.parseInt(match[3], 10) +
+      Number.parseFloat(match[4] || '0')
+    )
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
       <div className="flex max-h-full w-full max-w-5xl flex-col rounded-lg bg-white shadow-xl">
@@ -57,13 +77,13 @@ export default function VideoScreenshotsModal({ video, onClose }) {
               {title}
             </div>
           </div>
-          <button
+          <IconButton
+            size="small"
             onClick={onClose}
-            className="ml-3 rounded px-2 py-1 text-gray-500 hover:bg-gray-100"
             aria-label={zh('关闭截图弹窗', 'Close screenshots modal')}
           >
-            x
-          </button>
+            <CloseIcon fontSize="inherit" />
+          </IconButton>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -81,32 +101,75 @@ export default function VideoScreenshotsModal({ video, onClose }) {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {items.map((item) => (
-                <a
-                  key={item.name}
-                  href={item.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group overflow-hidden rounded border border-gray-200 bg-white hover:border-gray-300"
-                  title={formatScreenshotName(item.name)}
-                >
-                  <div className="aspect-video bg-gray-100">
-                    <img
-                      src={item.url}
-                      alt={item.name}
-                      loading="lazy"
-                      className="h-full w-full object-contain"
-                    />
+              {items.map((item) => {
+                const displayName = formatScreenshotName(item.name)
+                const startTime = screenshotStartTime(item.name)
+                return (
+                  <div
+                    key={item.name}
+                    className="group overflow-hidden rounded border border-gray-200 bg-white hover:border-gray-300"
+                    title={displayName}
+                  >
+                    <div className="relative aspect-video bg-gray-100">
+                      <img
+                        src={item.url}
+                        alt={item.name}
+                        loading="lazy"
+                        className="h-full w-full object-contain"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 transition group-hover:bg-black/35 group-hover:opacity-100">
+                        <Tooltip title={zh('放大图片', 'Enlarge image')}>
+                          <IconButton
+                            size="small"
+                            onClick={() => setPreviewItem(item)}
+                            aria-label={zh('放大图片', 'Enlarge image')}
+                            className="!bg-white/90 !text-gray-900 hover:!bg-white"
+                          >
+                            <ZoomInIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title={zh('从此处播放', 'Play from here')}>
+                          <span>
+                            <IconButton
+                              size="small"
+                              onClick={() => onPlayAtTime?.(video, startTime)}
+                              disabled={startTime == null}
+                              aria-label={zh('从此处播放', 'Play from here')}
+                              className="!bg-white/90 !text-gray-900 hover:!bg-white disabled:!opacity-50"
+                            >
+                              <PlayArrowIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      </div>
+                    </div>
+                    <div className="truncate px-2 py-1 text-xs text-gray-600 group-hover:text-gray-900">
+                      {displayName}
+                    </div>
                   </div>
-                  <div className="truncate px-2 py-1 text-xs text-gray-600 group-hover:text-gray-900">
-                    {formatScreenshotName(item.name)}
-                  </div>
-                </a>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
       </div>
+      {previewItem ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4">
+          <img
+            src={previewItem.url}
+            alt={previewItem.name}
+            className="max-h-full max-w-full object-contain"
+          />
+          <IconButton
+            size="small"
+            onClick={() => setPreviewItem(null)}
+            aria-label={zh('关闭大图', 'Close enlarged image')}
+            className="!absolute !right-4 !top-4 !bg-white/90 !text-gray-900 hover:!bg-white"
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </div>
+      ) : null}
     </div>
   )
 }
