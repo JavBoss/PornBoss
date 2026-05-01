@@ -34,6 +34,7 @@ const PLAYER_BASIC_DEFAULTS = {
   windowUseAutofit: false,
   ontop: true,
   volume: 70,
+  showHotkeyHint: true,
 }
 
 export default function GlobalSettingsModal({
@@ -52,6 +53,7 @@ export default function GlobalSettingsModal({
   playerWindowUseAutofit,
   playerOntop,
   playerVolume,
+  playerShowHotkeyHint,
   onSavePlayerBasicSettings,
   playerHotkeys,
   onSavePlayerHotkeys,
@@ -74,6 +76,7 @@ export default function GlobalSettingsModal({
   const [playerWindowUseAutofitInput, setPlayerWindowUseAutofitInput] = useState(false)
   const [playerOntopInput, setPlayerOntopInput] = useState(true)
   const [playerVolumeInput, setPlayerVolumeInput] = useState('')
+  const [playerShowHotkeyHintInput, setPlayerShowHotkeyHintInput] = useState(true)
 
   const normalizedPlayerHotkeys = parsePlayerHotkeys(playerHotkeys)
 
@@ -83,6 +86,7 @@ export default function GlobalSettingsModal({
     setPlayerWindowUseAutofitInput(PLAYER_BASIC_DEFAULTS.windowUseAutofit)
     setPlayerOntopInput(PLAYER_BASIC_DEFAULTS.ontop)
     setPlayerVolumeInput(String(PLAYER_BASIC_DEFAULTS.volume))
+    setPlayerShowHotkeyHintInput(PLAYER_BASIC_DEFAULTS.showHotkeyHint)
     setPlayerBasicError('')
     setPlayerBasicSuccess('')
   }
@@ -105,6 +109,7 @@ export default function GlobalSettingsModal({
       )
       setPlayerOntopInput(playerOntop ?? PLAYER_BASIC_DEFAULTS.ontop)
       setPlayerVolumeInput(String(playerVolume ?? PLAYER_BASIC_DEFAULTS.volume))
+      setPlayerShowHotkeyHintInput(playerShowHotkeyHint ?? PLAYER_BASIC_DEFAULTS.showHotkeyHint)
     }
   }, [
     open,
@@ -115,6 +120,7 @@ export default function GlobalSettingsModal({
     playerWindowUseAutofit,
     playerOntop,
     playerVolume,
+    playerShowHotkeyHint,
   ])
 
   if (!open) return null
@@ -465,6 +471,28 @@ export default function GlobalSettingsModal({
                   )}
                 </p>
               </section>
+
+              <section className="space-y-3 border-t border-zinc-200 pt-5">
+                <label className="flex items-center gap-3 text-sm font-semibold text-zinc-800">
+                  <input
+                    type="checkbox"
+                    checked={playerShowHotkeyHintInput}
+                    onChange={(e) => {
+                      setPlayerShowHotkeyHintInput(e.target.checked)
+                      setPlayerBasicError('')
+                      setPlayerBasicSuccess('')
+                    }}
+                    className="h-4 w-4 rounded"
+                  />
+                  <span>{zh('启动时显示快捷键配置', 'Show Shortcuts on Startup')}</span>
+                </label>
+                <p className="text-xs text-zinc-500">
+                  {zh(
+                    '默认开启，在 mpv 打开视频时显示当前快捷键说明。',
+                    'Enabled by default to show the current shortcut guide when mpv opens a video.'
+                  )}
+                </p>
+              </section>
             </div>
 
             {playerBasicError && (
@@ -518,6 +546,7 @@ export default function GlobalSettingsModal({
                       player_window_use_autofit: playerWindowUseAutofitInput,
                       player_ontop: playerOntopInput,
                       player_volume: volume,
+                      player_show_hotkey_hint: playerShowHotkeyHintInput,
                     })
                     setPlayerBasicSuccess(zh('基础设置保存成功', 'Basic settings saved'))
                   } catch (err) {

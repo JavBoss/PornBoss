@@ -75,11 +75,30 @@ func TestBuildStartupHotkeyHintIncludesDefaultHotkeys(t *testing.T) {
 		"e：截图",
 		"空格：暂停/继续",
 		"ESC：退出",
+		"你可在「全局设置 → MPV播放器 → 基础设置」里关闭此信息显示",
 	}
 	for _, line := range expected {
 		if !strings.Contains(content, line) {
 			t.Fatalf("expected %q in mpv hotkey hint, got %q", line, content)
 		}
+	}
+}
+
+func TestBuildStartupHotkeyHintCanBeDisabled(t *testing.T) {
+	openConfigTestDB(t)
+	if err := dbpkg.UpsertConfig(context.Background(), map[string]string{
+		playerShowHotkeyHintConfigKey: "false",
+	}); err != nil {
+		t.Fatalf("upsert config: %v", err)
+	}
+
+	content, err := buildStartupHotkeyHint()
+	if err != nil {
+		t.Fatalf("buildStartupHotkeyHint returned error: %v", err)
+	}
+
+	if content != "" {
+		t.Fatalf("expected disabled hotkey hint to be empty, got %q", content)
 	}
 }
 

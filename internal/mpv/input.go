@@ -22,6 +22,7 @@ const playerWindowHeightConfigKey = "player_window_height"
 const playerWindowUseAutofitConfigKey = "player_window_use_autofit"
 const playerVolumeConfigKey = "player_volume"
 const playerOntopConfigKey = "player_ontop"
+const playerShowHotkeyHintConfigKey = "player_show_hotkey_hint"
 
 const (
 	defaultWindowWidth  = 70
@@ -151,6 +152,14 @@ func buildInputConfContent() (string, error) {
 }
 
 func buildStartupHotkeyHint() (string, error) {
+	showHint, err := loadConfiguredPlayerShowHotkeyHint()
+	if err != nil {
+		return "", err
+	}
+	if !showHint {
+		return "", nil
+	}
+
 	hotkeys, err := loadConfiguredHotkeys()
 	if err != nil {
 		return "", err
@@ -174,6 +183,7 @@ func buildStartupHotkeyHint() (string, error) {
 	}
 	parts = append(parts, "空格：暂停/继续")
 	parts = append(parts, "ESC：退出")
+	parts = append(parts, "你可在「全局设置 → MPV播放器 → 基础设置」里关闭此信息显示")
 	return strings.Join(parts, "\n"), nil
 }
 
@@ -459,6 +469,31 @@ func loadConfiguredPlayerBaseSettings() (int, int, bool, int, bool, error) {
 	}
 
 	return windowWidth, windowHeight, useAutofit, volume, ontop, nil
+}
+
+func loadConfiguredPlayerShowHotkeyHint() (bool, error) {
+	if common.DB == nil {
+		return true, nil
+	}
+
+	cfg, err := dbpkg.ListConfig(context.Background())
+	if err != nil {
+		logging.Error("list player hotkey hint config failed, using defaults: %v", err)
+		return true, nil
+	}
+
+	raw := strings.TrimSpace(cfg[playerShowHotkeyHintConfigKey])
+	if raw == "" {
+		return true, nil
+	}
+	switch strings.ToLower(raw) {
+	case "0", "false", "no", "off":
+		return false, nil
+	case "1", "true", "yes", "on":
+		return true, nil
+	default:
+		return true, nil
+	}
 }
 
 func mpvBool(value bool) string {

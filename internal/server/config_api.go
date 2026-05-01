@@ -48,6 +48,7 @@ func updateConfig(c *gin.Context) {
 		PlayerWindowUseAutofit *bool                 `json:"player_window_use_autofit"`
 		PlayerVolume           *int                  `json:"player_volume"`
 		PlayerOntop            *bool                 `json:"player_ontop"`
+		PlayerShowHotkeyHint   *bool                 `json:"player_show_hotkey_hint"`
 		PlayerHotkeys          []playerHotkeyPayload `json:"player_hotkeys"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -159,6 +160,9 @@ func updateConfig(c *gin.Context) {
 	}
 	if req.PlayerOntop != nil {
 		entries["player_ontop"] = strconv.FormatBool(*req.PlayerOntop)
+	}
+	if req.PlayerShowHotkeyHint != nil {
+		entries["player_show_hotkey_hint"] = strconv.FormatBool(*req.PlayerShowHotkeyHint)
 	}
 	if req.PlayerHotkeys != nil {
 		clean := make([]playerHotkeyPayload, 0, len(req.PlayerHotkeys))

@@ -1772,6 +1772,13 @@ export default function App() {
         playerVolume={
           config?.player_volume === '0' ? 0 : Number.parseInt(config?.player_volume, 10) || 70
         }
+        playerShowHotkeyHint={
+          config?.player_show_hotkey_hint == null
+            ? true
+            : !['0', 'false', 'no', 'off'].includes(
+                String(config.player_show_hotkey_hint).trim().toLowerCase()
+              )
+        }
         onSavePlayerBasicSettings={async (payload) => {
           const cfg = await updateConfig(payload)
           useStore.setState({ config: cfg })
