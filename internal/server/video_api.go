@@ -277,7 +277,11 @@ func playVideoFile(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "play file failed"})
 		return
 	}
-	incrementPlayCountByPath(c.Request.Context(), dirPath, fullPath)
+	if videoID > 0 {
+		if err := dbpkg.IncrementVideoPlayCount(c.Request.Context(), videoID); err != nil {
+			logging.Error("increment play count error: %v", err)
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
