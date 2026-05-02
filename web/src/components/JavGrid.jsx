@@ -6,6 +6,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import PhotoLibraryOutlinedIcon from '@mui/icons-material/PhotoLibraryOutlined'
+import SearchIcon from '@mui/icons-material/Search'
 
 import { fetchJavIdolPreview } from '@/api'
 import { IdolCard, getIdolCardLayoutProps } from '@/components/JavIdolGrid'
@@ -75,6 +76,7 @@ export default function JavGrid({
 }) {
   const idolPreviewCacheRef = useRef(new Map())
   const idolPreviewInflightRef = useRef(new Map())
+  const [coverPreview, setCoverPreview] = useState(null)
   const hasItems = Array.isArray(items) && items.length > 0
   const columnCount = Number.isFinite(Number(columns)) ? Math.floor(Number(columns)) : 0
   const fixedColumnCount = columnCount > 0 ? Math.min(columnCount, 12) : 0
@@ -136,8 +138,45 @@ export default function JavGrid({
           onRevealFile={onRevealFile}
           onOpenScreenshots={onOpenScreenshots}
           loadIdolPreview={loadIdolPreview}
+          onOpenCoverPreview={setCoverPreview}
         />
       ))}
+      {coverPreview ? (
+        <CoverPreviewModal preview={coverPreview} onClose={() => setCoverPreview(null)} />
+      ) : null}
+    </div>
+  )
+}
+
+function CoverPreviewModal({ preview, onClose }) {
+  if (!preview?.src) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/80 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={zh('封面预览', 'Cover preview')}
+    >
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default"
+        aria-label={zh('关闭封面预览', 'Close cover preview')}
+        onClick={onClose}
+      />
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute right-4 top-4 z-10 rounded bg-black/50 px-3 py-1 text-xl leading-none text-white hover:bg-black/70"
+        aria-label={zh('关闭封面预览', 'Close cover preview')}
+      >
+        ×
+      </button>
+      <img
+        src={preview.src}
+        alt={preview.alt || zh('JAV 封面', 'JAV cover')}
+        className="relative z-10 max-h-[92vh] max-w-[94vw] object-contain shadow-2xl"
+      />
     </div>
   )
 }
@@ -153,6 +192,7 @@ function JavCard({
   onRevealFile,
   onOpenScreenshots,
   loadIdolPreview,
+  onOpenCoverPreview,
 }) {
   const primaryVideo = useMemo(() => (item?.videos || [])[0], [item])
   const { bgWidthPercent, coverAspectPercent } = useMemo(() => getIdolCardLayoutProps(), [])
@@ -223,6 +263,12 @@ function JavCard({
     onOpenScreenshots?.(openableVideos[0] || primaryVideo, item)
   }
 
+  const handleOpenCoverPreview = (event) => {
+    event.stopPropagation()
+    if (!cover) return
+    onOpenCoverPreview?.({ src: cover, alt: titleText })
+  }
+
   const canPlay = Boolean(primaryVideo && primaryVideo.id)
   const handlePlay = (event) => {
     event?.stopPropagation()
@@ -290,7 +336,7 @@ function JavCard({
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border bg-white shadow-sm transition hover:shadow-lg">
-      <div className="group relative aspect-[800/538] bg-gray-100">
+      <div className="group relative aspect-[800/538] overflow-hidden bg-gray-100">
         {cover ? (
           <img src={cover} alt={item?.code} className="h-full w-full object-cover" loading="lazy" />
         ) : (
@@ -318,6 +364,20 @@ function JavCard({
             </svg>
           </button>
         </div>
+        {cover ? (
+          <div className="absolute bottom-2 left-2 z-10 opacity-0 transition-opacity group-hover:opacity-100">
+            <Tooltip title={zh('放大封面', 'Enlarge cover')}>
+              <button
+                type="button"
+                onClick={handleOpenCoverPreview}
+                aria-label={zh('放大封面', 'Enlarge cover')}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-black/70 text-white shadow-lg shadow-black/60 hover:bg-black/85"
+              >
+                <SearchIcon className="h-5 w-5 text-white" fontSize="inherit" />
+              </button>
+            </Tooltip>
+          </div>
+        ) : null}
       </div>
       <div className="flex flex-1 flex-col gap-2 p-3">
         <div className="line-clamp-2 text-sm leading-tight" title={titleText}>
