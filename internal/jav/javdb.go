@@ -2,15 +2,15 @@ package jav
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
-	"os/exec"
-	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/net/html"
@@ -27,6 +27,11 @@ var JavDBProvider JavLookupProvider = JavDB{}
 const (
 	javDBBaseURL   = "https://javdb.com"
 	javDBUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+
+var (
+	javDBHTTPClientOnce sync.Once
+	javDBHTTPClient     *http.Client
 )
 
 // LookupActressByJapaneseName implements JavLookupProvider.
@@ -144,7 +149,7 @@ func fetchJavDBHTML(ctx context.Context, targetURL, referer string) (*html.Node,
 	}
 
 	logging.Info("javdb request: %s", targetURL)
-	resp, err := util.DoRequest(req)
+	resp, err := doJavDBRequest(req)
 	if err != nil {
 		if errors.Is(err, util.ErrCachedNotFound) {
 			return nil, http.StatusNotFound, nil
@@ -162,9 +167,6 @@ func fetchJavDBHTML(ctx context.Context, targetURL, referer string) (*html.Node,
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, resp.StatusCode, nil
 	}
-	if resp.StatusCode == http.StatusForbidden {
-		return fetchJavDBHTMLWithCurl(ctx, targetURL, referer)
-	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, resp.StatusCode, fmt.Errorf("javdb: http %d", resp.StatusCode)
 	}
@@ -176,53 +178,25 @@ func fetchJavDBHTML(ctx context.Context, targetURL, referer string) (*html.Node,
 	return doc, resp.StatusCode, nil
 }
 
-func fetchJavDBHTMLWithCurl(ctx context.Context, targetURL, referer string) (*html.Node, int, error) {
-	logging.Info("javdb curl fallback: %s", targetURL)
-	args := []string{
-		"-sS",
-		"-L",
-		"--max-time", "15",
-		"--connect-timeout", "10",
-		"-A", javDBUserAgent,
-		"-H", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-		"-H", "Accept-Language: zh-CN,zh;q=0.9,en;q=0.8",
-		"-H", "Cookie: over18=1",
-		"-w", "\n%{http_code}",
-	}
-	if referer != "" {
-		args = append(args, "-H", "Referer: "+referer)
-	}
-	args = append(args, targetURL)
+func doJavDBRequest(req *http.Request) (*http.Response, error) {
+	return defaultJavDBHTTPClient().Do(req)
+}
 
-	output, err := exec.CommandContext(ctx, "curl", args...).Output()
-	if err != nil {
-		return nil, 0, fmt.Errorf("javdb: curl fallback: %w", err)
-	}
-	raw := string(output)
-	idx := strings.LastIndex(raw, "\n")
-	if idx < 0 {
-		return nil, 0, errors.New("javdb: curl fallback missing status")
-	}
-	body := raw[:idx]
-	statusText := strings.TrimSpace(raw[idx+1:])
-	status, err := strconv.Atoi(statusText)
-	if err != nil {
-		return nil, 0, fmt.Errorf("javdb: curl fallback invalid status %q: %w", statusText, err)
-	}
-
-	logging.Info("javdb curl fallback status: %d, length: %d bytes", status, len(body))
-	if status == http.StatusNotFound {
-		return nil, status, nil
-	}
-	if status != http.StatusOK {
-		return nil, status, fmt.Errorf("javdb: http %d", status)
-	}
-
-	doc, err := html.Parse(strings.NewReader(body))
-	if err != nil {
-		return nil, status, fmt.Errorf("javdb: parse curl html: %w", err)
-	}
-	return doc, status, nil
+func defaultJavDBHTTPClient() *http.Client {
+	javDBHTTPClientOnce.Do(func() {
+		javDBHTTPClient = util.NewHTTPClientWithTransport(15*time.Second, func(t *http.Transport) {
+			t.ForceAttemptHTTP2 = true
+			t.TLSClientConfig = &tls.Config{
+				MinVersion: tls.VersionTLS12,
+				MaxVersion: tls.VersionTLS13,
+				NextProtos: []string{"h2", "http/1.1"},
+			}
+			t.MaxIdleConns = 200
+			t.MaxIdleConnsPerHost = 20
+			t.MaxConnsPerHost = 50
+		})
+	})
+	return javDBHTTPClient
 }
 
 func buildJavDBRequest(ctx context.Context, targetURL, referer string) (*http.Request, error) {
