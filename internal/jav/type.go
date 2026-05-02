@@ -49,7 +49,7 @@ func ParseProvider(value int) Provider {
 // PreferredProvider chooses the metadata source based on the system language.
 func PreferredProvider() Provider {
 	if util.SystemPrefersChinese() {
-		return ProviderJavDB
+		return ProviderJavBus
 	}
 	return ProviderJavDatabase
 }
