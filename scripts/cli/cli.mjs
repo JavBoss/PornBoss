@@ -446,6 +446,10 @@ async function copyBundledMpv(choice, outDir) {
   }
 }
 
+async function copyModernZAssets(outDir) {
+  await copyDir(path.join(ROOT_DIR, "modernz"), path.join(outDir, "modernz"));
+}
+
 async function createMacCommandLauncher(outDir) {
   const launcherPath = path.join(outDir, "pornboss.command");
   const launcherContent = [
@@ -542,6 +546,8 @@ async function runRelease(choice, version) {
     console.log("[release] 复制 mpv");
     await copyBundledMpv(choice, outDir);
   }
+  console.log("[release] 复制 ModernZ OSC");
+  await copyModernZAssets(outDir);
   console.log("[release] 生成默认配置文件");
   await createReleaseConfig(outDir);
   if (choice.goos === "darwin") {

@@ -383,9 +383,11 @@ func buildConfigContent() (string, error) {
 	}
 
 	lines := []string{
+		"osc=no",
 		"keep-open=yes",
 		fmt.Sprintf("ontop=%s", mpvBool(ontop)),
 		fmt.Sprintf("osd-playing-msg-duration=%d", startupHintDuration),
+		"watch-later-options-remove=sub-pos,osd-margin-y",
 	}
 	if useAutofit {
 		lines = append(lines, fmt.Sprintf("autofit=%d%%x%d%%", windowWidth, windowHeight))

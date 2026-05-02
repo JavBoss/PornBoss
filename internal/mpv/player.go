@@ -45,16 +45,17 @@ func buildCommand(path string, options PlayOptions) (*exec.Cmd, error) {
 	if err != nil {
 		return nil, err
 	}
+	modernZ, err := ensureModernZAssets()
+	if err != nil {
+		return nil, err
+	}
 	args := make([]string, 0, 8)
+	args = append(args, "--config-dir="+modernZ.ConfigDir)
 	if runtime.GOOS == "linux" && os.Getenv("PORNBOSS_BUILD_MODE") != "release" {
 		args = append(args, "--vo=x11")
 	}
 	args = append(args, "--include="+mpvConfigPath)
-	args = append(args,
-		"--script-opt=osc-visibility=always",
-		"--script-opt=osc-layout=bottombar",
-		"--script-opt=osc-boxvideo=yes",
-	)
+	args = append(args, "--script="+modernZ.ScriptPath)
 	if screenshotArgs, err := buildPlaybackScreenshotArgs(options); err != nil {
 		return nil, err
 	} else if len(screenshotArgs) > 0 {
