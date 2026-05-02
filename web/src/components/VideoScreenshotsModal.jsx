@@ -196,22 +196,41 @@ export default function VideoScreenshotsModal({ video, playerHotkeys, onClose, o
         </div>
       </div>
       {previewItem ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4">
-          <img
-            src={previewItem.url}
-            alt={previewItem.name}
-            className="max-h-full max-w-full object-contain"
-          />
-          <IconButton
-            size="small"
-            onClick={() => setPreviewItem(null)}
-            aria-label={zh('关闭大图', 'Close enlarged image')}
-            className="!absolute !right-4 !top-4 !bg-white/90 !text-gray-900 hover:!bg-white"
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </div>
+        <ScreenshotPreviewModal item={previewItem} onClose={() => setPreviewItem(null)} />
       ) : null}
+    </div>
+  )
+}
+
+function ScreenshotPreviewModal({ item, onClose }) {
+  if (!item?.url) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/80 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={zh('截图预览', 'Screenshot preview')}
+    >
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default"
+        aria-label={zh('关闭截图预览', 'Close screenshot preview')}
+        onClick={onClose}
+      />
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute right-4 top-4 z-10 rounded bg-black/50 px-3 py-1 text-xl leading-none text-white hover:bg-black/70"
+        aria-label={zh('关闭截图预览', 'Close screenshot preview')}
+      >
+        ×
+      </button>
+      <img
+        src={item.url}
+        alt={item.name || zh('MPV 截图', 'MPV screenshot')}
+        className="relative z-10 max-h-[92vh] max-w-[94vw] object-contain shadow-2xl"
+      />
     </div>
   )
 }
