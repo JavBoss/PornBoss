@@ -1305,9 +1305,10 @@ export default function App() {
 
   const handleSwitchJavTab = (tab) => {
     const nextTab = tab === 'idol' ? 'idol' : 'list'
+    const shouldClearSearch = nextTab !== javTab
     const nextRandomMode = nextTab === 'idol' ? false : javRandomMode
     const nextRandomSeed = nextTab === 'idol' ? null : javRandomSeed
-    useStore.setState({
+    const updates = {
       javTab: nextTab,
       javTempSort: '',
       javActors: [],
@@ -1316,7 +1317,12 @@ export default function App() {
       javRandomSeed: nextRandomSeed,
       javPage: 1,
       idolPage: 1,
-    })
+    }
+    if (shouldClearSearch) {
+      updates.javSearchTerm = ''
+      setJavSearchInput('')
+    }
+    useStore.setState(updates)
     forceReloadJavByTab(nextTab)
   }
 
