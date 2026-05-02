@@ -397,16 +397,15 @@ function JavCard({
         </div>
         {cover ? (
           <div className="absolute bottom-2 left-2 z-10 opacity-0 transition-opacity group-hover:opacity-100">
-            <Tooltip title={zh('放大封面', 'Enlarge cover')}>
-              <button
-                type="button"
-                onClick={handleOpenCoverPreview}
-                aria-label={zh('放大封面', 'Enlarge cover')}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white shadow-lg shadow-black/60 hover:bg-black/85"
-              >
-                <SearchIcon className="h-5 w-5 text-white" fontSize="inherit" />
-              </button>
-            </Tooltip>
+            <button
+              type="button"
+              onClick={handleOpenCoverPreview}
+              title={zh('放大封面', 'Enlarge cover')}
+              aria-label={zh('放大封面', 'Enlarge cover')}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white shadow-lg shadow-black/60 hover:bg-black/85"
+            >
+              <SearchIcon className="h-5 w-5 text-white" fontSize="inherit" />
+            </button>
           </div>
         ) : null}
       </div>
