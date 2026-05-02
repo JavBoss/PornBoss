@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -84,13 +83,12 @@ func ensureInputConf() (string, error) {
 	inputConfMu.Lock()
 	defer inputConfMu.Unlock()
 
-	dir := filepath.Join(os.TempDir(), "pornboss")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", fmt.Errorf("create mpv input conf dir: %w", err)
-	}
-
 	if inputConfPath == "" {
-		inputConfPath = filepath.Join(dir, "mpv-input.conf")
+		path, err := sessionPath("mpv-input.conf")
+		if err != nil {
+			return "", err
+		}
+		inputConfPath = path
 	}
 
 	if inputConfReady {
@@ -339,13 +337,12 @@ func ensureConfig() (string, error) {
 	configMu.Lock()
 	defer configMu.Unlock()
 
-	dir := filepath.Join(os.TempDir(), "pornboss")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", fmt.Errorf("create mpv config dir: %w", err)
-	}
-
 	if configPath == "" {
-		configPath = filepath.Join(dir, "mpv.conf")
+		path, err := sessionPath("mpv.conf")
+		if err != nil {
+			return "", err
+		}
+		configPath = path
 	}
 
 	if configReady {

@@ -30,7 +30,10 @@ func ensureModernZAssets() (modernZAssets, error) {
 		return modernZAssets{}, err
 	}
 
-	configDir := filepath.Join(os.TempDir(), "pornboss", "mpv-modernz")
+	configDir, err := sessionPath("config")
+	if err != nil {
+		return modernZAssets{}, err
+	}
 	for _, file := range modernZRequiredFiles {
 		if err := syncModernZAsset(
 			filepath.Join(sourceDir, file.source),
