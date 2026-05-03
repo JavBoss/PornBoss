@@ -36,7 +36,7 @@ import VideoView from '@/components/VideoView'
 import { isUserJavTag, normalizeIdolSort, normalizeJavSort } from '@/constants/jav'
 import { normalizeVideoSort } from '@/constants/video'
 import { isChineseLocale, zh } from '@/utils/i18n'
-import { useStore } from '@/store'
+import { useStore, videoSelectionKey } from '@/store'
 
 const normalizeDefaultPlayer = (value) =>
   String(value || '')
@@ -117,6 +117,9 @@ export default function App() {
     createDirectory,
     updateDirectory,
     deleteDirectory,
+    enabledDirectoryIds,
+    setEnabledDirectoryIds,
+    directoryFilterMode,
   } = useStore()
 
   const [tagModalOpen, setTagModalOpen] = useState(false)
@@ -127,6 +130,10 @@ export default function App() {
   const [javVideoPickerOpen, setJavVideoPickerOpen] = useState(false)
   const [javVideoPickerItem, setJavVideoPickerItem] = useState(null)
   const [javVideoPickerAction, setJavVideoPickerAction] = useState('play')
+  const [locationPickerOpen, setLocationPickerOpen] = useState(false)
+  const [locationPickerVideo, setLocationPickerVideo] = useState(null)
+  const [locationPickerChoices, setLocationPickerChoices] = useState([])
+  const [locationPickerAction, setLocationPickerAction] = useState('play')
   const [screenshotsVideo, setScreenshotsVideo] = useState(null)
   const [searchInput, setSearchInput] = useState('')
   const [javSearchInput, setJavSearchInput] = useState('')
@@ -161,6 +168,15 @@ export default function App() {
   const [idolSortInput, setIdolSortInput] = useState(idolSort)
   const [toastMessage, setToastMessage] = useState('')
   const javVideoChoices = javVideoPickerItem?.videos || []
+  const locationPickerItem = locationPickerVideo
+    ? {
+        code:
+          locationPickerVideo.filename ||
+          locationPickerVideo.path ||
+          zh('选择文件位置', 'Choose file location'),
+        title: zh('选择文件位置', 'Choose file location'),
+      }
+    : null
   const defaultPlayer = normalizeDefaultPlayer(config?.default_player)
   const alternatePlayer = defaultPlayer === 'system' ? 'mpv' : 'system'
   const alternatePlayerLabel =
@@ -210,6 +226,47 @@ export default function App() {
     [getVideoDirPath, getVideoRelPath]
   )
 
+  const getVideoLocationChoices = useCallback(
+    (video) => {
+      const locations = Array.isArray(video?.locations) ? video.locations : []
+      const choices = locations
+        .map((location) => {
+          const relPath = String(location?.relative_path || '').trim()
+          const directory = location?.directory || location?.directory_ref || null
+          const dirPath = String(directory?.path || location?.directory_path || '').trim()
+          if (!relPath || !dirPath) return null
+          return {
+            ...video,
+            id: video.id,
+            location_id: location.id,
+            path: relPath,
+            directory,
+            directory_path: dirPath,
+            filename: location?.filename || relPath.split(/[\\/]/).pop() || video.filename,
+          }
+        })
+        .filter(Boolean)
+        .filter(isVideoOpenable)
+      if (choices.length > 0) return choices
+      return isVideoOpenable(video) ? [video] : []
+    },
+    [isVideoOpenable]
+  )
+
+  const openLocationPicker = useCallback((video, action, choices) => {
+    setLocationPickerVideo(video)
+    setLocationPickerAction(action)
+    setLocationPickerChoices(Array.isArray(choices) ? choices : [])
+    setLocationPickerOpen(true)
+  }, [])
+
+  const closeLocationPicker = useCallback(() => {
+    setLocationPickerOpen(false)
+    setLocationPickerVideo(null)
+    setLocationPickerChoices([])
+    setLocationPickerAction('play')
+  }, [])
+
   const playVideoWith = useCallback(
     (video, player) => {
       if (!video || !isVideoOpenable(video)) return
@@ -232,6 +289,17 @@ export default function App() {
     [getVideoDirPath, getVideoRelPath, isVideoOpenable]
   )
 
+  const revealVideoFile = useCallback(
+    (video) => {
+      if (!video || !isVideoOpenable(video)) return Promise.resolve()
+      return revealVideoLocation({
+        path: getVideoRelPath(video),
+        dirPath: getVideoDirPath(video),
+      })
+    },
+    [getVideoDirPath, getVideoRelPath, isVideoOpenable]
+  )
+
   const playVideoFromTime = useCallback(
     (video, startTime) => {
       if (!video || !isVideoOpenable(video)) return
@@ -247,16 +315,40 @@ export default function App() {
 
   const handleOpenPlayer = useCallback(
     (video) => {
-      playVideoWith(video, defaultPlayer)
+      const choices = getVideoLocationChoices(video)
+      if (choices.length > 1) {
+        openLocationPicker(video, 'play', choices)
+        return
+      }
+      playVideoWith(choices[0] || video, defaultPlayer)
     },
-    [defaultPlayer, playVideoWith]
+    [defaultPlayer, getVideoLocationChoices, openLocationPicker, playVideoWith]
   )
 
   const handleOpenAlternatePlayer = useCallback(
     (video) => {
-      playVideoWith(video, alternatePlayer)
+      const choices = getVideoLocationChoices(video)
+      if (choices.length > 1) {
+        openLocationPicker(video, 'open', choices)
+        return
+      }
+      playVideoWith(choices[0] || video, alternatePlayer)
     },
-    [alternatePlayer, playVideoWith]
+    [alternatePlayer, getVideoLocationChoices, openLocationPicker, playVideoWith]
+  )
+
+  const handleRevealVideoFile = useCallback(
+    (video) => {
+      const choices = getVideoLocationChoices(video)
+      if (choices.length > 1) {
+        openLocationPicker(video, 'reveal', choices)
+        return
+      }
+      revealVideoFile(choices[0] || video).catch((err) =>
+        console.error(zh('打开所在位置失败', 'Failed to reveal file'), err)
+      )
+    },
+    [getVideoLocationChoices, openLocationPicker, revealVideoFile]
   )
 
   const closeJavVideoPicker = useCallback(() => {
@@ -302,9 +394,9 @@ export default function App() {
       }
       const target = video && isVideoOpenable(video) ? video : videos.find(isVideoOpenable)
       if (!target) return
-      playVideoWith(target, alternatePlayer)
+      handleOpenAlternatePlayer(target)
     },
-    [alternatePlayer, isVideoOpenable, playVideoWith]
+    [handleOpenAlternatePlayer, isVideoOpenable]
   )
 
   const handleJavRevealFile = useCallback(
@@ -318,12 +410,9 @@ export default function App() {
       }
       const target = video && isVideoOpenable(video) ? video : videos.find(isVideoOpenable)
       if (!target) return
-      revealVideoLocation({
-        path: getVideoRelPath(target),
-        dirPath: getVideoDirPath(target),
-      }).catch((err) => console.error(zh('打开所在位置失败', 'Failed to reveal file'), err))
+      handleRevealVideoFile(target)
     },
-    [getVideoDirPath, getVideoRelPath, isVideoOpenable]
+    [handleRevealVideoFile, isVideoOpenable]
   )
 
   const handleJavOpenScreenshots = useCallback(
@@ -362,11 +451,9 @@ export default function App() {
         }
         return
       }
-      if (!isVideoOpenable(video)) return
-      const payload = { path: getVideoRelPath(video), dirPath: getVideoDirPath(video) }
       try {
         if (javVideoPickerAction === 'reveal') {
-          await revealVideoLocation(payload)
+          handleRevealVideoFile(video)
         }
       } catch (err) {
         console.error(
@@ -381,12 +468,44 @@ export default function App() {
     },
     [
       closeJavVideoPicker,
-      getVideoDirPath,
-      getVideoRelPath,
+      handleOpenAlternatePlayer,
+      handleOpenPlayer,
+      handleRevealVideoFile,
       isVideoOpenable,
       javVideoPickerAction,
-      handleOpenPlayer,
-      handleOpenAlternatePlayer,
+    ]
+  )
+
+  const handleSelectVideoLocation = useCallback(
+    async (video) => {
+      if (!video) return
+      if (locationPickerAction === 'play') {
+        playVideoWith(video, defaultPlayer)
+        closeLocationPicker()
+        return
+      }
+      if (locationPickerAction === 'open') {
+        playVideoWith(video, alternatePlayer)
+        closeLocationPicker()
+        return
+      }
+      try {
+        if (locationPickerAction === 'reveal') {
+          await revealVideoFile(video)
+        }
+      } catch (err) {
+        console.error(zh('打开所在位置失败', 'Failed to reveal file'), err)
+      } finally {
+        closeLocationPicker()
+      }
+    },
+    [
+      alternatePlayer,
+      closeLocationPicker,
+      defaultPlayer,
+      locationPickerAction,
+      playVideoWith,
+      revealVideoFile,
     ]
   )
   useEffect(() => {
@@ -558,6 +677,7 @@ export default function App() {
     (parsed, { fromPopstate = false } = {}) => {
       isPoppingRef.current = fromPopstate
       lastUrlRef.current = window.location.pathname + window.location.search
+      useStore.getState().setDirectoryFilterFromUrl(parsed.directoryIds)
       const mapTagIdsToNamesFromStore = (ids) => {
         if (!Array.isArray(ids) || ids.length === 0) return []
         const { tags: storeTags } = useStore.getState()
@@ -647,6 +767,11 @@ export default function App() {
   }, [loadTags, loadDirectories, loadJavTags])
 
   useEffect(() => {
+    loadTags()
+    loadJavTags()
+  }, [loadTags, loadJavTags, enabledDirectoryIds, directoryFilterMode])
+
+  useEffect(() => {
     if (!pendingVideoTagIdsRef.current || !tags.length) return
     const names = mapTagIdsToNames(pendingVideoTagIdsRef.current)
     setSelectedTags(names, { resetPage: false, preserveTempSort: true })
@@ -668,6 +793,8 @@ export default function App() {
     randomSeed,
     searchTerm,
     selectedTags,
+    enabledDirectoryIds,
+    directoryFilterMode,
     sortOrder,
     videoTempSort,
   ])
@@ -695,6 +822,8 @@ export default function App() {
     idolSort,
     idolPage,
     idolPageSize,
+    enabledDirectoryIds,
+    directoryFilterMode,
     loadJavs,
     loadJavIdols,
     configLoaded,
@@ -740,10 +869,16 @@ export default function App() {
           javRandomSeed,
           idolSort,
           idolPage,
+          directories,
+          enabledDirectoryIds,
+          directoryFilterMode,
         },
         tagsByName
       ),
     [
+      directories,
+      directoryFilterMode,
+      enabledDirectoryIds,
       idolPage,
       idolSort,
       javActors,
@@ -798,13 +933,14 @@ export default function App() {
   )
   const selectedCount = useMemo(() => selectedVideoIds.size, [selectedVideoIds])
   const selectedList = useMemo(() => {
-    const ids = Array.from(selectedVideoIds)
-    return ids.map((id) => {
-      const v = videos.find((item) => item.id === id)
-      const labelFromMeta = selectedVideoMeta?.[id]
+    const keys = Array.from(selectedVideoIds)
+    return keys.map((key) => {
+      const v = videos.find((item) => videoSelectionKey(item) === String(key))
+      const meta = selectedVideoMeta?.[key]
+      const labelFromMeta = meta && typeof meta === 'object' ? meta.label : meta
       return {
-        id,
-        label: labelFromMeta || v?.filename || v?.path || `#${id}`,
+        id: key,
+        label: labelFromMeta || v?.filename || v?.path || `#${key}`,
         video: v,
       }
     })
@@ -1219,7 +1355,19 @@ export default function App() {
 
   const handleApplySelectionTags = async () => {
     const ids = selectionTagChoices.map((t) => Number(t)).filter(Boolean)
-    const vidIds = Array.from(selectedVideoIds)
+    const selectedKeys = Array.from(selectedVideoIds)
+    const vidIds = Array.from(
+      new Set(
+        selectedKeys
+          .map((key) => {
+            const meta = selectedVideoMeta?.[key]
+            const raw = meta && typeof meta === 'object' ? meta.video_id : key
+            const parsed = Number(raw)
+            return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+          })
+          .filter(Boolean)
+      )
+    )
     try {
       if (selectionTagAction === 'remove') {
         await Promise.all(ids.map((tid) => removeTagFromVideos(tid, vidIds)))
@@ -1388,21 +1536,26 @@ export default function App() {
   const handleToggleSelectPage = useCallback(() => {
     if (!Array.isArray(videos) || videos.length === 0) return
     useStore.setState((state) => {
-      const pageIds = videos.map((video) => video?.id).filter(Boolean)
-      if (pageIds.length === 0) return {}
+      const pageKeys = videos.map((video) => videoSelectionKey(video)).filter(Boolean)
+      if (pageKeys.length === 0) return {}
       const nextIds = new Set(state.selectedVideoIds)
       const nextMeta = { ...state.selectedVideoMeta }
-      const allSelected = pageIds.every((id) => nextIds.has(id))
+      const allSelected = pageKeys.every((key) => nextIds.has(key))
       if (allSelected) {
-        pageIds.forEach((id) => {
-          nextIds.delete(id)
-          delete nextMeta[id]
+        pageKeys.forEach((key) => {
+          nextIds.delete(key)
+          delete nextMeta[key]
         })
       } else {
         videos.forEach((video) => {
-          if (!video?.id) return
-          nextIds.add(video.id)
-          nextMeta[video.id] = video.filename || video.path || `#${video.id}`
+          const key = videoSelectionKey(video)
+          if (!video?.id || !key) return
+          nextIds.add(key)
+          nextMeta[key] = {
+            label: video.filename || video.path || `#${video.id}`,
+            video_id: video.id,
+            location_id: video.location_id || null,
+          }
         })
       }
       return { selectedVideoIds: nextIds, selectedVideoMeta: nextMeta }
@@ -1559,6 +1712,7 @@ export default function App() {
             onToggleSelectPage={handleToggleSelectPage}
             openPlayer={handleOpenPlayer}
             openAlternatePlayer={handleOpenAlternatePlayer}
+            revealFile={handleRevealVideoFile}
             alternatePlayerLabel={alternatePlayerLabel}
             setTagPickerFor={openTagEditor}
             onOpenScreenshots={setScreenshotsVideo}
@@ -1611,6 +1765,29 @@ export default function App() {
         buildVideoFullPath={buildVideoFullPath}
         isVideoOpenable={isVideoOpenable}
         onSelectVideo={handleSelectJavVideo}
+      />
+
+      <JavVideoPickerModal
+        open={locationPickerOpen}
+        title={
+          locationPickerAction === 'reveal'
+            ? zh('选择定位文件', 'Choose a file to reveal')
+            : locationPickerAction === 'open'
+              ? alternatePlayer === 'mpv'
+                ? zh('选择使用MPV播放器播放的文件', 'Choose a file to play with MPV player')
+                : zh('选择使用系统播放器播放的文件', 'Choose a file to play with system player')
+              : defaultPlayer === 'system'
+                ? zh('选择使用系统播放器播放的文件', 'Choose a file to play with system player')
+                : zh('选择使用MPV播放器播放的文件', 'Choose a file to play with MPV player')
+        }
+        onClose={closeLocationPicker}
+        item={locationPickerItem}
+        choices={locationPickerChoices}
+        emptyText={zh('暂无可用文件', 'No available files')}
+        action={locationPickerAction}
+        buildVideoFullPath={buildVideoFullPath}
+        isVideoOpenable={isVideoOpenable}
+        onSelectVideo={handleSelectVideoLocation}
       />
 
       <SelectionOpsModal
@@ -1766,6 +1943,8 @@ export default function App() {
         open={globalSettingsOpen}
         onClose={() => setGlobalSettingsOpen(false)}
         directories={directories}
+        enabledDirectoryIds={enabledDirectoryIds}
+        onEnabledDirectoryIdsChange={setEnabledDirectoryIds}
         onCreateDirectory={async (payload) => {
           const created = await createDirectory(payload)
           await loadDirectories()

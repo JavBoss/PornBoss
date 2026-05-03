@@ -138,12 +138,6 @@ func UpdateDirectory(ctx context.Context, id int64, path *string, isDelete *bool
 						Updates(map[string]any{"is_delete": false, "missing": false}).Error; err != nil {
 						return fmt.Errorf("restore deleted directory: %w", err)
 					}
-					if err := tx.Model(&models.Video{}).
-						Where("directory_id = ?", other.ID).
-						Where("COALESCE(hidden, 0) != 0").
-						Update("hidden", false).Error; err != nil {
-						return fmt.Errorf("unhide videos for restored directory: %w", err)
-					}
 					dir.IsDelete = true
 					// Keep dir.Path unchanged to avoid uniqueness conflict; caller attempted to reuse other's path.
 					normalizedPath = nil
@@ -201,16 +195,6 @@ func updateDirectoryWithVisibility(ctx context.Context, id int64, mutate func(tx
 			return fmt.Errorf("update directory: %w", err)
 		}
 
-		hide := dir.Missing || dir.IsDelete
-		query := tx.Model(&models.Video{}).Where("directory_id = ?", id)
-		if hide {
-			query = query.Where("COALESCE(hidden, 0) = 0")
-		} else {
-			query = query.Where("COALESCE(hidden, 0) != 0")
-		}
-		if err := query.Update("hidden", hide).Error; err != nil {
-			return fmt.Errorf("set videos hidden: %w", err)
-		}
 		return nil
 	})
 

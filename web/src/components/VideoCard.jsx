@@ -13,6 +13,7 @@ export default function VideoCard({
   onToggle,
   onPlay,
   onOpenFile,
+  onRevealFile,
   openFileLabel,
   onOpenTagPicker,
   onOpenScreenshots,
@@ -33,6 +34,7 @@ export default function VideoCard({
   const directoryPath = video?.directory?.path || video?.directory_path || ''
   const videoPath = video?.path || ''
   const canOpen = Boolean(directoryPath && videoPath)
+  const inputId = `check-${video?.location_id || video.id}`
 
   const handleOpenFile = async (event) => {
     event.stopPropagation()
@@ -48,7 +50,11 @@ export default function VideoCard({
     event.stopPropagation()
     if (!canOpen) return
     try {
-      await revealVideoLocation({ path: videoPath, dirPath: directoryPath })
+      if (onRevealFile) {
+        await onRevealFile(video)
+      } else {
+        await revealVideoLocation({ path: videoPath, dirPath: directoryPath })
+      }
     } catch (err) {
       console.error(zh('打开所在位置失败', 'Reveal file failed'), err)
     }
@@ -61,7 +67,7 @@ export default function VideoCard({
     >
       <div className={`video-card-select ${checked ? 'is-visible' : ''}`}>
         <input
-          id={`check-${video.id}`}
+          id={inputId}
           type="checkbox"
           checked={checked}
           onChange={onToggle}

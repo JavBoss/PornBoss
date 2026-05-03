@@ -28,6 +28,8 @@ let lastVideoFetchKey = null
 let lastJavFetchKey = null
 let lastIdolFetchKey = null
 const RANDOM_SEED_MAX = 2147483646
+const DIRECTORY_FILTER_ALL = 'all'
+const DIRECTORY_FILTER_CUSTOM = 'custom'
 
 const normalizeSeed = (seed) => {
   const num = Math.floor(Number(seed))
@@ -36,6 +38,51 @@ const normalizeSeed = (seed) => {
 }
 
 const generateSeed = () => Math.floor(Math.random() * RANDOM_SEED_MAX) + 1
+
+export const videoSelectionKey = (video) => {
+  if (video?.location_id) return `loc:${video.location_id}`
+  if (video?.id) return `vid:${video.id}`
+  return ''
+}
+
+const selectedVideoContentIds = (state) => {
+  const ids = new Set()
+  for (const key of state.selectedVideoIds || []) {
+    const meta = state.selectedVideoMeta?.[key]
+    const raw = meta && typeof meta === 'object' ? meta.video_id : key
+    const parsed = Number(raw)
+    if (Number.isFinite(parsed) && parsed > 0) ids.add(parsed)
+  }
+  return Array.from(ids)
+}
+
+const cleanDirectoryIds = (ids) =>
+  Array.from(
+    new Set((ids || []).map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0))
+  ).sort((a, b) => a - b)
+
+export const directoryQueryIds = (state) => {
+  if (state?.directoryFilterMode !== DIRECTORY_FILTER_CUSTOM) {
+    return []
+  }
+  const enabled = cleanDirectoryIds(state.enabledDirectoryIds)
+  if (enabled.length === 0) {
+    return [0]
+  }
+  const active = cleanDirectoryIds((state.directories || []).map((directory) => directory?.id))
+  if (active.length === 0) {
+    return enabled
+  }
+  const activeSet = new Set(active)
+  const scoped = enabled.filter((id) => activeSet.has(id))
+  if (scoped.length === 0) {
+    return [0]
+  }
+  if (scoped.length === active.length) {
+    return []
+  }
+  return scoped
+}
 
 export const useStore = create((set, get) => ({
   // UI state
@@ -106,6 +153,8 @@ export const useStore = create((set, get) => ({
   tags: [],
   javTagOptions: [],
   directories: [],
+  enabledDirectoryIds: [],
+  directoryFilterMode: DIRECTORY_FILTER_ALL,
   loading: false,
   error: null,
   total: 0,
@@ -153,17 +202,17 @@ export const useStore = create((set, get) => ({
   },
   clearFilters: () => set({ selectedTags: [], videoTempSort: '', page: 1 }),
   toggleSelectVideo: (video) => {
-    if (!video || !video.id) return
-    const id = video.id
-    const label = video.filename || video.path || `#${id}`
+    const key = videoSelectionKey(video)
+    if (!video || !video.id || !key) return
+    const label = video.filename || video.path || `#${video.id}`
     const setIds = new Set(get().selectedVideoIds)
     const meta = { ...get().selectedVideoMeta }
-    if (setIds.has(id)) {
-      setIds.delete(id)
-      delete meta[id]
+    if (setIds.has(key)) {
+      setIds.delete(key)
+      delete meta[key]
     } else {
-      setIds.add(id)
-      meta[id] = label
+      setIds.add(key)
+      meta[key] = { label, video_id: video.id, location_id: video.location_id || null }
     }
     set({ selectedVideoIds: setIds, selectedVideoMeta: meta })
   },
@@ -239,7 +288,7 @@ export const useStore = create((set, get) => ({
 
   loadTags: async () => {
     try {
-      const tags = await fetchTags()
+      const tags = await fetchTags({ directoryIds: directoryQueryIds(get()) })
       set({ tags })
     } catch (e) {
       set({ error: e.message })
@@ -247,7 +296,7 @@ export const useStore = create((set, get) => ({
   },
   loadJavTags: async () => {
     try {
-      const tags = await fetchJavTags()
+      const tags = await fetchJavTags({ directoryIds: directoryQueryIds(get()) })
       set({ javTagOptions: tags })
     } catch (e) {
       set({ javError: e.message || zh('加载 JAV 标签失败', 'Failed to load JAV tags') })
@@ -305,7 +354,23 @@ export const useStore = create((set, get) => ({
   loadDirectories: async () => {
     try {
       const directories = await fetchDirectories()
-      set({ directories: directories.filter((d) => !d.is_delete) })
+      const active = directories.filter((d) => !d.is_delete)
+      const activeIDs = cleanDirectoryIds(active.map((d) => d.id))
+      const activeSet = new Set(activeIDs)
+      const state = get()
+      const enabled =
+        state.directoryFilterMode === DIRECTORY_FILTER_ALL
+          ? activeIDs
+          : cleanDirectoryIds(state.enabledDirectoryIds).filter((id) => activeSet.has(id))
+      const nextMode =
+        state.directoryFilterMode === DIRECTORY_FILTER_CUSTOM && enabled.length === activeIDs.length
+          ? DIRECTORY_FILTER_ALL
+          : state.directoryFilterMode
+      set({
+        directories: active,
+        enabledDirectoryIds: nextMode === DIRECTORY_FILTER_ALL ? activeIDs : enabled,
+        directoryFilterMode: nextMode,
+      })
     } catch (e) {
       console.error(zh('加载目录失败', 'Failed to load directories'), e)
     }
@@ -321,6 +386,7 @@ export const useStore = create((set, get) => ({
       randomMode,
       randomSeed,
     } = get()
+    const directoryIds = directoryQueryIds(get())
     const search = searchTerm ? searchTerm : ''
     const effectiveSort = videoTempSort || sortOrder
     const key = [
@@ -331,6 +397,7 @@ export const useStore = create((set, get) => ({
       effectiveSort,
       randomMode ? randomSeed || '' : '',
       (selectedTags || []).join(','),
+      directoryIds.join(','),
     ].join('|')
     if (!options.force && key === lastVideoFetchKey) {
       return
@@ -346,6 +413,7 @@ export const useStore = create((set, get) => ({
         search,
         sort: randomMode ? 'random' : effectiveSort,
         seed: randomMode ? randomSeed : null,
+        directoryIds,
       })
       if (reqId !== videoLoadSeq) return
       const total = resp.total ?? 0
@@ -374,6 +442,7 @@ export const useStore = create((set, get) => ({
       javRandomMode,
       javRandomSeed,
     } = get()
+    const directoryIds = directoryQueryIds(get())
     const search = javSearchTerm || ''
     const effectiveSort = javTempSort || javSort
     const key = [
@@ -385,6 +454,7 @@ export const useStore = create((set, get) => ({
       (javTags || []).join(','),
       effectiveSort,
       javRandomMode ? javRandomSeed || '' : '',
+      directoryIds.join(','),
     ].join('|')
     if (!options.force && key === lastJavFetchKey) {
       return
@@ -400,6 +470,7 @@ export const useStore = create((set, get) => ({
         tagIds: javTags,
         sort: javRandomMode ? 'random' : effectiveSort,
         seed: javRandomMode ? javRandomSeed : null,
+        directoryIds,
       })
       const items = resp.items || []
       set({
@@ -414,8 +485,9 @@ export const useStore = create((set, get) => ({
   },
   loadJavIdols: async (options = {}) => {
     const { idolPage, idolPageSize, javSearchTerm, idolSort } = get()
+    const directoryIds = directoryQueryIds(get())
     const search = javSearchTerm || ''
-    const key = ['idol', idolPage, idolPageSize, search, idolSort].join('|')
+    const key = ['idol', idolPage, idolPageSize, search, idolSort, directoryIds.join(',')].join('|')
     if (!options.force && key === lastIdolFetchKey) {
       return
     }
@@ -427,6 +499,7 @@ export const useStore = create((set, get) => ({
         offset: (idolPage - 1) * idolPageSize,
         search,
         sort: idolSort,
+        directoryIds,
       })
       set({
         idolItems: resp.items || [],
@@ -452,13 +525,13 @@ export const useStore = create((set, get) => ({
     set({ tags: get().tags.map((t) => (t.id === id ? { ...t, name } : t)) })
   },
   addTagToSelection: async (tagId) => {
-    const ids = Array.from(get().selectedVideoIds)
+    const ids = selectedVideoContentIds(get())
     if (ids.length === 0) return
     await addTagToVideos(tagId, ids)
     await get().loadVideos()
   },
   removeTagFromSelection: async (tagId) => {
-    const ids = Array.from(get().selectedVideoIds)
+    const ids = selectedVideoContentIds(get())
     if (ids.length === 0) return
     await removeTagFromVideos(tagId, ids)
     await get().loadVideos()
@@ -475,6 +548,7 @@ export const useStore = create((set, get) => ({
         randomMode,
         randomSeed,
       } = get()
+      const directoryIds = directoryQueryIds(get())
       const effectiveSort = videoTempSort || sortOrder
       // Get total via a cheap fetch (limit=1) or use existing total
       let { total } = get()
@@ -487,6 +561,7 @@ export const useStore = create((set, get) => ({
           search,
           sort: randomMode ? 'random' : effectiveSort,
           seed: randomMode ? randomSeed : null,
+          directoryIds,
         })
         total = res.total ?? 0
         set({ total })
@@ -499,6 +574,7 @@ export const useStore = create((set, get) => ({
         search,
         sort: randomMode ? 'random' : effectiveSort,
         seed: randomMode ? randomSeed : null,
+        directoryIds,
       })
       const items = res2.items ?? []
       set({ page: lastPage, videos: items, hasNext: false })
@@ -518,27 +594,97 @@ export const useStore = create((set, get) => ({
     set({ javTempSort: '', javRandomMode: true, javRandomSeed: nextSeed, javPage: 1 })
   },
 
+  setEnabledDirectoryIds: (ids) => {
+    const clean = cleanDirectoryIds(ids)
+    const active = cleanDirectoryIds(get().directories.map((directory) => directory?.id))
+    const mode =
+      active.length > 0 && clean.length === active.length
+        ? DIRECTORY_FILTER_ALL
+        : DIRECTORY_FILTER_CUSTOM
+    set({
+      enabledDirectoryIds: mode === DIRECTORY_FILTER_ALL ? active : clean,
+      directoryFilterMode: mode,
+      page: 1,
+      javPage: 1,
+      idolPage: 1,
+      videoTempSort: '',
+      javTempSort: '',
+      randomMode: false,
+      randomSeed: null,
+      javRandomMode: false,
+      javRandomSeed: null,
+    })
+    lastVideoFetchKey = null
+    lastJavFetchKey = null
+    lastIdolFetchKey = null
+  },
+  setDirectoryFilterFromUrl: (ids) => {
+    if (ids == null) {
+      const active = cleanDirectoryIds(get().directories.map((directory) => directory?.id))
+      set({ directoryFilterMode: DIRECTORY_FILTER_ALL, enabledDirectoryIds: active })
+      return
+    }
+    const clean = cleanDirectoryIds(ids)
+    set({
+      directoryFilterMode: DIRECTORY_FILTER_CUSTOM,
+      enabledDirectoryIds: clean,
+      page: 1,
+      javPage: 1,
+      idolPage: 1,
+    })
+    lastVideoFetchKey = null
+    lastJavFetchKey = null
+    lastIdolFetchKey = null
+  },
+
   createDirectory: async ({ path }) => {
     const dir = await createDirectory({ path })
     const next = dir && !dir.is_delete ? [...get().directories, dir] : get().directories
-    set({ directories: next })
+    const state = get()
+    set({
+      directories: next,
+      enabledDirectoryIds:
+        state.directoryFilterMode === DIRECTORY_FILTER_ALL
+          ? cleanDirectoryIds(next.map((directory) => directory?.id))
+          : state.enabledDirectoryIds,
+    })
     return dir
   },
   updateDirectory: async (id, payload) => {
     const dir = await updateDirectory(id, payload)
+    const state = get()
+    const next = state.directories
+      .map((d) => (d.id === id ? dir : d))
+      .filter((d) => d && !d.is_delete)
+    const active = cleanDirectoryIds(next.map((directory) => directory?.id))
+    const activeSet = new Set(active)
     set({
-      directories: get()
-        .directories.map((d) => (d.id === id ? dir : d))
-        .filter((d) => d && !d.is_delete),
+      directories: next,
+      enabledDirectoryIds:
+        state.directoryFilterMode === DIRECTORY_FILTER_ALL
+          ? active
+          : cleanDirectoryIds(state.enabledDirectoryIds).filter((enabledID) =>
+              activeSet.has(enabledID)
+            ),
     })
     return dir
   },
   deleteDirectory: async (id) => {
     const dir = await deleteDirectoryApi(id)
+    const state = get()
+    const next = state.directories
+      .map((d) => (d.id === id ? dir : d))
+      .filter((d) => d && !d.is_delete)
+    const active = cleanDirectoryIds(next.map((directory) => directory?.id))
+    const activeSet = new Set(active)
     set({
-      directories: get()
-        .directories.map((d) => (d.id === id ? dir : d))
-        .filter((d) => d && !d.is_delete),
+      directories: next,
+      enabledDirectoryIds:
+        state.directoryFilterMode === DIRECTORY_FILTER_ALL
+          ? active
+          : cleanDirectoryIds(state.enabledDirectoryIds).filter((enabledID) =>
+              activeSet.has(enabledID)
+            ),
     })
     return dir
   },

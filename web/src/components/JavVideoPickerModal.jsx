@@ -46,7 +46,7 @@ export default function JavVideoPickerModal({
               const canSelect = action === 'play' ? true : isVideoOpenable?.(video)
               return (
                 <button
-                  key={video?.id || label}
+                  key={video?.location_id || video?.id || label}
                   type="button"
                   onClick={() => onSelectVideo?.(video)}
                   disabled={!canSelect}

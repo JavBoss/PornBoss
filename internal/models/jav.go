@@ -15,7 +15,7 @@ type Jav struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 	Tags        []JavTag  `json:"tags,omitempty" gorm:"many2many:jav_tag_map"`
 	Idols       []JavIdol `json:"idols,omitempty" gorm:"many2many:jav_idol_map"`
-	Videos      []Video   `json:"videos,omitempty" gorm:"foreignKey:JavID"`
+	Videos      []Video   `json:"videos,omitempty" gorm:"-"`
 }
 
 type JavTag struct {
