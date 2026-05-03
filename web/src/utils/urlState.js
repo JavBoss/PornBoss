@@ -15,6 +15,13 @@ const parseIds = (raw) =>
     .map((s) => Number.parseInt(s.trim(), 10))
     .filter((id) => Number.isFinite(id) && id > 0)
 
+const parseDirectoryIds = (sp) => {
+  if (!sp.has('directory_ids')) return null
+  const raw = (sp.get('directory_ids') || '').trim()
+  if (raw === '0') return []
+  return parseIds(raw)
+}
+
 const parseIntSafe = (val, def = 1) => {
   const n = Number.parseInt(val || '', 10)
   return Number.isFinite(n) && n > 0 ? n : def
@@ -23,6 +30,7 @@ const parseIntSafe = (val, def = 1) => {
 export const parseUrlState = (searchString = window.location.search) => {
   const sp = new URLSearchParams(searchString)
   const view = sp.get('view') === 'jav' ? 'jav' : 'video'
+  const directoryIds = parseDirectoryIds(sp)
 
   const videoSortRaw = (sp.get('sort') || '').trim()
   const videoSort = normalizeVideoSort(videoSortRaw)
@@ -59,13 +67,18 @@ export const parseUrlState = (searchString = window.location.search) => {
     seed: clampSeed(sp.get('seed')),
   }
 
-  return { view, video, jav }
+  return { view, directoryIds, video, jav }
 }
 
 export const buildUrlFromState = (state, basePath = window.location.pathname) => {
   const sp = new URLSearchParams()
   if (state.view === 'jav') {
     sp.set('view', 'jav')
+    if (state.directoryIds?.length) {
+      sp.set('directory_ids', state.directoryIds.join(','))
+    } else if (Array.isArray(state.directoryIds) && state.directoryIds.length === 0) {
+      sp.set('directory_ids', '0')
+    }
     if (state.jav.tab === 'idol') {
       sp.set('tab', 'idol')
     }
@@ -94,6 +107,11 @@ export const buildUrlFromState = (state, basePath = window.location.pathname) =>
   }
 
   sp.set('view', 'video')
+  if (state.directoryIds?.length) {
+    sp.set('directory_ids', state.directoryIds.join(','))
+  } else if (Array.isArray(state.directoryIds) && state.directoryIds.length === 0) {
+    sp.set('directory_ids', '0')
+  }
   if (state.video.search) sp.set('search', state.video.search)
   if (state.video.sort && state.video.sort !== 'recent') sp.set('sort', state.video.sort)
   if (!state.video.random && state.video.tempSort) sp.set('temp_sort', state.video.tempSort)
@@ -117,8 +135,33 @@ export const normalizeUrlStateFromStore = (store, tagsByName) => {
         .map((name) => tagsByName.get(name))
         .filter((id) => Number.isFinite(id) && id > 0)
 
+  const activeDirectoryIds = (store.directories || [])
+    .map((directory) => Number(directory?.id))
+    .filter((id) => Number.isFinite(id) && id > 0)
+    .sort((a, b) => a - b)
+  const activeSet = new Set(activeDirectoryIds)
+  const enabledDirectoryIds = Array.from(
+    new Set(
+      (store.enabledDirectoryIds || [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0 && activeSet.has(id))
+    )
+  ).sort((a, b) => a - b)
+  let directoryIds = null
+  if (store.directoryFilterMode === 'custom') {
+    if (enabledDirectoryIds.length === 0) {
+      directoryIds = []
+    } else if (
+      activeDirectoryIds.length === 0 ||
+      enabledDirectoryIds.length < activeDirectoryIds.length
+    ) {
+      directoryIds = enabledDirectoryIds
+    }
+  }
+
   return {
     view: store.viewMode === 'jav' ? 'jav' : 'video',
+    directoryIds,
     video: {
       page: store.randomMode ? 1 : store.page,
       search: store.randomMode ? '' : (store.searchTerm || '').trim(),

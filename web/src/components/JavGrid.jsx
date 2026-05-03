@@ -11,6 +11,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import { fetchJavIdolPreview } from '@/api'
 import { IdolCard, getIdolCardLayoutProps } from '@/components/JavIdolGrid'
 import { isUserJavTag } from '@/constants/jav'
+import { directoryQueryIds, useStore } from '@/store'
 import { zh } from '@/utils/i18n'
 
 function DurationIcon() {
@@ -74,6 +75,7 @@ export default function JavGrid({
   onRevealFile,
   onOpenScreenshots,
 }) {
+  const directoryIds = useStore(directoryQueryIds)
   const idolPreviewCacheRef = useRef(new Map())
   const idolPreviewInflightRef = useRef(new Map())
   const [coverPreview, setCoverPreview] = useState(null)
@@ -93,25 +95,26 @@ export default function JavGrid({
       return idol || null
     }
 
-    const cached = idolPreviewCacheRef.current.get(idolId)
+    const cacheKey = `${idolId}|${(directoryIds || []).join(',')}`
+    const cached = idolPreviewCacheRef.current.get(cacheKey)
     if (cached) {
       return cached
     }
 
-    const inflight = idolPreviewInflightRef.current.get(idolId)
+    const inflight = idolPreviewInflightRef.current.get(cacheKey)
     if (inflight) {
       return inflight
     }
 
-    const request = fetchJavIdolPreview(idolId)
+    const request = fetchJavIdolPreview(idolId, { directoryIds })
       .then((preview) => {
-        idolPreviewCacheRef.current.set(idolId, preview)
+        idolPreviewCacheRef.current.set(cacheKey, preview)
         return preview
       })
       .finally(() => {
-        idolPreviewInflightRef.current.delete(idolId)
+        idolPreviewInflightRef.current.delete(cacheKey)
       })
-    idolPreviewInflightRef.current.set(idolId, request)
+    idolPreviewInflightRef.current.set(cacheKey, request)
     return request
   }
 

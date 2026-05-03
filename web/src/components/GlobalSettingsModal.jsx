@@ -41,6 +41,8 @@ export default function GlobalSettingsModal({
   open,
   onClose,
   directories,
+  enabledDirectoryIds,
+  onEnabledDirectoryIdsChange,
   onCreateDirectory,
   onUpdateDirectory,
   onDeleteDirectory,
@@ -588,6 +590,8 @@ export default function GlobalSettingsModal({
         <DirectoryManager
           open={open}
           directories={directories}
+          enabledDirectoryIds={enabledDirectoryIds}
+          onEnabledDirectoryIdsChange={onEnabledDirectoryIdsChange}
           onCreate={onCreateDirectory}
           onUpdate={onUpdateDirectory}
           onDelete={onDeleteDirectory}

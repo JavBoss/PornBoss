@@ -16,6 +16,7 @@ func searchJav(c *gin.Context) {
 	offset := queryInt(c, "offset", 0)
 	actors := parseCSV(c.Query("actors"))
 	tagIDs := parseInt64CSV(c.Query("tag_ids"))
+	directoryIDs := parseDirectoryIDs(c.Query("directory_ids"))
 	search := strings.TrimSpace(c.Query("search"))
 	sort := strings.TrimSpace(c.Query("sort"))
 	seedParam := strings.TrimSpace(c.Query("seed"))
@@ -29,7 +30,7 @@ func searchJav(c *gin.Context) {
 		seed = &parsed
 	}
 
-	items, total, err := dbpkg.SearchJav(c.Request.Context(), actors, tagIDs, search, sort, limit, offset, seed)
+	items, total, err := dbpkg.SearchJav(c.Request.Context(), actors, tagIDs, search, sort, limit, offset, seed, directoryIDs)
 	if err != nil {
 		logging.Error("SearchJav: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
@@ -42,7 +43,7 @@ func searchJav(c *gin.Context) {
 }
 
 func listJavTags(c *gin.Context) {
-	tags, err := dbpkg.ListJavTags(c.Request.Context())
+	tags, err := dbpkg.ListJavTags(c.Request.Context(), parseDirectoryIDs(c.Query("directory_ids")))
 	if err != nil {
 		logging.Error("list jav tags error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})

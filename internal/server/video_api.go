@@ -27,6 +27,7 @@ func listVideos(c *gin.Context) {
 	limit := queryInt(c, "limit", 100)
 	offset := queryInt(c, "offset", 0)
 	tagFilter := parseTagQuery(c.Query("tags"))
+	directoryIDs := parseDirectoryIDs(c.Query("directory_ids"))
 	search := strings.TrimSpace(c.Query("search"))
 	sort := strings.TrimSpace(c.Query("sort"))
 	seedParam := strings.TrimSpace(c.Query("seed"))
@@ -40,14 +41,14 @@ func listVideos(c *gin.Context) {
 		seed = &parsed
 	}
 
-	videos, err := dbpkg.ListVideos(c.Request.Context(), limit, offset, tagFilter, search, sort, seed)
+	videos, err := dbpkg.ListVideos(c.Request.Context(), limit, offset, tagFilter, search, sort, seed, directoryIDs)
 	if err != nil {
 		logging.Error("list videos error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
 
-	total, err := dbpkg.CountVideos(c.Request.Context(), tagFilter, search)
+	total, err := dbpkg.CountVideos(c.Request.Context(), tagFilter, search, directoryIDs)
 	if err != nil {
 		logging.Error("count videos error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
@@ -181,7 +182,7 @@ func resolveVideoStreamTarget(c *gin.Context) (*models.Video, string, error) {
 		return nil, "", os.ErrNotExist
 	}
 
-	fullPath, _, err := resolveVideoPath(video.Path, video.DirectoryRef.Path)
+	fullPath, err := resolveVideoPrimaryPath(c.Request.Context(), video)
 	if err != nil {
 		return nil, "", err
 	}
@@ -228,6 +229,21 @@ func buildDirectStreamURL(video *models.Video) string {
 		return ""
 	}
 	return "/videos/" + strconv.FormatInt(video.ID, 10) + "/stream"
+}
+
+func resolveVideoPrimaryPath(ctx context.Context, video *models.Video) (string, error) {
+	if video == nil {
+		return "", errors.New("video is nil")
+	}
+	loc, err := dbpkg.GetPrimaryVideoLocation(ctx, video.ID)
+	if err != nil {
+		return "", err
+	}
+	if loc != nil {
+		fullPath, _, err := resolveVideoPath(loc.RelativePath, loc.DirectoryRef.Path)
+		return fullPath, err
+	}
+	return "", errors.New("video location missing")
 }
 
 func serveVideoFile(c *gin.Context, fullPath string) {
@@ -401,7 +417,7 @@ func resolvePlaybackVideoID(ctx context.Context, requestedID int64, dirPath, ful
 		if err != nil {
 			logging.Error("get playback video error: %v", err)
 		} else if video != nil {
-			if candidate, _, err := resolveVideoPath(video.Path, video.DirectoryRef.Path); err == nil && sameCleanPath(candidate, fullPath) {
+			if candidate, err := resolveVideoPrimaryPath(ctx, video); err == nil && sameCleanPath(candidate, fullPath) {
 				return video.ID
 			}
 		}

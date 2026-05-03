@@ -1,7 +1,9 @@
 package db
 
 import (
+	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"pornboss/internal/jav"
@@ -30,13 +32,14 @@ func Open(path string) (*gorm.DB, error) {
 	if err := db.Exec("PRAGMA journal_mode=WAL;").Error; err != nil {
 		return nil, fmt.Errorf("enable WAL: %w", err)
 	}
-	if err := db.Exec("PRAGMA foreign_keys=ON;").Error; err != nil {
-		return nil, fmt.Errorf("enable foreign keys: %w", err)
+	if err := db.Exec("PRAGMA foreign_keys=OFF;").Error; err != nil {
+		return nil, fmt.Errorf("disable foreign keys for migration: %w", err)
 	}
 
 	if err := db.AutoMigrate(
 		&models.Directory{},
 		&models.Video{},
+		&models.VideoLocation{},
 		&models.Tag{},
 		&models.VideoTag{},
 		&models.Config{},
@@ -48,8 +51,14 @@ func Open(path string) (*gorm.DB, error) {
 	); err != nil {
 		return nil, fmt.Errorf("auto migrate: %w", err)
 	}
+	if err := db.Exec("PRAGMA foreign_keys=ON;").Error; err != nil {
+		return nil, fmt.Errorf("enable foreign keys: %w", err)
+	}
 	if err := db.Exec("UPDATE video SET play_count = 0 WHERE play_count IS NULL").Error; err != nil {
 		return nil, fmt.Errorf("backfill play_count: %w", err)
+	}
+	if err := backfillVideoLocationsOnce(db); err != nil {
+		return nil, fmt.Errorf("backfill video locations: %w", err)
 	}
 	if err := db.Exec("UPDATE jav SET provider = ? WHERE COALESCE(provider, 0) = 0", int(jav.ProviderJavBus)).Error; err != nil {
 		return nil, fmt.Errorf("backfill jav provider: %w", err)
@@ -83,8 +92,23 @@ func Open(path string) (*gorm.DB, error) {
 	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_jav_idol_map_jav_idol_id_jav_id ON jav_idol_map(jav_idol_id, jav_id)").Error; err != nil {
 		return nil, fmt.Errorf("create jav idol map reverse index: %w", err)
 	}
-	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_video_jav_id_visible ON video(jav_id) WHERE hidden = 0 OR hidden IS NULL").Error; err != nil {
-		return nil, fmt.Errorf("create visible video jav index: %w", err)
+	if err := db.Exec("DROP INDEX IF EXISTS idx_video_jav_id_visible").Error; err != nil {
+		return nil, fmt.Errorf("drop legacy visible video jav index: %w", err)
+	}
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_video_jav_id ON video(jav_id)").Error; err != nil {
+		return nil, fmt.Errorf("create video jav index: %w", err)
+	}
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_video_location_jav_id_is_delete ON video_location(jav_id, is_delete)").Error; err != nil {
+		return nil, fmt.Errorf("create video location jav index: %w", err)
+	}
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_video_location_video_id_jav_id ON video_location(video_id, jav_id)").Error; err != nil {
+		return nil, fmt.Errorf("create video location video jav index: %w", err)
+	}
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_video_location_visible_path ON video_location(jav_id, is_delete, relative_path)").Error; err != nil {
+		return nil, fmt.Errorf("create video location visible path index: %w", err)
+	}
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_video_location_visible_filename ON video_location(jav_id, is_delete, filename COLLATE NOCASE)").Error; err != nil {
+		return nil, fmt.Errorf("create video location visible filename index: %w", err)
 	}
 	if hasIsUser {
 		if err := db.Exec("ALTER TABLE jav_tag DROP COLUMN is_user").Error; err != nil && !ignorableSQLiteDropColumnErr(err) {
@@ -95,6 +119,142 @@ func Open(path string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("backfill jav idol japanese names: %w", err)
 	}
 	return db, nil
+}
+
+const videoLocationBackfillMarkerKey = "migration.video_locations.backfilled"
+
+func backfillVideoLocationsOnce(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("nil db")
+	}
+	done, err := configValueEquals(db, videoLocationBackfillMarkerKey, "1")
+	if err != nil {
+		return err
+	}
+	if done {
+		return nil
+	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		hasLocations, err := videoLocationRowsExist(tx)
+		if err != nil {
+			return err
+		}
+		if !hasLocations {
+			if err := backfillVideoLocations(tx); err != nil {
+				return err
+			}
+		}
+		if err := backfillVideoLocationFilenames(tx); err != nil {
+			return fmt.Errorf("backfill video location filenames: %w", err)
+		}
+		return setConfigValue(tx, videoLocationBackfillMarkerKey, "1")
+	})
+}
+
+func videoLocationRowsExist(db *gorm.DB) (bool, error) {
+	var count int64
+	if err := db.Model(&models.VideoLocation{}).Limit(1).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func configValueEquals(db *gorm.DB, key, value string) (bool, error) {
+	var cfg models.Config
+	err := db.Where("key = ?", key).First(&cfg).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return cfg.Value == value, nil
+}
+
+func setConfigValue(db *gorm.DB, key, value string) error {
+	return db.Exec(`
+		INSERT INTO config (key, value, created_at, updated_at)
+		VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+	`, key, value).Error
+}
+
+func backfillVideoLocations(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("nil db")
+	}
+	if err := db.Exec(`
+		INSERT OR IGNORE INTO video_location (
+			video_id,
+			directory_id,
+			relative_path,
+			filename,
+			modified_at,
+			jav_id,
+			is_delete,
+			created_at,
+			updated_at
+		)
+		SELECT
+			id,
+			directory_id,
+			path,
+			filename,
+			modified_at,
+			jav_id,
+			COALESCE(hidden, 0),
+			created_at,
+			updated_at
+		FROM video
+		WHERE directory_id > 0 AND COALESCE(path, '') <> ''
+	`).Error; err != nil {
+		return err
+	}
+	return db.Exec(`
+		UPDATE video_location
+		SET jav_id = (
+			SELECT video.jav_id
+			FROM video
+			WHERE video.id = video_location.video_id
+		)
+		WHERE jav_id IS NULL
+			AND EXISTS (
+				SELECT 1
+				FROM video
+				WHERE video.id = video_location.video_id
+					AND video.jav_id IS NOT NULL
+			)
+	`).Error
+}
+
+func backfillVideoLocationFilenames(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("nil db")
+	}
+	var locations []models.VideoLocation
+	if err := db.
+		Where("COALESCE(filename, '') = '' AND COALESCE(relative_path, '') <> ''").
+		Find(&locations).Error; err != nil {
+		return err
+	}
+	for _, loc := range locations {
+		filename := baseNameFromSlashPath(loc.RelativePath)
+		if filename == "" {
+			continue
+		}
+		if err := db.Model(&models.VideoLocation{}).Where("id = ?", loc.ID).Update("filename", filename).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func baseNameFromSlashPath(p string) string {
+	p = strings.TrimSpace(p)
+	if p == "" {
+		return ""
+	}
+	return filepath.Base(filepath.FromSlash(p))
 }
 
 func backfillJavIdolJapaneseNames(db *gorm.DB) error {

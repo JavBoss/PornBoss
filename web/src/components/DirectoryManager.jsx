@@ -12,7 +12,15 @@ function isWindowsPlatform() {
   return /windows/i.test(String(platform))
 }
 
-export default function DirectoryManager({ open, directories, onCreate, onUpdate, onDelete }) {
+export default function DirectoryManager({
+  open,
+  directories,
+  enabledDirectoryIds = [],
+  onEnabledDirectoryIdsChange,
+  onCreate,
+  onUpdate,
+  onDelete,
+}) {
   const [path, setPath] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [picking, setPicking] = useState(false)
@@ -33,6 +41,21 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
     '建议优先使用“选择目录”，也可以手动输入完整目录路径。',
     'Use "Choose directory" when possible, or enter the full folder path manually.'
   )
+  const enabledSet = new Set((enabledDirectoryIds || []).map((id) => Number(id)))
+  const activeDirectoryIds = directories.filter((d) => !d.is_delete).map((d) => d.id)
+  const allEnabled =
+    activeDirectoryIds.length > 0 && activeDirectoryIds.every((id) => enabledSet.has(id))
+  const filtered = activeDirectoryIds.length > 0 && !allEnabled
+
+  const setDirectoryEnabled = (id, checked) => {
+    const next = new Set(enabledSet)
+    if (checked) {
+      next.add(id)
+    } else {
+      next.delete(id)
+    }
+    onEnabledDirectoryIdsChange?.(Array.from(next))
+  }
 
   useEffect(() => {
     if (open) {
@@ -130,8 +153,8 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
     if (!dir?.id || dir.is_delete) return
     const ok = window.confirm(
       zh(
-        '删除后将不再扫描该目录，已关联的视频会被隐藏。确认删除？',
-        'This directory will no longer be scanned and linked videos will be hidden. Delete it?'
+        '删除后将不再扫描该目录，该目录下的文件位置会不可用。确认删除？',
+        'This directory will no longer be scanned and file locations under it will become unavailable. Delete it?'
       )
     )
     if (!ok) return
@@ -153,6 +176,33 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
 
   return (
     <div className="space-y-3">
+      {directories.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded border bg-sky-50 px-3 py-2">
+          <div className="text-xs font-medium text-sky-800">
+            {filtered
+              ? enabledSet.size === 0
+                ? zh('所有目录已停用，不显示内容', 'All directories disabled, showing no content')
+                : zh(`启用 ${enabledSet.size} 个目录`, `${enabledSet.size} directories enabled`)
+              : zh('所有目录已启用，显示全部内容', 'All directories enabled, showing all content')}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onEnabledDirectoryIdsChange?.(activeDirectoryIds)}
+              className="rounded border border-sky-200 bg-white px-2 py-1 text-xs text-sky-700 hover:bg-sky-100"
+            >
+              {zh('全部启用', 'Enable all')}
+            </button>
+            <button
+              type="button"
+              onClick={() => onEnabledDirectoryIdsChange?.([])}
+              className="rounded border border-sky-200 bg-white px-2 py-1 text-xs text-sky-700 hover:bg-sky-100"
+            >
+              {zh('全部停用', 'Disable all')}
+            </button>
+          </div>
+        </div>
+      )}
       <div className="divide-y rounded border">
         {directories.length === 0 && (
           <div className="p-3 text-sm text-gray-500">
@@ -173,6 +223,17 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
               }`}
             >
               <div className="min-w-0 space-y-1">
+                <label className="flex min-w-0 items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={enabledSet.has(d.id)}
+                    onChange={(e) => setDirectoryEnabled(d.id, e.target.checked)}
+                    disabled={d.is_delete}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                    aria-label={zh(`启用目录 ${d.path}`, `Enable directory ${d.path}`)}
+                  />
+                  <span className="text-xs text-gray-500">{zh('启用此目录', 'Enabled')}</span>
+                </label>
                 {!isEditing ? (
                   <div className="truncate text-sm font-medium">{d.path}</div>
                 ) : (
