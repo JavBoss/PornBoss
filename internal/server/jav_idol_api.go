@@ -21,15 +21,20 @@ func listJavIdols(c *gin.Context) {
 	offset := queryInt(c, "offset", 0)
 	search := strings.TrimSpace(c.Query("search"))
 	sort := strings.TrimSpace(c.Query("sort"))
+	directoryID, ok := queryOptionalInt64(c, "directory_id")
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid directory_id"})
+		return
+	}
 
-	items, total, err := dbpkg.ListJavIdols(c.Request.Context(), search, sort, limit, offset)
+	items, total, err := dbpkg.ListJavIdols(c.Request.Context(), search, sort, limit, offset, directoryID)
 	if err != nil {
 		logging.Error("list jav idols: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
 
-	enrichJavIdolSummaries(c.Request.Context(), items)
+	enrichJavIdolSummaries(c.Request.Context(), items, directoryID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"items": items,
@@ -43,8 +48,13 @@ func getJavIdol(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	directoryID, ok := queryOptionalInt64(c, "directory_id")
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid directory_id"})
+		return
+	}
 
-	item, err := dbpkg.GetJavIdolSummary(c.Request.Context(), id)
+	item, err := dbpkg.GetJavIdolSummary(c.Request.Context(), id, directoryID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "idol not found"})
@@ -56,22 +66,22 @@ func getJavIdol(c *gin.Context) {
 	}
 
 	items := []dbpkg.JavIdolSummary{*item}
-	enrichJavIdolSummaries(c.Request.Context(), items)
+	enrichJavIdolSummaries(c.Request.Context(), items, directoryID)
 	c.JSON(http.StatusOK, items[0])
 }
 
-func enrichJavIdolSummaries(ctx context.Context, items []dbpkg.JavIdolSummary) {
+func enrichJavIdolSummaries(ctx context.Context, items []dbpkg.JavIdolSummary, directoryID int64) {
 	cfg := common.AppConfig
 	coverDir := ""
 	if cfg != nil {
 		coverDir = cfg.JavCoverDir
 	}
 	for i := range items {
-		enrichJavIdolSummary(ctx, &items[i], coverDir)
+		enrichJavIdolSummary(ctx, &items[i], coverDir, directoryID)
 	}
 }
 
-func enrichJavIdolSummary(ctx context.Context, item *dbpkg.JavIdolSummary, coverDir string) {
+func enrichJavIdolSummary(ctx context.Context, item *dbpkg.JavIdolSummary, coverDir string, directoryID int64) {
 	item.Name = strings.TrimSpace(item.Name)
 	item.RomanName = strings.TrimSpace(item.RomanName)
 	item.JapaneseName = strings.TrimSpace(item.JapaneseName)
@@ -83,7 +93,7 @@ func enrichJavIdolSummary(ctx context.Context, item *dbpkg.JavIdolSummary, cover
 	if _, ok := manager.FindCoverPath(coverDir, item.SampleCode); ok {
 		return
 	}
-	codes, err := dbpkg.ListIdolCoverCodes(ctx, item.ID)
+	codes, err := dbpkg.ListIdolCoverCodes(ctx, item.ID, directoryID)
 	if err != nil {
 		logging.Error("list idol cover codes id=%d: %v", item.ID, err)
 		return

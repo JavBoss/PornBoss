@@ -35,6 +35,9 @@ export default function TopBar({
   onSwitchJavTab,
   filterSummary,
   showDirectorySetupHint,
+  directories = [],
+  selectedDirectoryId = 0,
+  onDirectoryChange,
 }) {
   const headerRef = useRef(null)
   const headerClassName = ['sticky top-0 z-40 border-b bg-white/80 backdrop-blur']
@@ -210,6 +213,27 @@ export default function TopBar({
                     </Button>
                   </>
                 )}
+
+                {directories.length > 0 ? (
+                  <label className="flex h-10 items-center gap-2 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 shadow-sm">
+                    <span className="shrink-0 text-xs text-gray-500">
+                      {zh('目录', 'Directory')}
+                    </span>
+                    <select
+                      value={selectedDirectoryId || 0}
+                      onChange={(e) => onDirectoryChange?.(Number(e.target.value))}
+                      className="min-w-[120px] max-w-[240px] border-0 bg-transparent text-sm focus:outline-none"
+                      aria-label={zh('按目录筛选', 'Filter by directory')}
+                    >
+                      <option value={0}>{zh('全部目录', 'All directories')}</option>
+                      {directories.map((dir) => (
+                        <option key={dir.id} value={dir.id}>
+                          {dir.path}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
 
                 <Button
                   startIcon={<SettingsOutlinedIcon fontSize="small" />}

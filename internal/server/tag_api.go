@@ -25,7 +25,12 @@ type tagsBatchDeleteRequest struct {
 }
 
 func listTags(c *gin.Context) {
-	tags, err := dbpkg.ListTags(c.Request.Context())
+	directoryID, ok := queryOptionalInt64(c, "directory_id")
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid directory_id"})
+		return
+	}
+	tags, err := dbpkg.ListTags(c.Request.Context(), directoryID)
 	if err != nil {
 		logging.Error("list tags error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})

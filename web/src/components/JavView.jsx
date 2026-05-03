@@ -40,6 +40,7 @@ export default function JavView({
   openFileLabel,
   onRevealFile,
   onOpenScreenshots,
+  selectedDirectoryId = 0,
 }) {
   const contentClass = javRandomMode ? 'mt-4' : ''
   const [sortAnchorEl, setSortAnchorEl] = useState(null)
@@ -173,6 +174,7 @@ export default function JavView({
             openFileLabel={openFileLabel}
             onRevealFile={onRevealFile}
             onOpenScreenshots={onOpenScreenshots}
+            selectedDirectoryId={selectedDirectoryId}
           />
         </div>
       )}

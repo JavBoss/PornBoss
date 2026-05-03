@@ -14,7 +14,7 @@ import (
 )
 
 // ListVideos returns paginated video metadata ordered by the requested sort mode, filtered by all tagNames when provided.
-func ListVideos(ctx context.Context, limit, offset int, tagNames []string, search, sort string, seed *int64) ([]models.Video, error) {
+func ListVideos(ctx context.Context, limit, offset int, tagNames []string, search, sort string, seed *int64, directoryID int64) ([]models.Video, error) {
 	if limit <= 0 {
 		limit = 100
 	}
@@ -64,6 +64,9 @@ func ListVideos(ctx context.Context, limit, offset int, tagNames []string, searc
 		Preload("DirectoryRef").
 		Limit(limit).
 		Offset(offset)
+	if directoryID > 0 {
+		query = query.Where("video.directory_id = ?", directoryID)
+	}
 	if useExpr {
 		query = query.Order(clause.OrderBy{Expression: orderExpr})
 	} else {
@@ -94,7 +97,7 @@ func ListVideos(ctx context.Context, limit, offset int, tagNames []string, searc
 }
 
 // CountVideos returns the total number of videos that match optional tag filters + search term.
-func CountVideos(ctx context.Context, tagNames []string, search string) (int64, error) {
+func CountVideos(ctx context.Context, tagNames []string, search string, directoryID int64) (int64, error) {
 	cleanedTags := normalizeTagNames(tagNames)
 	cleanedSearch := strings.TrimSpace(search)
 	like := ""
@@ -109,6 +112,9 @@ func CountVideos(ctx context.Context, tagNames []string, search string) (int64, 
 			Model(&models.Video{}).
 			Where("COALESCE(hidden, 0) = 0").
 			Where("jav_id IS NULL")
+		if directoryID > 0 {
+			base = base.Where("video.directory_id = ?", directoryID)
+		}
 		if like != "" {
 			base = base.Where("filename LIKE ? COLLATE NOCASE", like)
 		}
@@ -128,6 +134,9 @@ func CountVideos(ctx context.Context, tagNames []string, search string) (int64, 
 		Joins("JOIN video_tag ON video_tag.video_id = video.id").
 		Joins("JOIN tag ON tag.id = video_tag.tag_id").
 		Where("tag.name IN ?", cleanedTags)
+	if directoryID > 0 {
+		sub = sub.Where("video.directory_id = ?", directoryID)
+	}
 
 	if like != "" {
 		sub = sub.Where("filename LIKE ? COLLATE NOCASE", like)

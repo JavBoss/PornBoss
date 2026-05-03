@@ -69,11 +69,15 @@ func RenameTag(ctx context.Context, id int64, newName string) error {
 }
 
 // ListTags returns all tags ordered by name with attached video counts.
-func ListTags(ctx context.Context) ([]TagCount, error) {
+func ListTags(ctx context.Context, directoryID int64) ([]TagCount, error) {
 	var tags []TagCount
 	if err := common.DB.WithContext(ctx).
 		Table("tag t").
-		Select("t.id, t.name, COUNT(DISTINCT CASE WHEN COALESCE(v.hidden, 0) = 0 THEN vt.video_id END) AS count").
+		Select(
+			"t.id, t.name, COUNT(DISTINCT CASE WHEN COALESCE(v.hidden, 0) = 0 AND (? = 0 OR v.directory_id = ?) THEN vt.video_id END) AS count",
+			directoryID,
+			directoryID,
+		).
 		Joins("LEFT JOIN video_tag vt ON vt.tag_id = t.id").
 		Joins("LEFT JOIN video v ON v.id = vt.video_id").
 		Group("t.id, t.name").

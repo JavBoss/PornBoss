@@ -34,7 +34,7 @@ type JavScanVideo struct {
 }
 
 // SearchJav lists Jav metadata filtered by actors/tag IDs/search with pagination and sorting.
-func SearchJav(ctx context.Context, actors []string, tagIDs []int64, search, sort string, limit, offset int, seed *int64) ([]models.Jav, int64, error) {
+func SearchJav(ctx context.Context, actors []string, tagIDs []int64, search, sort string, limit, offset int, seed *int64, directoryID int64) ([]models.Jav, int64, error) {
 	if limit <= 0 {
 		limit = 100
 	}
@@ -47,10 +47,10 @@ func SearchJav(ctx context.Context, actors []string, tagIDs []int64, search, sor
 	search = strings.TrimSpace(search)
 	sort = strings.ToLower(strings.TrimSpace(sort))
 
-	filtered := buildJavFilter(ctx, actors, tagIDs, search)
+	filtered := buildJavFilter(ctx, actors, tagIDs, search, directoryID)
 
 	// Count on a cloned query to avoid mutating the main one.
-	countBase := buildJavFilter(ctx, actors, tagIDs, search)
+	countBase := buildJavFilter(ctx, actors, tagIDs, search, directoryID)
 	countQuery := countBase.Select("DISTINCT jav.id")
 	var total int64
 	if err := countQuery.Count(&total).Error; err != nil {
@@ -76,8 +76,14 @@ func SearchJav(ctx context.Context, actors []string, tagIDs []int64, search, sor
 		order = "jav.release_unix IS NULL, jav.release_unix ASC, jav.code"
 	case "play_count", "play_count_desc":
 		order = "COALESCE((SELECT SUM(COALESCE(v.play_count, 0)) FROM video v WHERE v.jav_id = jav.id AND COALESCE(v.hidden, 0) = 0), 0) DESC, jav.created_at DESC, jav.id DESC"
+		if directoryID > 0 {
+			order = fmt.Sprintf("COALESCE((SELECT SUM(COALESCE(v.play_count, 0)) FROM video v WHERE v.jav_id = jav.id AND COALESCE(v.hidden, 0) = 0 AND v.directory_id = %d), 0) DESC, jav.created_at DESC, jav.id DESC", directoryID)
+		}
 	case "play_count_asc":
 		order = "COALESCE((SELECT SUM(COALESCE(v.play_count, 0)) FROM video v WHERE v.jav_id = jav.id AND COALESCE(v.hidden, 0) = 0), 0) ASC, jav.created_at ASC, jav.id ASC"
+		if directoryID > 0 {
+			order = fmt.Sprintf("COALESCE((SELECT SUM(COALESCE(v.play_count, 0)) FROM video v WHERE v.jav_id = jav.id AND COALESCE(v.hidden, 0) = 0 AND v.directory_id = %d), 0) ASC, jav.created_at ASC, jav.id ASC", directoryID)
+		}
 	case "recent_asc":
 		order = "jav.created_at ASC, jav.id ASC"
 	case "random":
@@ -98,8 +104,13 @@ func SearchJav(ctx context.Context, actors []string, tagIDs []int64, search, sor
 	visibleTagProviders := visibleJavTagProviders()
 	query := filtered.
 		Preload("Tags", "provider IN ?", visibleTagProviders).
-		Preload("Idols").
-		Preload("Videos", "COALESCE(hidden, 0) = 0").
+		Preload("Idols")
+	if directoryID > 0 {
+		query = query.Preload("Videos", "COALESCE(hidden, 0) = 0 AND directory_id = ?", directoryID)
+	} else {
+		query = query.Preload("Videos", "COALESCE(hidden, 0) = 0")
+	}
+	query = query.
 		Preload("Videos.DirectoryRef").
 		Limit(limit).
 		Offset(offset)
@@ -115,12 +126,16 @@ func SearchJav(ctx context.Context, actors []string, tagIDs []int64, search, sor
 }
 
 // ListJavTags returns JAV tags with the number of works for each tag.
-func ListJavTags(ctx context.Context) ([]JavTagCount, error) {
+func ListJavTags(ctx context.Context, directoryID int64) ([]JavTagCount, error) {
 	var tags []JavTagCount
 	visibleProviders := visibleJavTagProviders()
 	if err := common.DB.WithContext(ctx).
 		Table("jav_tag jt").
-		Select("jt.id, jt.name, jt.provider, COUNT(DISTINCT CASE WHEN COALESCE(v.hidden, 0) = 0 THEN jtm.jav_id END) AS count").
+		Select(
+			"jt.id, jt.name, jt.provider, COUNT(DISTINCT CASE WHEN COALESCE(v.hidden, 0) = 0 AND (? = 0 OR v.directory_id = ?) THEN jtm.jav_id END) AS count",
+			directoryID,
+			directoryID,
+		).
 		Joins("LEFT JOIN jav_tag_map jtm ON jtm.jav_tag_id = jt.id").
 		Joins("LEFT JOIN video v ON v.jav_id = jtm.jav_id").
 		Where("jt.provider IN ?", visibleProviders).
@@ -339,7 +354,7 @@ func ReplaceJavUserTags(ctx context.Context, javIDs, tagIDs []int64) error {
 	})
 }
 
-func buildJavFilter(ctx context.Context, actors []string, tagIDs []int64, search string) *gorm.DB {
+func buildJavFilter(ctx context.Context, actors []string, tagIDs []int64, search string, directoryID int64) *gorm.DB {
 	q := common.DB.WithContext(ctx).Model(&models.Jav{})
 	visibleTagProviders := visibleJavTagProviders()
 	// Only include JAV entries that have at least one visible video.
@@ -348,6 +363,9 @@ func buildJavFilter(ctx context.Context, actors []string, tagIDs []int64, search
 		Select("1").
 		Where("v.jav_id = jav.id").
 		Where("COALESCE(v.hidden, 0) = 0")
+	if directoryID > 0 {
+		validVideo = validVideo.Where("v.directory_id = ?", directoryID)
+	}
 	q = q.Where("EXISTS (?)", validVideo)
 	if search != "" {
 		like := fmt.Sprintf("%%%s%%", search)
@@ -405,34 +423,42 @@ func applyJavIdolSearch(q *gorm.DB, search string) *gorm.DB {
 	)
 }
 
-func buildVisibleSoloIdolSampleQuery(ctx context.Context) *gorm.DB {
+func buildVisibleSoloIdolSampleQuery(ctx context.Context, directoryID int64) *gorm.DB {
 	soloJavs := common.DB.WithContext(ctx).
 		Table("jav_idol_map").
 		Select("jav_id").
 		Group("jav_id").
 		Having("COUNT(*) = 1")
 
-	return common.DB.WithContext(ctx).
+	query := common.DB.WithContext(ctx).
 		Table("jav_idol_map jim_solo").
 		Select("jim_solo.jav_idol_id, MIN(j_solo.code) AS sample_code").
 		Joins("JOIN (?) solo_jav ON solo_jav.jav_id = jim_solo.jav_id", soloJavs).
 		Joins("JOIN jav j_solo ON j_solo.id = jim_solo.jav_id").
 		Joins("JOIN video v_solo ON v_solo.jav_id = jim_solo.jav_id").
-		Where("(v_solo.hidden = 0 OR v_solo.hidden IS NULL)").
+		Where("(v_solo.hidden = 0 OR v_solo.hidden IS NULL)")
+	if directoryID > 0 {
+		query = query.Where("v_solo.directory_id = ?", directoryID)
+	}
+	return query.
 		Group("jim_solo.jav_idol_id")
 }
 
-func buildVisibleIdolWorkCountQuery(ctx context.Context) *gorm.DB {
-	return common.DB.WithContext(ctx).
+func buildVisibleIdolWorkCountQuery(ctx context.Context, directoryID int64) *gorm.DB {
+	query := common.DB.WithContext(ctx).
 		Table("jav_idol_map jim").
 		Select("jim.jav_idol_id, COUNT(DISTINCT jim.jav_id) AS work_count").
 		Joins("JOIN video v ON v.jav_id = jim.jav_id").
-		Where("(v.hidden = 0 OR v.hidden IS NULL)").
+		Where("(v.hidden = 0 OR v.hidden IS NULL)")
+	if directoryID > 0 {
+		query = query.Where("v.directory_id = ?", directoryID)
+	}
+	return query.
 		Group("jim.jav_idol_id")
 }
 
 // GetJavIdolSummary returns one idol summary for hover preview usage.
-func GetJavIdolSummary(ctx context.Context, idolID int64) (*JavIdolSummary, error) {
+func GetJavIdolSummary(ctx context.Context, idolID int64, directoryID int64) (*JavIdolSummary, error) {
 	if idolID <= 0 {
 		return nil, errors.New("idol id must be positive")
 	}
@@ -441,11 +467,20 @@ func GetJavIdolSummary(ctx context.Context, idolID int64) (*JavIdolSummary, erro
 	tx := common.DB.WithContext(ctx).
 		Table("jav_idol ji").
 		Select("ji.id, ji.name, ji.roman_name, ji.japanese_name, ji.chinese_name, ji.height_cm, ji.birth_date, ji.bust, ji.waist, ji.hips, ji.cup, COALESCE(idol_work_counts.work_count, 0) AS work_count, solo_idols.sample_code").
-		Joins("LEFT JOIN (?) idol_work_counts ON idol_work_counts.jav_idol_id = ji.id", buildVisibleIdolWorkCountQuery(ctx)).
-		Joins("LEFT JOIN (?) solo_idols ON solo_idols.jav_idol_id = ji.id", buildVisibleSoloIdolSampleQuery(ctx)).
-		Where("ji.id = ?", idolID).
-		Limit(1).
-		Scan(&item)
+		Joins("LEFT JOIN (?) idol_work_counts ON idol_work_counts.jav_idol_id = ji.id", buildVisibleIdolWorkCountQuery(ctx, directoryID)).
+		Joins("LEFT JOIN (?) solo_idols ON solo_idols.jav_idol_id = ji.id", buildVisibleSoloIdolSampleQuery(ctx, directoryID)).
+		Where("ji.id = ?", idolID)
+	if directoryID > 0 {
+		visibleInDirectory := common.DB.WithContext(ctx).
+			Table("jav_idol_map jim_visible").
+			Select("1").
+			Joins("JOIN video v_visible ON v_visible.jav_id = jim_visible.jav_id").
+			Where("jim_visible.jav_idol_id = ji.id").
+			Where("(v_visible.hidden = 0 OR v_visible.hidden IS NULL)").
+			Where("v_visible.directory_id = ?", directoryID)
+		tx = tx.Where("EXISTS (?)", visibleInDirectory)
+	}
+	tx = tx.Limit(1).Scan(&item)
 	if tx.Error != nil {
 		return nil, fmt.Errorf("get jav idol summary: %w", tx.Error)
 	}
@@ -456,7 +491,7 @@ func GetJavIdolSummary(ctx context.Context, idolID int64) (*JavIdolSummary, erro
 }
 
 // ListJavIdols returns idols ordered by selected sort with pagination.
-func ListJavIdols(ctx context.Context, search, sort string, limit, offset int) ([]JavIdolSummary, int64, error) {
+func ListJavIdols(ctx context.Context, search, sort string, limit, offset int, directoryID int64) ([]JavIdolSummary, int64, error) {
 	if limit <= 0 {
 		limit = 100
 	}
@@ -464,7 +499,7 @@ func ListJavIdols(ctx context.Context, search, sort string, limit, offset int) (
 		offset = 0
 	}
 	sort = strings.ToLower(strings.TrimSpace(sort))
-	soloIdols := buildVisibleSoloIdolSampleQuery(ctx)
+	soloIdols := buildVisibleSoloIdolSampleQuery(ctx, directoryID)
 
 	countBase := common.DB.WithContext(ctx).
 		Table("jav_idol ji").
@@ -519,6 +554,9 @@ func ListJavIdols(ctx context.Context, search, sort string, limit, offset int) (
 		Joins("JOIN jav j ON j.id = jim.jav_id").
 		Joins("JOIN video v ON v.jav_id = j.id").
 		Where("(v.hidden = 0 OR v.hidden IS NULL)")
+	if directoryID > 0 {
+		base = base.Where("v.directory_id = ?", directoryID)
+	}
 	base = applyJavIdolSearch(base, search)
 	if err := base.
 		Select("ji.id, ji.name, ji.roman_name, ji.japanese_name, ji.chinese_name, ji.height_cm, ji.birth_date, ji.bust, ji.waist, ji.hips, ji.cup, COUNT(DISTINCT j.id) AS work_count, solo_idols.sample_code").
@@ -534,19 +572,27 @@ func ListJavIdols(ctx context.Context, search, sort string, limit, offset int) (
 }
 
 // ListIdolCoverCodes returns a prioritized list of codes for an idol, preferring solo works first.
-func ListIdolCoverCodes(ctx context.Context, idolID int64) ([]string, error) {
+func ListIdolCoverCodes(ctx context.Context, idolID int64, directoryID int64) ([]string, error) {
 	var codes []string
 	sub := common.DB.WithContext(ctx).
 		Table("jav_idol_map").
 		Select("jav_id, COUNT(*) as c").
 		Group("jav_id")
 
-	rows, err := common.DB.WithContext(ctx).
+	query := common.DB.WithContext(ctx).
 		Table("jav_idol_map jim").
 		Select("j.code, CASE WHEN s.c = 1 THEN 1 ELSE 0 END as solo").
 		Joins("JOIN jav j ON j.id = jim.jav_id").
+		Joins("JOIN video v ON v.jav_id = jim.jav_id").
 		Joins("LEFT JOIN (?) s ON s.jav_id = jim.jav_id", sub).
 		Where("jim.jav_idol_id = ?", idolID).
+		Where("(v.hidden = 0 OR v.hidden IS NULL)")
+	if directoryID > 0 {
+		query = query.Where("v.directory_id = ?", directoryID)
+	}
+
+	rows, err := query.
+		Group("j.code, s.c").
 		Order("solo DESC, j.code").
 		Rows()
 	if err != nil {
@@ -569,7 +615,7 @@ func ListIdolCoverCodes(ctx context.Context, idolID int64) ([]string, error) {
 }
 
 // FindIdolSoloCode returns one solo work code for the idol, when available.
-func FindIdolSoloCode(ctx context.Context, idolID int64) (string, error) {
+func FindIdolSoloCode(ctx context.Context, idolID int64, directoryID int64) (string, error) {
 	if idolID == 0 {
 		return "", errors.New("idol id cannot be zero")
 	}
@@ -579,13 +625,20 @@ func FindIdolSoloCode(ctx context.Context, idolID int64) (string, error) {
 		Group("jav_id")
 
 	var codes []string
-	if err := common.DB.WithContext(ctx).
+	query := common.DB.WithContext(ctx).
 		Table("jav_idol_map jim").
 		Select("j.code").
 		Joins("JOIN jav j ON j.id = jim.jav_id").
+		Joins("JOIN video v ON v.jav_id = jim.jav_id").
 		Joins("LEFT JOIN (?) s ON s.jav_id = jim.jav_id", sub).
 		Where("jim.jav_idol_id = ?", idolID).
 		Where("s.c = 1").
+		Where("(v.hidden = 0 OR v.hidden IS NULL)")
+	if directoryID > 0 {
+		query = query.Where("v.directory_id = ?", directoryID)
+	}
+	if err := query.
+		Group("j.code").
 		Order("RANDOM()").
 		Limit(1).
 		Pluck("j.code", &codes).Error; err != nil {
@@ -600,7 +653,7 @@ func FindIdolSoloCode(ctx context.Context, idolID int64) (string, error) {
 // ListIdolsMissingProfile returns idols that have no profile fields populated.
 func ListIdolsMissingProfile(ctx context.Context) ([]models.JavIdol, error) {
 	var idols []models.JavIdol
-	soloIdols := buildVisibleSoloIdolSampleQuery(ctx)
+	soloIdols := buildVisibleSoloIdolSampleQuery(ctx, 0)
 	if err := common.DB.WithContext(ctx).
 		Joins("JOIN (?) solo_idols ON solo_idols.jav_idol_id = jav_idol.id", soloIdols).
 		Where(`

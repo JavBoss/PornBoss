@@ -56,7 +56,7 @@ func ScanIdolProfiles(ctx context.Context) error {
 			javModelInfo    *jav.ActressInfo
 			code            string
 		)
-		code, err = db.FindIdolSoloCode(ctx, idol.ID)
+		code, err = db.FindIdolSoloCode(ctx, idol.ID, 0)
 		if err != nil {
 			logging.Error("find solo code failed idol=%s err=%v", idol.Name, err)
 		}

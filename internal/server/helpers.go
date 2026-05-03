@@ -18,6 +18,18 @@ func queryInt(c *gin.Context, key string, def int) int {
 	return def
 }
 
+func queryOptionalInt64(c *gin.Context, key string) (int64, bool) {
+	value := strings.TrimSpace(c.Query(key))
+	if value == "" {
+		return 0, true
+	}
+	parsed, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || parsed < 0 {
+		return 0, false
+	}
+	return parsed, true
+}
+
 func parseTagQuery(raw string) []string {
 	if raw == "" {
 		return nil

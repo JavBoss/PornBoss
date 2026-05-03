@@ -85,7 +85,7 @@ func TestListJavIdolsOnlyIncludesIdolsWithVisibleSoloWorks(t *testing.T) {
 		t.Fatalf("create videos: %v", err)
 	}
 
-	items, total, err := ListJavIdols(ctx, "", "", 20, 0)
+	items, total, err := ListJavIdols(ctx, "", "", 20, 0, 0)
 	if err != nil {
 		t.Fatalf("ListJavIdols: %v", err)
 	}
@@ -166,7 +166,7 @@ func TestGetJavIdolSummaryReturnsSampleCodeAndWorkCount(t *testing.T) {
 		t.Fatalf("create videos: %v", err)
 	}
 
-	item, err := GetJavIdolSummary(ctx, idol.ID)
+	item, err := GetJavIdolSummary(ctx, idol.ID, 0)
 	if err != nil {
 		t.Fatalf("GetJavIdolSummary: %v", err)
 	}
@@ -231,7 +231,7 @@ func TestSearchJavSortByDurationDesc(t *testing.T) {
 		t.Fatalf("create videos: %v", err)
 	}
 
-	items, total, err := SearchJav(ctx, nil, nil, "", "duration", 20, 0, nil)
+	items, total, err := SearchJav(ctx, nil, nil, "", "duration", 20, 0, nil, 0)
 	if err != nil {
 		t.Fatalf("SearchJav: %v", err)
 	}
@@ -248,7 +248,7 @@ func TestSearchJavSortByDurationDesc(t *testing.T) {
 		t.Fatalf("unexpected second jav: got %d want %d", items[1].ID, shortJav.ID)
 	}
 
-	items, total, err = SearchJav(ctx, nil, nil, "", "duration_asc", 20, 0, nil)
+	items, total, err = SearchJav(ctx, nil, nil, "", "duration_asc", 20, 0, nil, 0)
 	if err != nil {
 		t.Fatalf("SearchJav duration_asc: %v", err)
 	}
@@ -263,6 +263,180 @@ func TestSearchJavSortByDurationDesc(t *testing.T) {
 	}
 	if items[1].ID != longJav.ID {
 		t.Fatalf("unexpected asc second jav: got %d want %d", items[1].ID, longJav.ID)
+	}
+}
+
+func TestSearchJavFiltersVideosAndPlayCountByDirectoryID(t *testing.T) {
+	db := openTestDB(t)
+	ctx := context.Background()
+	now := time.Unix(1710000000, 0).UTC()
+
+	dirA := models.Directory{Path: "/tmp/jav-dir-a"}
+	dirB := models.Directory{Path: "/tmp/jav-dir-b"}
+	if err := db.Create(&dirA).Error; err != nil {
+		t.Fatalf("create dir a: %v", err)
+	}
+	if err := db.Create(&dirB).Error; err != nil {
+		t.Fatalf("create dir b: %v", err)
+	}
+
+	sharedJav := models.Jav{Code: "DIR-001", Title: "Shared", Provider: 1, FetchedAt: now}
+	dirAJav := models.Jav{Code: "DIR-002", Title: "Dir A", Provider: 1, FetchedAt: now}
+	dirBJav := models.Jav{Code: "DIR-003", Title: "Dir B", Provider: 1, FetchedAt: now}
+	if err := db.Create(&sharedJav).Error; err != nil {
+		t.Fatalf("create shared jav: %v", err)
+	}
+	if err := db.Create(&dirAJav).Error; err != nil {
+		t.Fatalf("create dir a jav: %v", err)
+	}
+	if err := db.Create(&dirBJav).Error; err != nil {
+		t.Fatalf("create dir b jav: %v", err)
+	}
+
+	videos := []models.Video{
+		{
+			DirectoryID: dirA.ID,
+			Path:        "shared-a.mp4",
+			Filename:    "shared-a.mp4",
+			Fingerprint: "fp-shared-a",
+			JavID:       int64Ptr(sharedJav.ID),
+			PlayCount:   1,
+			ModifiedAt:  now,
+		},
+		{
+			DirectoryID: dirB.ID,
+			Path:        "shared-b.mp4",
+			Filename:    "shared-b.mp4",
+			Fingerprint: "fp-shared-b",
+			JavID:       int64Ptr(sharedJav.ID),
+			PlayCount:   100,
+			ModifiedAt:  now,
+		},
+		{
+			DirectoryID: dirA.ID,
+			Path:        "only-a.mp4",
+			Filename:    "only-a.mp4",
+			Fingerprint: "fp-only-a",
+			JavID:       int64Ptr(dirAJav.ID),
+			PlayCount:   2,
+			ModifiedAt:  now,
+		},
+		{
+			DirectoryID: dirB.ID,
+			Path:        "only-b.mp4",
+			Filename:    "only-b.mp4",
+			Fingerprint: "fp-only-b",
+			JavID:       int64Ptr(dirBJav.ID),
+			PlayCount:   50,
+			ModifiedAt:  now,
+		},
+	}
+	if err := db.Create(&videos).Error; err != nil {
+		t.Fatalf("create videos: %v", err)
+	}
+
+	items, total, err := SearchJav(ctx, nil, nil, "", "play_count", 20, 0, nil, dirA.ID)
+	if err != nil {
+		t.Fatalf("SearchJav: %v", err)
+	}
+	if total != 2 || len(items) != 2 {
+		t.Fatalf("unexpected result size: len=%d total=%d", len(items), total)
+	}
+	if items[0].ID != dirAJav.ID || items[1].ID != sharedJav.ID {
+		t.Fatalf("unexpected order: got %s, %s", items[0].Code, items[1].Code)
+	}
+	if len(items[1].Videos) != 1 || items[1].Videos[0].DirectoryID != dirA.ID {
+		t.Fatalf("shared jav preloaded wrong videos: %#v", items[1].Videos)
+	}
+}
+
+func TestListJavIdolsFiltersWorkCountByDirectoryID(t *testing.T) {
+	db := openTestDB(t)
+	ctx := context.Background()
+	now := time.Unix(1710000000, 0).UTC()
+
+	dirA := models.Directory{Path: "/tmp/idol-dir-a"}
+	dirB := models.Directory{Path: "/tmp/idol-dir-b"}
+	if err := db.Create(&dirA).Error; err != nil {
+		t.Fatalf("create dir a: %v", err)
+	}
+	if err := db.Create(&dirB).Error; err != nil {
+		t.Fatalf("create dir b: %v", err)
+	}
+
+	idol := models.JavIdol{Name: "Directory Idol"}
+	onlyDirBIdol := models.JavIdol{Name: "Only Dir B Idol"}
+	if err := db.Create(&idol).Error; err != nil {
+		t.Fatalf("create idol: %v", err)
+	}
+	if err := db.Create(&onlyDirBIdol).Error; err != nil {
+		t.Fatalf("create dir b idol: %v", err)
+	}
+
+	dirAJav := models.Jav{Code: "IDA-001", Title: "A Solo", Provider: 1, FetchedAt: now}
+	dirBJav := models.Jav{Code: "IDB-001", Title: "B Solo", Provider: 1, FetchedAt: now}
+	onlyBJav := models.Jav{Code: "IDB-002", Title: "Only B Solo", Provider: 1, FetchedAt: now}
+	if err := db.Create(&dirAJav).Error; err != nil {
+		t.Fatalf("create dir a jav: %v", err)
+	}
+	if err := db.Create(&dirBJav).Error; err != nil {
+		t.Fatalf("create dir b jav: %v", err)
+	}
+	if err := db.Create(&onlyBJav).Error; err != nil {
+		t.Fatalf("create only b jav: %v", err)
+	}
+
+	maps := []models.JavIdolMap{
+		{JavID: dirAJav.ID, JavIdolID: idol.ID},
+		{JavID: dirBJav.ID, JavIdolID: idol.ID},
+		{JavID: onlyBJav.ID, JavIdolID: onlyDirBIdol.ID},
+	}
+	if err := db.Create(&maps).Error; err != nil {
+		t.Fatalf("create idol maps: %v", err)
+	}
+
+	videos := []models.Video{
+		{
+			DirectoryID: dirA.ID,
+			Path:        "idol-a.mp4",
+			Filename:    "idol-a.mp4",
+			Fingerprint: "fp-idol-a",
+			JavID:       int64Ptr(dirAJav.ID),
+			ModifiedAt:  now,
+		},
+		{
+			DirectoryID: dirB.ID,
+			Path:        "idol-b.mp4",
+			Filename:    "idol-b.mp4",
+			Fingerprint: "fp-idol-b",
+			JavID:       int64Ptr(dirBJav.ID),
+			ModifiedAt:  now,
+		},
+		{
+			DirectoryID: dirB.ID,
+			Path:        "only-b-idol.mp4",
+			Filename:    "only-b-idol.mp4",
+			Fingerprint: "fp-only-b-idol",
+			JavID:       int64Ptr(onlyBJav.ID),
+			ModifiedAt:  now,
+		},
+	}
+	if err := db.Create(&videos).Error; err != nil {
+		t.Fatalf("create videos: %v", err)
+	}
+
+	items, total, err := ListJavIdols(ctx, "", "", 20, 0, dirA.ID)
+	if err != nil {
+		t.Fatalf("ListJavIdols: %v", err)
+	}
+	if total != 1 || len(items) != 1 {
+		t.Fatalf("unexpected result size: len=%d total=%d", len(items), total)
+	}
+	if items[0].ID != idol.ID {
+		t.Fatalf("unexpected idol: got %d want %d", items[0].ID, idol.ID)
+	}
+	if items[0].WorkCount != 1 {
+		t.Fatalf("unexpected work count: got %d want 1", items[0].WorkCount)
 	}
 }
 
@@ -326,7 +500,7 @@ func TestListJavIdolsSortByAgeDirections(t *testing.T) {
 		t.Fatalf("create videos: %v", err)
 	}
 
-	items, total, err := ListJavIdols(ctx, "", "birth", 20, 0)
+	items, total, err := ListJavIdols(ctx, "", "birth", 20, 0, 0)
 	if err != nil {
 		t.Fatalf("ListJavIdols birth: %v", err)
 	}
@@ -337,7 +511,7 @@ func TestListJavIdolsSortByAgeDirections(t *testing.T) {
 		t.Fatalf("unexpected birth first idol: got %d want %d", items[0].ID, youngIdol.ID)
 	}
 
-	items, total, err = ListJavIdols(ctx, "", "birth_asc", 20, 0)
+	items, total, err = ListJavIdols(ctx, "", "birth_asc", 20, 0, 0)
 	if err != nil {
 		t.Fatalf("ListJavIdols birth_asc: %v", err)
 	}

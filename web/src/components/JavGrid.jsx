@@ -73,6 +73,7 @@ export default function JavGrid({
   openFileLabel,
   onRevealFile,
   onOpenScreenshots,
+  selectedDirectoryId = 0,
 }) {
   const idolPreviewCacheRef = useRef(new Map())
   const idolPreviewInflightRef = useRef(new Map())
@@ -93,25 +94,26 @@ export default function JavGrid({
       return idol || null
     }
 
-    const cached = idolPreviewCacheRef.current.get(idolId)
+    const cacheKey = `${selectedDirectoryId || 0}:${idolId}`
+    const cached = idolPreviewCacheRef.current.get(cacheKey)
     if (cached) {
       return cached
     }
 
-    const inflight = idolPreviewInflightRef.current.get(idolId)
+    const inflight = idolPreviewInflightRef.current.get(cacheKey)
     if (inflight) {
       return inflight
     }
 
-    const request = fetchJavIdolPreview(idolId)
+    const request = fetchJavIdolPreview(idolId, { directoryId: selectedDirectoryId })
       .then((preview) => {
-        idolPreviewCacheRef.current.set(idolId, preview)
+        idolPreviewCacheRef.current.set(cacheKey, preview)
         return preview
       })
       .finally(() => {
-        idolPreviewInflightRef.current.delete(idolId)
+        idolPreviewInflightRef.current.delete(cacheKey)
       })
-    idolPreviewInflightRef.current.set(idolId, request)
+    idolPreviewInflightRef.current.set(cacheKey, request)
     return request
   }
 

@@ -9,6 +9,7 @@ export async function fetchVideos({
   search = '',
   sort = '',
   seed = null,
+  directoryId = 0,
 } = {}) {
   const params = new URLSearchParams()
   params.set('limit', String(limit))
@@ -17,6 +18,7 @@ export async function fetchVideos({
   if (search) params.set('search', search)
   if (sort) params.set('sort', sort)
   if (seed != null) params.set('seed', String(seed))
+  if (directoryId > 0) params.set('directory_id', String(directoryId))
   const res = await fetch(`/videos?${params.toString()}`)
   if (!res.ok) throw new Error(zh('加载视频失败', 'Failed to load videos'))
   const data = await res.json()
@@ -27,8 +29,11 @@ export async function fetchVideos({
   return data
 }
 
-export async function fetchTags() {
-  const res = await fetch('/tags')
+export async function fetchTags({ directoryId = 0 } = {}) {
+  const params = new URLSearchParams()
+  if (directoryId > 0) params.set('directory_id', String(directoryId))
+  const query = params.toString()
+  const res = await fetch(`/tags${query ? `?${query}` : ''}`)
   if (!res.ok) throw new Error(zh('加载标签失败', 'Failed to load tags'))
   return res.json()
 }
@@ -270,6 +275,7 @@ export async function fetchJavs({
   tagIds = [],
   sort = '',
   seed = null,
+  directoryId = 0,
 } = {}) {
   const params = new URLSearchParams()
   params.set('limit', String(limit))
@@ -279,6 +285,7 @@ export async function fetchJavs({
   if (tagIds.length) params.set('tag_ids', tagIds.join(','))
   if (sort) params.set('sort', sort)
   if (seed != null) params.set('seed', String(seed))
+  if (directoryId > 0) params.set('directory_id', String(directoryId))
   const res = await fetch(`/jav?${params.toString()}`)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -287,8 +294,11 @@ export async function fetchJavs({
   return res.json()
 }
 
-export async function fetchJavTags() {
-  const res = await fetch('/jav/tags')
+export async function fetchJavTags({ directoryId = 0 } = {}) {
+  const params = new URLSearchParams()
+  if (directoryId > 0) params.set('directory_id', String(directoryId))
+  const query = params.toString()
+  const res = await fetch(`/jav/tags${query ? `?${query}` : ''}`)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error || zh('加载 JAV 标签失败', 'Failed to load JAV tags'))
@@ -377,12 +387,19 @@ export async function removeJavTagFromJavs(tagId, javIds) {
   }
 }
 
-export async function fetchJavIdols({ limit = 25, offset = 0, search = '', sort = '' } = {}) {
+export async function fetchJavIdols({
+  limit = 25,
+  offset = 0,
+  search = '',
+  sort = '',
+  directoryId = 0,
+} = {}) {
   const params = new URLSearchParams()
   params.set('limit', String(limit))
   params.set('offset', String(offset))
   if (search) params.set('search', search)
   if (sort) params.set('sort', sort)
+  if (directoryId > 0) params.set('directory_id', String(directoryId))
   const res = await fetch(`/jav/idols?${params.toString()}`)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -391,8 +408,11 @@ export async function fetchJavIdols({ limit = 25, offset = 0, search = '', sort 
   return res.json()
 }
 
-export async function fetchJavIdolPreview(id) {
-  const res = await fetch(`/jav/idols/${encodeURIComponent(id)}`)
+export async function fetchJavIdolPreview(id, { directoryId = 0 } = {}) {
+  const params = new URLSearchParams()
+  if (directoryId > 0) params.set('directory_id', String(directoryId))
+  const query = params.toString()
+  const res = await fetch(`/jav/idols/${encodeURIComponent(id)}${query ? `?${query}` : ''}`)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error || zh('加载女优预览失败', 'Failed to load idol preview'))

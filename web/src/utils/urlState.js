@@ -23,6 +23,7 @@ const parseIntSafe = (val, def = 1) => {
 export const parseUrlState = (searchString = window.location.search) => {
   const sp = new URLSearchParams(searchString)
   const view = sp.get('view') === 'jav' ? 'jav' : 'video'
+  const directoryId = parseIntSafe(sp.get('directory_id'), 0)
 
   const videoSortRaw = (sp.get('sort') || '').trim()
   const videoSort = normalizeVideoSort(videoSortRaw)
@@ -34,6 +35,7 @@ export const parseUrlState = (searchString = window.location.search) => {
     sort: videoSort,
     tempSort: videoTempSort,
     tagIds: parseIds(sp.get('tag_ids')),
+    directoryId,
     random: sp.get('random') === '1',
     seed: clampSeed(sp.get('seed')),
   }
@@ -52,6 +54,7 @@ export const parseUrlState = (searchString = window.location.search) => {
       .map((s) => s.trim())
       .filter(Boolean),
     tagIds: parseIds(sp.get('tag_ids')),
+    directoryId,
     sort: javSort,
     tempSort: javTempSort,
     idolSort,
@@ -66,6 +69,7 @@ export const buildUrlFromState = (state, basePath = window.location.pathname) =>
   const sp = new URLSearchParams()
   if (state.view === 'jav') {
     sp.set('view', 'jav')
+    if (state.directoryId > 0) sp.set('directory_id', String(state.directoryId))
     if (state.jav.tab === 'idol') {
       sp.set('tab', 'idol')
     }
@@ -94,6 +98,7 @@ export const buildUrlFromState = (state, basePath = window.location.pathname) =>
   }
 
   sp.set('view', 'video')
+  if (state.directoryId > 0) sp.set('directory_id', String(state.directoryId))
   if (state.video.search) sp.set('search', state.video.search)
   if (state.video.sort && state.video.sort !== 'recent') sp.set('sort', state.video.sort)
   if (!state.video.random && state.video.tempSort) sp.set('temp_sort', state.video.tempSort)
@@ -119,12 +124,14 @@ export const normalizeUrlStateFromStore = (store, tagsByName) => {
 
   return {
     view: store.viewMode === 'jav' ? 'jav' : 'video',
+    directoryId: store.selectedDirectoryId || 0,
     video: {
       page: store.randomMode ? 1 : store.page,
       search: store.randomMode ? '' : (store.searchTerm || '').trim(),
       sort: store.sortOrder || 'recent',
       tempSort: store.randomMode ? '' : store.videoTempSort || '',
       tagIds: selectedIds,
+      directoryId: store.selectedDirectoryId || 0,
       random: store.randomMode,
       seed: store.randomMode ? store.randomSeed : null,
     },
@@ -134,6 +141,7 @@ export const normalizeUrlStateFromStore = (store, tagsByName) => {
       search: (store.javSearchTerm || '').trim(),
       actors: store.javActors || [],
       tagIds: store.javTags || [],
+      directoryId: store.selectedDirectoryId || 0,
       sort: store.javSort || 'recent',
       tempSort: store.javTab !== 'idol' && !store.javRandomMode ? store.javTempSort || '' : '',
       idolSort: store.idolSort || 'work',

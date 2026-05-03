@@ -46,6 +46,7 @@ export const useStore = create((set, get) => ({
     set({ pageSize: next, videoTempSort: '', page: 1, randomMode: false, randomSeed: null })
   },
   selectedTags: [],
+  selectedDirectoryId: 0,
   selectedVideoIds: new Set(),
   selectedVideoMeta: {},
   searchTerm: '',
@@ -124,6 +125,22 @@ export const useStore = create((set, get) => ({
       updates.page = 1
     }
     set(updates)
+  },
+  setSelectedDirectoryId: (id) => {
+    const parsed = Number.parseInt(String(id || 0), 10)
+    const next = Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+    set({
+      selectedDirectoryId: next,
+      page: 1,
+      javPage: 1,
+      idolPage: 1,
+      randomMode: false,
+      randomSeed: null,
+      javRandomMode: false,
+      javRandomSeed: null,
+      selectedVideoIds: new Set(),
+      selectedVideoMeta: {},
+    })
   },
   setSearchTerm: (value, options = {}) => {
     const { resetPage = true } = options
@@ -239,7 +256,7 @@ export const useStore = create((set, get) => ({
 
   loadTags: async () => {
     try {
-      const tags = await fetchTags()
+      const tags = await fetchTags({ directoryId: get().selectedDirectoryId })
       set({ tags })
     } catch (e) {
       set({ error: e.message })
@@ -247,7 +264,7 @@ export const useStore = create((set, get) => ({
   },
   loadJavTags: async () => {
     try {
-      const tags = await fetchJavTags()
+      const tags = await fetchJavTags({ directoryId: get().selectedDirectoryId })
       set({ javTagOptions: tags })
     } catch (e) {
       set({ javError: e.message || zh('加载 JAV 标签失败', 'Failed to load JAV tags') })
@@ -305,7 +322,14 @@ export const useStore = create((set, get) => ({
   loadDirectories: async () => {
     try {
       const directories = await fetchDirectories()
-      set({ directories: directories.filter((d) => !d.is_delete) })
+      const activeDirectories = directories.filter((d) => !d.is_delete)
+      const selectedDirectoryId = get().selectedDirectoryId
+      const selectedExists =
+        selectedDirectoryId > 0 && activeDirectories.some((d) => d.id === selectedDirectoryId)
+      set({
+        directories: activeDirectories,
+        ...(selectedDirectoryId > 0 && !selectedExists ? { selectedDirectoryId: 0 } : {}),
+      })
     } catch (e) {
       console.error(zh('加载目录失败', 'Failed to load directories'), e)
     }
@@ -320,6 +344,7 @@ export const useStore = create((set, get) => ({
       videoTempSort,
       randomMode,
       randomSeed,
+      selectedDirectoryId,
     } = get()
     const search = searchTerm ? searchTerm : ''
     const effectiveSort = videoTempSort || sortOrder
@@ -331,6 +356,7 @@ export const useStore = create((set, get) => ({
       effectiveSort,
       randomMode ? randomSeed || '' : '',
       (selectedTags || []).join(','),
+      selectedDirectoryId || '',
     ].join('|')
     if (!options.force && key === lastVideoFetchKey) {
       return
@@ -346,6 +372,7 @@ export const useStore = create((set, get) => ({
         search,
         sort: randomMode ? 'random' : effectiveSort,
         seed: randomMode ? randomSeed : null,
+        directoryId: selectedDirectoryId,
       })
       if (reqId !== videoLoadSeq) return
       const total = resp.total ?? 0
@@ -373,6 +400,7 @@ export const useStore = create((set, get) => ({
       javTempSort,
       javRandomMode,
       javRandomSeed,
+      selectedDirectoryId,
     } = get()
     const search = javSearchTerm || ''
     const effectiveSort = javTempSort || javSort
@@ -385,6 +413,7 @@ export const useStore = create((set, get) => ({
       (javTags || []).join(','),
       effectiveSort,
       javRandomMode ? javRandomSeed || '' : '',
+      selectedDirectoryId || '',
     ].join('|')
     if (!options.force && key === lastJavFetchKey) {
       return
@@ -400,6 +429,7 @@ export const useStore = create((set, get) => ({
         tagIds: javTags,
         sort: javRandomMode ? 'random' : effectiveSort,
         seed: javRandomMode ? javRandomSeed : null,
+        directoryId: selectedDirectoryId,
       })
       const items = resp.items || []
       set({
@@ -413,9 +443,11 @@ export const useStore = create((set, get) => ({
     }
   },
   loadJavIdols: async (options = {}) => {
-    const { idolPage, idolPageSize, javSearchTerm, idolSort } = get()
+    const { idolPage, idolPageSize, javSearchTerm, idolSort, selectedDirectoryId } = get()
     const search = javSearchTerm || ''
-    const key = ['idol', idolPage, idolPageSize, search, idolSort].join('|')
+    const key = ['idol', idolPage, idolPageSize, search, idolSort, selectedDirectoryId || ''].join(
+      '|'
+    )
     if (!options.force && key === lastIdolFetchKey) {
       return
     }
@@ -427,6 +459,7 @@ export const useStore = create((set, get) => ({
         offset: (idolPage - 1) * idolPageSize,
         search,
         sort: idolSort,
+        directoryId: selectedDirectoryId,
       })
       set({
         idolItems: resp.items || [],
@@ -474,6 +507,7 @@ export const useStore = create((set, get) => ({
         videoTempSort,
         randomMode,
         randomSeed,
+        selectedDirectoryId,
       } = get()
       const effectiveSort = videoTempSort || sortOrder
       // Get total via a cheap fetch (limit=1) or use existing total
@@ -487,6 +521,7 @@ export const useStore = create((set, get) => ({
           search,
           sort: randomMode ? 'random' : effectiveSort,
           seed: randomMode ? randomSeed : null,
+          directoryId: selectedDirectoryId,
         })
         total = res.total ?? 0
         set({ total })
@@ -499,6 +534,7 @@ export const useStore = create((set, get) => ({
         search,
         sort: randomMode ? 'random' : effectiveSort,
         seed: randomMode ? randomSeed : null,
+        directoryId: selectedDirectoryId,
       })
       const items = res2.items ?? []
       set({ page: lastPage, videos: items, hasNext: false })

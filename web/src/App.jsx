@@ -57,6 +57,8 @@ export default function App() {
     config,
     tags,
     selectedTags,
+    selectedDirectoryId,
+    setSelectedDirectoryId,
     selectedVideoIds,
     selectedVideoMeta,
     loadVideos,
@@ -407,9 +409,14 @@ export default function App() {
         seed: seedOverride,
         tagIds: tagIdsOverride,
         tempSort: tempSortOverride,
+        directoryId: directoryIdOverride,
       } = options
       const sp = new URLSearchParams()
       sp.set('view', 'video')
+      const directoryIdVal = directoryIdOverride ?? selectedDirectoryId
+      if (directoryIdVal > 0) {
+        sp.set('directory_id', String(directoryIdVal))
+      }
       const searchVal = (searchOverride ?? searchTerm).trim()
       if (searchVal) {
         sp.set('search', searchVal)
@@ -444,7 +451,16 @@ export default function App() {
       const query = sp.toString()
       return `${window.location.pathname}${query ? `?${query}` : ''}`
     },
-    [page, randomMode, randomSeed, searchTerm, selectedTagIds, sortOrder, videoTempSort]
+    [
+      page,
+      randomMode,
+      randomSeed,
+      searchTerm,
+      selectedDirectoryId,
+      selectedTagIds,
+      sortOrder,
+      videoTempSort,
+    ]
   )
 
   const buildJavUrl = useCallback(
@@ -459,9 +475,14 @@ export default function App() {
         random: randomOverride,
         seed: seedOverride,
         tempSort: tempSortOverride,
+        directoryId: directoryIdOverride,
       } = options
       const sp = new URLSearchParams()
       sp.set('view', 'jav')
+      const directoryIdVal = directoryIdOverride ?? selectedDirectoryId
+      if (directoryIdVal > 0) {
+        sp.set('directory_id', String(directoryIdVal))
+      }
       const tab = tabOverride ?? javTab
       if (tab === 'idol') {
         sp.set('tab', 'idol')
@@ -528,6 +549,7 @@ export default function App() {
       idolSort,
       javRandomMode,
       javRandomSeed,
+      selectedDirectoryId,
     ]
   )
 
@@ -569,6 +591,7 @@ export default function App() {
         const currentIdolSort = useStore.getState().idolSort
         useStore.setState({
           viewMode: 'jav',
+          selectedDirectoryId: jav.directoryId,
           videoTempSort: '',
           javTab: jav.tab,
           javRandomMode: jav.tab === 'idol' ? false : jav.random,
@@ -593,6 +616,7 @@ export default function App() {
       const { video } = parsed
       useStore.setState({
         viewMode: 'video',
+        selectedDirectoryId: video.directoryId,
         javTempSort: '',
         sortOrder: video.sort,
         videoTempSort: video.random ? '' : video.tempSort,
@@ -644,7 +668,7 @@ export default function App() {
     loadTags()
     loadDirectories()
     loadJavTags()
-  }, [loadTags, loadDirectories, loadJavTags])
+  }, [loadTags, loadDirectories, loadJavTags, selectedDirectoryId])
 
   useEffect(() => {
     if (!pendingVideoTagIdsRef.current || !tags.length) return
@@ -667,6 +691,7 @@ export default function App() {
     randomMode,
     randomSeed,
     searchTerm,
+    selectedDirectoryId,
     selectedTags,
     sortOrder,
     videoTempSort,
@@ -692,6 +717,7 @@ export default function App() {
     javTempSort,
     javRandomMode,
     javRandomSeed,
+    selectedDirectoryId,
     idolSort,
     idolPage,
     idolPageSize,
@@ -729,6 +755,7 @@ export default function App() {
           selectedTags,
           randomMode,
           randomSeed,
+          selectedDirectoryId,
           javTab,
           javPage,
           javSearchTerm,
@@ -750,6 +777,7 @@ export default function App() {
       javPage,
       javRandomMode,
       javRandomSeed,
+      selectedDirectoryId,
       javSearchTerm,
       javSort,
       javTempSort,
@@ -823,6 +851,13 @@ export default function App() {
     () => (javTagOptions || []).filter((tag) => isUserJavTag(tag)),
     [javTagOptions]
   )
+  const selectedDirectory = useMemo(
+    () =>
+      selectedDirectoryId > 0
+        ? (directories || []).find((dir) => dir.id === selectedDirectoryId) || null
+        : null,
+    [directories, selectedDirectoryId]
+  )
   const searchHref = buildVideoUrl({
     search: searchInput,
     page: 1,
@@ -886,6 +921,9 @@ export default function App() {
     }
     if (isJavMode) {
       const parts = []
+      if (selectedDirectory) {
+        parts.push(zh(`目录: ${selectedDirectory.path}`, `Directory: ${selectedDirectory.path}`))
+      }
       if (javTab === 'list') {
         const actorsLabel = formatList(javActors)
         if (actorsLabel) parts.push(zh(`女优: ${actorsLabel}`, `Idols: ${actorsLabel}`))
@@ -899,6 +937,9 @@ export default function App() {
       return parts.length ? parts.join(isChineseLocale() ? '；' : '; ') : ''
     }
     const parts = []
+    if (selectedDirectory) {
+      parts.push(zh(`目录: ${selectedDirectory.path}`, `Directory: ${selectedDirectory.path}`))
+    }
     const tagsLabel = formatList(selectedTags)
     if (tagsLabel) parts.push(zh(`标签: ${tagsLabel}`, `Tags: ${tagsLabel}`))
     const searchLabel = (searchTerm || '').trim()
@@ -918,6 +959,7 @@ export default function App() {
     selectedTags,
     searchTerm,
     randomMode,
+    selectedDirectory,
   ])
 
   const submitSearch = (e) => {
@@ -1267,6 +1309,7 @@ export default function App() {
     if (isJavMode) {
       useStore.setState({
         viewMode: 'jav',
+        selectedDirectoryId: 0,
         videoTempSort: '',
         javTempSort: '',
         javRandomMode: false,
@@ -1282,6 +1325,7 @@ export default function App() {
     } else {
       useStore.setState({
         viewMode: 'video',
+        selectedDirectoryId: 0,
         videoTempSort: '',
         randomMode: false,
         randomSeed: null,
@@ -1470,6 +1514,9 @@ export default function App() {
         onSwitchJavTab={handleSwitchJavTab}
         filterSummary={filterSummary}
         showDirectorySetupHint={showDirectorySetupHint}
+        directories={directories}
+        selectedDirectoryId={selectedDirectoryId}
+        onDirectoryChange={setSelectedDirectoryId}
       />
 
       <main className="mx-auto max-w-screen-2xl px-6 pb-6 pt-0">
@@ -1531,6 +1578,7 @@ export default function App() {
               openFileLabel={alternatePlayerLabel}
               onRevealFile={handleJavRevealFile}
               onOpenScreenshots={handleJavOpenScreenshots}
+              selectedDirectoryId={selectedDirectoryId}
               onIdolClick={handleJavActorClick}
               onTagClick={handleJavTagClick}
               onEditTags={openJavTagEditor}
