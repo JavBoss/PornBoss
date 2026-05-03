@@ -36,7 +36,7 @@ import VideoView from '@/components/VideoView'
 import { isUserJavTag, normalizeIdolSort, normalizeJavSort } from '@/constants/jav'
 import { normalizeVideoSort } from '@/constants/video'
 import { isChineseLocale, zh } from '@/utils/i18n'
-import { useStore, videoSelectionKey } from '@/store'
+import { directoryQueryIds, useStore, videoSelectionKey } from '@/store'
 
 const normalizeDefaultPlayer = (value) =>
   String(value || '')
@@ -151,6 +151,15 @@ export default function App() {
     [tags, selectedTags]
   )
   const tagsByName = useMemo(() => new Map(tags.map((t) => [t.name, t.id])), [tags])
+  const directoryTagKey = useMemo(
+    () =>
+      directoryQueryIds({
+        directories,
+        enabledDirectoryIds,
+        directoryFilterMode,
+      }).join(','),
+    [directories, enabledDirectoryIds, directoryFilterMode]
+  )
   const [tagPickerFor, setTagPickerFor] = useState(null)
   const [tagPickerSelected, setTagPickerSelected] = useState([])
   const [javTagPickerItem, setJavTagPickerItem] = useState(null)
@@ -761,15 +770,13 @@ export default function App() {
   }, [javSearchTerm])
 
   useEffect(() => {
-    loadTags()
     loadDirectories()
-    loadJavTags()
-  }, [loadTags, loadDirectories, loadJavTags])
+  }, [loadDirectories])
 
   useEffect(() => {
-    loadTags()
-    loadJavTags()
-  }, [loadTags, loadJavTags, enabledDirectoryIds, directoryFilterMode])
+    loadTags({ skipUnchanged: true })
+    loadJavTags({ skipUnchanged: true })
+  }, [loadTags, loadJavTags, directoryTagKey])
 
   useEffect(() => {
     if (!pendingVideoTagIdsRef.current || !tags.length) return

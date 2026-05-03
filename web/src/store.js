@@ -27,6 +27,12 @@ let videoLoadSeq = 0
 let lastVideoFetchKey = null
 let lastJavFetchKey = null
 let lastIdolFetchKey = null
+let lastTagFetchKey = null
+let lastJavTagFetchKey = null
+let tagFetchInFlight = null
+let tagFetchInFlightKey = null
+let javTagFetchInFlight = null
+let javTagFetchInFlightKey = null
 const RANDOM_SEED_MAX = 2147483646
 const DIRECTORY_FILTER_ALL = 'all'
 const DIRECTORY_FILTER_CUSTOM = 'custom'
@@ -60,6 +66,12 @@ const cleanDirectoryIds = (ids) =>
   Array.from(
     new Set((ids || []).map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0))
   ).sort((a, b) => a - b)
+
+const sameIds = (a, b) => {
+  if (a === b) return true
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false
+  return a.every((id, index) => id === b[index])
+}
 
 export const directoryQueryIds = (state) => {
   if (state?.directoryFilterMode !== DIRECTORY_FILTER_CUSTOM) {
@@ -286,21 +298,61 @@ export const useStore = create((set, get) => ({
     set(next)
   },
 
-  loadTags: async () => {
-    try {
-      const tags = await fetchTags({ directoryIds: directoryQueryIds(get()) })
-      set({ tags })
-    } catch (e) {
-      set({ error: e.message })
+  loadTags: async (options = {}) => {
+    const directoryIds = directoryQueryIds(get())
+    const key = `tags|${directoryIds.join(',')}`
+    if (tagFetchInFlight && tagFetchInFlightKey === key) {
+      return tagFetchInFlight
     }
+    if (!options.force && options.skipUnchanged && key === lastTagFetchKey) {
+      return null
+    }
+    tagFetchInFlightKey = key
+    tagFetchInFlight = (async () => {
+      try {
+        const tags = await fetchTags({ directoryIds })
+        set({ tags })
+        lastTagFetchKey = key
+        return tags
+      } catch (e) {
+        set({ error: e.message })
+        return null
+      } finally {
+        if (tagFetchInFlightKey === key) {
+          tagFetchInFlight = null
+          tagFetchInFlightKey = null
+        }
+      }
+    })()
+    return tagFetchInFlight
   },
-  loadJavTags: async () => {
-    try {
-      const tags = await fetchJavTags({ directoryIds: directoryQueryIds(get()) })
-      set({ javTagOptions: tags })
-    } catch (e) {
-      set({ javError: e.message || zh('加载 JAV 标签失败', 'Failed to load JAV tags') })
+  loadJavTags: async (options = {}) => {
+    const directoryIds = directoryQueryIds(get())
+    const key = `jav-tags|${directoryIds.join(',')}`
+    if (javTagFetchInFlight && javTagFetchInFlightKey === key) {
+      return javTagFetchInFlight
     }
+    if (!options.force && options.skipUnchanged && key === lastJavTagFetchKey) {
+      return null
+    }
+    javTagFetchInFlightKey = key
+    javTagFetchInFlight = (async () => {
+      try {
+        const tags = await fetchJavTags({ directoryIds })
+        set({ javTagOptions: tags })
+        lastJavTagFetchKey = key
+        return tags
+      } catch (e) {
+        set({ javError: e.message || zh('加载 JAV 标签失败', 'Failed to load JAV tags') })
+        return null
+      } finally {
+        if (javTagFetchInFlightKey === key) {
+          javTagFetchInFlight = null
+          javTagFetchInFlightKey = null
+        }
+      }
+    })()
+    return javTagFetchInFlight
   },
   loadConfig: async () => {
     try {
@@ -617,14 +669,30 @@ export const useStore = create((set, get) => ({
     lastVideoFetchKey = null
     lastJavFetchKey = null
     lastIdolFetchKey = null
+    lastTagFetchKey = null
+    lastJavTagFetchKey = null
   },
   setDirectoryFilterFromUrl: (ids) => {
     if (ids == null) {
       const active = cleanDirectoryIds(get().directories.map((directory) => directory?.id))
+      const state = get()
+      if (
+        state.directoryFilterMode === DIRECTORY_FILTER_ALL &&
+        sameIds(state.enabledDirectoryIds, active)
+      ) {
+        return
+      }
       set({ directoryFilterMode: DIRECTORY_FILTER_ALL, enabledDirectoryIds: active })
       return
     }
     const clean = cleanDirectoryIds(ids)
+    const state = get()
+    if (
+      state.directoryFilterMode === DIRECTORY_FILTER_CUSTOM &&
+      sameIds(state.enabledDirectoryIds, clean)
+    ) {
+      return
+    }
     set({
       directoryFilterMode: DIRECTORY_FILTER_CUSTOM,
       enabledDirectoryIds: clean,
@@ -635,6 +703,8 @@ export const useStore = create((set, get) => ({
     lastVideoFetchKey = null
     lastJavFetchKey = null
     lastIdolFetchKey = null
+    lastTagFetchKey = null
+    lastJavTagFetchKey = null
   },
 
   createDirectory: async ({ path }) => {
