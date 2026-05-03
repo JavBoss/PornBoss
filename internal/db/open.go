@@ -17,7 +17,8 @@ import (
 func Open(path string) (*gorm.DB, error) {
 	driverName := registerSQLiteFunctions()
 	db, err := gorm.Open(sqlite.New(sqlite.Config{DriverName: driverName, DSN: path}), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
+		Logger:                                   logger.Default.LogMode(logger.Silent),
+		DisableForeignKeyConstraintWhenMigrating: true,
 		NamingStrategy: schema.NamingStrategy{
 			SingularTable: true,
 		},
@@ -37,6 +38,7 @@ func Open(path string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(
 		&models.Directory{},
 		&models.Video{},
+		&models.VideoLocation{},
 		&models.Tag{},
 		&models.VideoTag{},
 		&models.Config{},
@@ -50,6 +52,9 @@ func Open(path string) (*gorm.DB, error) {
 	}
 	if err := db.Exec("UPDATE video SET play_count = 0 WHERE play_count IS NULL").Error; err != nil {
 		return nil, fmt.Errorf("backfill play_count: %w", err)
+	}
+	if err := backfillVideoLocations(db); err != nil {
+		return nil, fmt.Errorf("backfill video locations: %w", err)
 	}
 	if err := db.Exec("UPDATE jav SET provider = ? WHERE COALESCE(provider, 0) = 0", int(jav.ProviderJavBus)).Error; err != nil {
 		return nil, fmt.Errorf("backfill jav provider: %w", err)
@@ -83,8 +88,20 @@ func Open(path string) (*gorm.DB, error) {
 	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_jav_idol_map_jav_idol_id_jav_id ON jav_idol_map(jav_idol_id, jav_id)").Error; err != nil {
 		return nil, fmt.Errorf("create jav idol map reverse index: %w", err)
 	}
-	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_video_jav_id_visible ON video(jav_id) WHERE hidden = 0 OR hidden IS NULL").Error; err != nil {
-		return nil, fmt.Errorf("create visible video jav index: %w", err)
+	if err := db.Exec("DROP INDEX IF EXISTS idx_video_jav_id_visible").Error; err != nil {
+		return nil, fmt.Errorf("drop legacy visible video jav index: %w", err)
+	}
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_video_jav_id ON video(jav_id)").Error; err != nil {
+		return nil, fmt.Errorf("create video jav index: %w", err)
+	}
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_video_location_jav_id_is_delete ON video_location(jav_id, is_delete)").Error; err != nil {
+		return nil, fmt.Errorf("create video location jav index: %w", err)
+	}
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_video_location_video_id_jav_id ON video_location(video_id, jav_id)").Error; err != nil {
+		return nil, fmt.Errorf("create video location video jav index: %w", err)
+	}
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_video_location_visible_path ON video_location(jav_id, is_delete, relative_path)").Error; err != nil {
+		return nil, fmt.Errorf("create video location visible path index: %w", err)
 	}
 	if hasIsUser {
 		if err := db.Exec("ALTER TABLE jav_tag DROP COLUMN is_user").Error; err != nil && !ignorableSQLiteDropColumnErr(err) {
@@ -95,6 +112,52 @@ func Open(path string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("backfill jav idol japanese names: %w", err)
 	}
 	return db, nil
+}
+
+func backfillVideoLocations(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("nil db")
+	}
+	if err := db.Exec(`
+		INSERT OR IGNORE INTO video_location (
+			video_id,
+			directory_id,
+			relative_path,
+			modified_at,
+			jav_id,
+			is_delete,
+			created_at,
+			updated_at
+		)
+		SELECT
+			id,
+			directory_id,
+			path,
+			modified_at,
+			jav_id,
+			COALESCE(hidden, 0),
+			created_at,
+			updated_at
+		FROM video
+		WHERE directory_id > 0 AND COALESCE(path, '') <> ''
+	`).Error; err != nil {
+		return err
+	}
+	return db.Exec(`
+		UPDATE video_location
+		SET jav_id = (
+			SELECT video.jav_id
+			FROM video
+			WHERE video.id = video_location.video_id
+		)
+		WHERE jav_id IS NULL
+			AND EXISTS (
+				SELECT 1
+				FROM video
+				WHERE video.id = video_location.video_id
+					AND video.jav_id IS NOT NULL
+			)
+	`).Error
 }
 
 func backfillJavIdolJapaneseNames(db *gorm.DB) error {

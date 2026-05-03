@@ -73,7 +73,7 @@ func ListTags(ctx context.Context) ([]TagCount, error) {
 	var tags []TagCount
 	if err := common.DB.WithContext(ctx).
 		Table("tag t").
-		Select("t.id, t.name, COUNT(DISTINCT CASE WHEN COALESCE(v.hidden, 0) = 0 THEN vt.video_id END) AS count").
+		Select("t.id, t.name, COUNT(DISTINCT CASE WHEN " + activeVideoLocationExistsSQL("v") + " THEN vt.video_id END) AS count").
 		Joins("LEFT JOIN video_tag vt ON vt.tag_id = t.id").
 		Joins("LEFT JOIN video v ON v.id = vt.video_id").
 		Group("t.id, t.name").

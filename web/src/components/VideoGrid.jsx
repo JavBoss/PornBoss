@@ -1,4 +1,5 @@
 import VideoCard from '@/components/VideoCard'
+import { videoSelectionKey } from '@/store'
 
 export default function VideoGrid({
   videos,
@@ -6,6 +7,7 @@ export default function VideoGrid({
   onToggleSelect,
   onPlay,
   onOpenFile,
+  onRevealFile,
   openFileLabel,
   onOpenTagPicker,
   onOpenScreenshots,
@@ -15,12 +17,13 @@ export default function VideoGrid({
     <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       {videos.map((v) => (
         <VideoCard
-          key={v.id}
+          key={videoSelectionKey(v)}
           video={v}
-          checked={selectedIds.has(v.id)}
+          checked={selectedIds.has(videoSelectionKey(v))}
           onToggle={() => onToggleSelect(v)}
           onPlay={onPlay}
           onOpenFile={onOpenFile}
+          onRevealFile={onRevealFile}
           openFileLabel={openFileLabel}
           onOpenTagPicker={() => onOpenTagPicker(v.id)}
           onOpenScreenshots={onOpenScreenshots}

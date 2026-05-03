@@ -9,6 +9,7 @@ import {
   reverseVideoSortValue,
   videoSortLabelParts,
 } from '@/constants/video'
+import { videoSelectionKey } from '@/store'
 import { zh } from '@/utils/i18n'
 
 function SortText({ option, value, className = '' }) {
@@ -45,13 +46,14 @@ export default function VideoView({
   onToggleSelectPage,
   openPlayer,
   openAlternatePlayer,
+  revealFile,
   alternatePlayerLabel,
   setTagPickerFor,
   onOpenScreenshots,
   onTagClick,
 }) {
   const [sortAnchorEl, setSortAnchorEl] = useState(null)
-  const pageIds = videos.map((video) => video?.id).filter(Boolean)
+  const pageIds = videos.map((video) => videoSelectionKey(video)).filter(Boolean)
   const pageSelectable = pageIds.length > 0
   const pageAllSelected = pageSelectable && pageIds.every((id) => selectedVideoIds.has(id))
   const hasSelection = selectedCount > 0
@@ -215,6 +217,7 @@ export default function VideoView({
           onToggleSelect={toggleSelectVideo}
           onPlay={(video) => openPlayer(video)}
           onOpenFile={(video) => openAlternatePlayer?.(video)}
+          onRevealFile={(video) => revealFile?.(video)}
           openFileLabel={alternatePlayerLabel}
           onOpenTagPicker={(vid) => setTagPickerFor(vid)}
           onOpenScreenshots={onOpenScreenshots}

@@ -181,7 +181,7 @@ func resolveVideoStreamTarget(c *gin.Context) (*models.Video, string, error) {
 		return nil, "", os.ErrNotExist
 	}
 
-	fullPath, _, err := resolveVideoPath(video.Path, video.DirectoryRef.Path)
+	fullPath, err := resolveVideoPrimaryPath(c.Request.Context(), video)
 	if err != nil {
 		return nil, "", err
 	}
@@ -228,6 +228,21 @@ func buildDirectStreamURL(video *models.Video) string {
 		return ""
 	}
 	return "/videos/" + strconv.FormatInt(video.ID, 10) + "/stream"
+}
+
+func resolveVideoPrimaryPath(ctx context.Context, video *models.Video) (string, error) {
+	if video == nil {
+		return "", errors.New("video is nil")
+	}
+	loc, err := dbpkg.GetPrimaryVideoLocation(ctx, video.ID)
+	if err != nil {
+		return "", err
+	}
+	if loc != nil {
+		fullPath, _, err := resolveVideoPath(loc.RelativePath, loc.DirectoryRef.Path)
+		return fullPath, err
+	}
+	return "", errors.New("video location missing")
 }
 
 func serveVideoFile(c *gin.Context, fullPath string) {
@@ -401,7 +416,7 @@ func resolvePlaybackVideoID(ctx context.Context, requestedID int64, dirPath, ful
 		if err != nil {
 			logging.Error("get playback video error: %v", err)
 		} else if video != nil {
-			if candidate, _, err := resolveVideoPath(video.Path, video.DirectoryRef.Path); err == nil && sameCleanPath(candidate, fullPath) {
+			if candidate, err := resolveVideoPrimaryPath(ctx, video); err == nil && sameCleanPath(candidate, fullPath) {
 				return video.ID
 			}
 		}

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -38,7 +39,8 @@ func ScanAll(ctx context.Context) error {
 			continue
 		}
 
-		possibleCodes := util.ExtractCodeFromName(v.Filename)
+		filename := filepath.Base(filepath.FromSlash(v.Filename))
+		possibleCodes := util.ExtractCodeFromName(filename)
 		if len(possibleCodes) == 0 {
 			continue
 		}
@@ -49,15 +51,15 @@ func ScanAll(ctx context.Context) error {
 				if jav.ParseProvider(existJav.Provider) != preferredProvider {
 					continue
 				}
-				if err := db.SetVideoJavID(ctx, v.ID, existJav.ID, v.UpdatedAt); err != nil {
-					logging.Error("set video jav failed video=%d code=%s err=%v", v.ID, code, err)
+				if err := db.SetVideoLocationJavID(ctx, v.LocationID, existJav.ID, v.UpdatedAt); err != nil {
+					logging.Error("set video location jav failed location=%d code=%s err=%v", v.LocationID, code, err)
 				} else {
 					enqueueCover(existJav.Code)
 				}
 				linked = true
 				break
 			} else if err != nil {
-				logging.Error("jav lookup existing failed video=%d code=%s err=%v", v.ID, code, err)
+				logging.Error("jav lookup existing failed location=%d code=%s err=%v", v.LocationID, code, err)
 			}
 		}
 		if linked {
@@ -70,18 +72,18 @@ func ScanAll(ctx context.Context) error {
 				if errors.Is(err, jav.ResourceNotFonud) {
 					continue
 				}
-				logging.Error("jav lookup failed video=%s code=%s err=%v", v.Filename, code, err)
+				logging.Error("jav lookup failed location=%s code=%s err=%v", filename, code, err)
 				continue
 			}
 			if info == nil {
 				continue
 			}
 
-			_, err = db.SaveJavInfoAndLinkVideo(ctx, info, v.ID, v.UpdatedAt)
+			_, err = db.SaveJavInfoAndLinkLocation(ctx, info, v.LocationID, v.UpdatedAt)
 			if err != nil {
-				logging.Error("link video->jav failed video=%s code=%s err=%v", v.Filename, info.Code, err)
+				logging.Error("link video location->jav failed location=%s code=%s err=%v", filename, info.Code, err)
 			} else {
-				logging.Info("link video->jav success video=%s code=%s", v.Filename, info.Code)
+				logging.Info("link video location->jav success location=%s code=%s", filename, info.Code)
 				enqueueCover(info.Code)
 			}
 			linked = true

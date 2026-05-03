@@ -130,8 +130,8 @@ export default function DirectoryManager({ open, directories, onCreate, onUpdate
     if (!dir?.id || dir.is_delete) return
     const ok = window.confirm(
       zh(
-        '删除后将不再扫描该目录，已关联的视频会被隐藏。确认删除？',
-        'This directory will no longer be scanned and linked videos will be hidden. Delete it?'
+        '删除后将不再扫描该目录，该目录下的文件位置会不可用。确认删除？',
+        'This directory will no longer be scanned and file locations under it will become unavailable. Delete it?'
       )
     )
     if (!ok) return

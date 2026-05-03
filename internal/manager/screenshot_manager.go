@@ -142,7 +142,8 @@ func TaskForVideo(video *models.Video) (Task, bool) {
 	if video == nil {
 		return Task{}, false
 	}
-	if video.ID <= 0 || video.ModifiedAt.IsZero() {
+	modifiedAt, size, ok := videoTaskMeta(video)
+	if video.ID <= 0 || !ok || modifiedAt.IsZero() {
 		return Task{}, false
 	}
 	second, ok := PickScreenshotSecond(video.DurationSec)
@@ -152,9 +153,20 @@ func TaskForVideo(video *models.Video) (Task, bool) {
 	return Task{
 		VideoID:    video.ID,
 		Second:     second,
-		ModifiedAt: video.ModifiedAt,
-		Size:       video.Size,
+		ModifiedAt: modifiedAt,
+		Size:       size,
 	}, true
+}
+
+func videoTaskMeta(video *models.Video) (time.Time, int64, bool) {
+	if video == nil {
+		return time.Time{}, 0, false
+	}
+	if len(video.Locations) > 0 {
+		loc := video.Locations[0]
+		return loc.ModifiedAt, video.Size, !loc.ModifiedAt.IsZero()
+	}
+	return video.ModifiedAt, video.Size, !video.ModifiedAt.IsZero()
 }
 
 // startWorker launches a background loop that consumes screenshot generation
@@ -203,7 +215,8 @@ func (m *ScreenshotManager) processTask(parent context.Context, task Task) error
 	if video == nil {
 		return nil
 	}
-	if !sameVideoMeta(video.ModifiedAt, video.Size, task) {
+	modifiedAt, size, ok := videoTaskMeta(video)
+	if !ok || !sameVideoMeta(modifiedAt, size, task) {
 		return nil
 	}
 
@@ -358,15 +371,15 @@ func resolveVideoPath(video *models.Video) (string, error) {
 	if video == nil {
 		return "", errors.New("video is nil")
 	}
-	dirPath := strings.TrimSpace(video.DirectoryRef.Path)
-	if dirPath == "" {
-		return "", errors.New("video directory missing")
+	if len(video.Locations) > 0 {
+		loc := video.Locations[0]
+		dirPath := strings.TrimSpace(loc.DirectoryRef.Path)
+		relPath := strings.TrimSpace(loc.RelativePath)
+		if dirPath != "" && relPath != "" {
+			return filepath.Join(dirPath, filepath.FromSlash(relPath)), nil
+		}
 	}
-	relPath := strings.TrimSpace(video.Path)
-	if relPath == "" {
-		return "", errors.New("video path missing")
-	}
-	return filepath.Join(dirPath, filepath.FromSlash(relPath)), nil
+	return "", errors.New("video location missing")
 }
 
 func sameVideoMeta(modifiedAt time.Time, size int64, task Task) bool {

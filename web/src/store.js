@@ -37,6 +37,23 @@ const normalizeSeed = (seed) => {
 
 const generateSeed = () => Math.floor(Math.random() * RANDOM_SEED_MAX) + 1
 
+export const videoSelectionKey = (video) => {
+  if (video?.location_id) return `loc:${video.location_id}`
+  if (video?.id) return `vid:${video.id}`
+  return ''
+}
+
+const selectedVideoContentIds = (state) => {
+  const ids = new Set()
+  for (const key of state.selectedVideoIds || []) {
+    const meta = state.selectedVideoMeta?.[key]
+    const raw = meta && typeof meta === 'object' ? meta.video_id : key
+    const parsed = Number(raw)
+    if (Number.isFinite(parsed) && parsed > 0) ids.add(parsed)
+  }
+  return Array.from(ids)
+}
+
 export const useStore = create((set, get) => ({
   // UI state
   page: 1,
@@ -153,17 +170,17 @@ export const useStore = create((set, get) => ({
   },
   clearFilters: () => set({ selectedTags: [], videoTempSort: '', page: 1 }),
   toggleSelectVideo: (video) => {
-    if (!video || !video.id) return
-    const id = video.id
-    const label = video.filename || video.path || `#${id}`
+    const key = videoSelectionKey(video)
+    if (!video || !video.id || !key) return
+    const label = video.filename || video.path || `#${video.id}`
     const setIds = new Set(get().selectedVideoIds)
     const meta = { ...get().selectedVideoMeta }
-    if (setIds.has(id)) {
-      setIds.delete(id)
-      delete meta[id]
+    if (setIds.has(key)) {
+      setIds.delete(key)
+      delete meta[key]
     } else {
-      setIds.add(id)
-      meta[id] = label
+      setIds.add(key)
+      meta[key] = { label, video_id: video.id, location_id: video.location_id || null }
     }
     set({ selectedVideoIds: setIds, selectedVideoMeta: meta })
   },
@@ -452,13 +469,13 @@ export const useStore = create((set, get) => ({
     set({ tags: get().tags.map((t) => (t.id === id ? { ...t, name } : t)) })
   },
   addTagToSelection: async (tagId) => {
-    const ids = Array.from(get().selectedVideoIds)
+    const ids = selectedVideoContentIds(get())
     if (ids.length === 0) return
     await addTagToVideos(tagId, ids)
     await get().loadVideos()
   },
   removeTagFromSelection: async (tagId) => {
-    const ids = Array.from(get().selectedVideoIds)
+    const ids = selectedVideoContentIds(get())
     if (ids.length === 0) return
     await removeTagFromVideos(tagId, ids)
     await get().loadVideos()

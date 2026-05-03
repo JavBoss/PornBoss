@@ -1,0 +1,214 @@
+package db
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"pornboss/internal/common"
+	"pornboss/internal/models"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+// AllVideoLocations returns every known video location; used for scan bookkeeping.
+func AllVideoLocations(ctx context.Context) ([]models.VideoLocation, error) {
+	var locations []models.VideoLocation
+	if err := common.DB.WithContext(ctx).Find(&locations).Error; err != nil {
+		return nil, fmt.Errorf("load video locations: %w", err)
+	}
+	return locations, nil
+}
+
+// UpsertVideoLocation records or updates the on-disk location for a video.
+func UpsertVideoLocation(ctx context.Context, videoID, directoryID int64, relativePath string, modifiedAt time.Time) (*models.VideoLocation, error) {
+	relativePath = cleanRelativePathForDB(relativePath)
+	if videoID <= 0 || directoryID <= 0 || relativePath == "" {
+		return nil, errors.New("video_id, directory_id, and relative_path are required")
+	}
+
+	loc := models.VideoLocation{
+		VideoID:      videoID,
+		DirectoryID:  directoryID,
+		RelativePath: relativePath,
+		ModifiedAt:   modifiedAt,
+		IsDelete:     false,
+	}
+	tx := common.DB.WithContext(ctx)
+	if err := tx.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "directory_id"}, {Name: "relative_path"}},
+		DoUpdates: clause.Assignments(map[string]any{
+			"video_id":    videoID,
+			"modified_at": modifiedAt,
+			"is_delete":   false,
+			"updated_at":  gorm.Expr("CURRENT_TIMESTAMP"),
+		}),
+	}).Create(&loc).Error; err != nil {
+		return nil, fmt.Errorf("upsert video location: %w", err)
+	}
+
+	var saved models.VideoLocation
+	if err := tx.
+		Where("directory_id = ? AND relative_path = ?", directoryID, relativePath).
+		First(&saved).Error; err != nil {
+		return nil, fmt.Errorf("load saved video location: %w", err)
+	}
+	return &saved, nil
+}
+
+// HideVideoLocationsByIDs marks file locations as deleted without deleting video metadata.
+func HideVideoLocationsByIDs(ctx context.Context, ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	if err := common.DB.WithContext(ctx).
+		Model(&models.VideoLocation{}).
+		Where("id IN ?", ids).
+		Update("is_delete", true).Error; err != nil {
+		return fmt.Errorf("hide video locations: %w", err)
+	}
+	return nil
+}
+
+// GetVideoIDByPath returns the video ID for an active directory path + relative path.
+func GetVideoIDByPath(ctx context.Context, dirPath, relPath string) (int64, error) {
+	if strings.TrimSpace(dirPath) == "" || strings.TrimSpace(relPath) == "" {
+		return 0, errors.New("directory path and relative path are required")
+	}
+
+	var loc models.VideoLocation
+	err := common.DB.WithContext(ctx).
+		Model(&models.VideoLocation{}).
+		Select("video_location.video_id").
+		Joins("JOIN directory ON directory.id = video_location.directory_id").
+		Joins("JOIN video ON video.id = video_location.video_id").
+		Where("directory.path = ?", dirPath).
+		Where("video_location.relative_path = ?", cleanRelativePathForDB(relPath)).
+		Where("COALESCE(video_location.is_delete, 0) = 0").
+		Where("COALESCE(directory.is_delete, 0) = 0").
+		Where("COALESCE(directory.missing, 0) = 0").
+		First(&loc).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("lookup video by path: %w", err)
+	}
+
+	return loc.VideoID, nil
+}
+
+// GetPrimaryVideoLocation returns the preferred active location for a video.
+func GetPrimaryVideoLocation(ctx context.Context, videoID int64) (*models.VideoLocation, error) {
+	if videoID <= 0 {
+		return nil, errors.New("video id cannot be zero")
+	}
+	var loc models.VideoLocation
+	err := common.DB.WithContext(ctx).
+		Model(&models.VideoLocation{}).
+		Joins("JOIN directory ON directory.id = video_location.directory_id").
+		Where("video_location.video_id = ?", videoID).
+		Where("COALESCE(video_location.is_delete, 0) = 0").
+		Where("COALESCE(directory.is_delete, 0) = 0").
+		Where("COALESCE(directory.missing, 0) = 0").
+		Order("video_location.id").
+		Preload("DirectoryRef").
+		First(&loc).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get primary video location: %w", err)
+	}
+	return &loc, nil
+}
+
+func activeVideoLocationSubquery(ctx context.Context) *gorm.DB {
+	return common.DB.WithContext(ctx).
+		Table("video_location vl").
+		Select("1").
+		Joins("JOIN directory d ON d.id = vl.directory_id").
+		Where("vl.video_id = video.id").
+		Where("COALESCE(vl.is_delete, 0) = 0").
+		Where("COALESCE(d.is_delete, 0) = 0").
+		Where("COALESCE(d.missing, 0) = 0")
+}
+
+func activeVideoLocationExistsSQL(videoAlias string) string {
+	videoAlias = strings.TrimSpace(videoAlias)
+	if videoAlias == "" {
+		videoAlias = "video"
+	}
+	return fmt.Sprintf(`EXISTS (
+		SELECT 1
+		FROM video_location vl
+		JOIN directory d ON d.id = vl.directory_id
+		WHERE vl.video_id = %s.id
+			AND COALESCE(vl.is_delete, 0) = 0
+			AND COALESCE(d.is_delete, 0) = 0
+			AND COALESCE(d.missing, 0) = 0
+	)`, videoAlias)
+}
+
+func activeLocationWhereSQL(locationAlias, directoryAlias string) string {
+	locationAlias = strings.TrimSpace(locationAlias)
+	if locationAlias == "" {
+		locationAlias = "video_location"
+	}
+	directoryAlias = strings.TrimSpace(directoryAlias)
+	if directoryAlias == "" {
+		directoryAlias = "directory"
+	}
+	return fmt.Sprintf(
+		"COALESCE(%s.is_delete, 0) = 0 AND COALESCE(%s.is_delete, 0) = 0 AND COALESCE(%s.missing, 0) = 0",
+		locationAlias,
+		directoryAlias,
+		directoryAlias,
+	)
+}
+
+func preloadActiveLocations(db *gorm.DB) *gorm.DB {
+	return preloadActiveLocationsWhere("")(db)
+}
+
+func preloadActiveLocationsWhere(extraWhere string) func(*gorm.DB) *gorm.DB {
+	extraWhere = strings.TrimSpace(extraWhere)
+	return func(db *gorm.DB) *gorm.DB {
+		return db.
+			Preload("Locations", func(tx *gorm.DB) *gorm.DB {
+				tx = tx.
+					Joins("JOIN directory ON directory.id = video_location.directory_id").
+					Where("COALESCE(video_location.is_delete, 0) = 0").
+					Where("COALESCE(directory.is_delete, 0) = 0").
+					Where("COALESCE(directory.missing, 0) = 0")
+				if extraWhere != "" {
+					tx = tx.Where(extraWhere)
+				}
+				return tx.Order("video_location.id")
+			}).
+			Preload("Locations.DirectoryRef")
+	}
+}
+
+// ReconcileAllVideoPaths is kept for older call sites; video path fields are now
+// derived from VideoLocation at read time.
+func ReconcileAllVideoPaths(ctx context.Context) error {
+	_ = ctx
+	return nil
+}
+
+func cleanRelativePathForDB(p string) string {
+	p = strings.TrimSpace(p)
+	if p == "" {
+		return ""
+	}
+	cleaned := filepath.Clean(filepath.FromSlash(p))
+	if cleaned == "." {
+		return ""
+	}
+	return filepath.ToSlash(cleaned)
+}
