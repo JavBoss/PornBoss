@@ -101,11 +101,10 @@ func SyncDirectory(ctx context.Context, directory models.Directory) (*Summary, e
 	if err != nil {
 		return nil, err
 	}
-	if err := hideUnprocessedVideoLocations(ctx, state.processedLocationIDs, summary, directory.ID); err != nil {
-		return nil, err
-	}
-
 	if scanned {
+		if err := hideUnprocessedVideoLocations(ctx, state.processedLocationIDs, summary, directory.ID); err != nil {
+			return nil, err
+		}
 		summary.Directories = 1
 	}
 	summary.Duration = time.Since(start)
