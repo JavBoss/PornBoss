@@ -325,7 +325,7 @@ export default function TopBar({
                 variant="outlined"
                 onClick={onOpenGlobalSettings}
                 title={zh('全局设置', 'Global settings')}
-                sx={{ pr: 3.5 }}
+                sx={{ pr: 4 }}
               >
                 {zh('全局设置', 'Global Settings')}
               </Button>
@@ -336,7 +336,7 @@ export default function TopBar({
                 aria-haspopup="menu"
                 aria-expanded={directoryMenuOpen}
                 title={zh('选择启用目录', 'Choose enabled directories')}
-                className="absolute inset-y-px right-px inline-flex w-6 items-center justify-center rounded-r text-blue-600 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="absolute inset-y-px right-px inline-flex w-8 items-center justify-center rounded-r text-blue-600 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 <KeyboardArrowDownRoundedIcon
                   fontSize="small"
