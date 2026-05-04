@@ -108,6 +108,17 @@ func SyncDirectory(ctx context.Context, directory models.Directory) (*Summary, e
 		summary.Directories = 1
 	}
 	summary.Duration = time.Since(start)
+	logging.Info(
+		"sync directory summary: id=%d path=%s scanned=%t files_seen=%d inserted=%d updated=%d removed=%d duration=%s",
+		directory.ID,
+		directory.Path,
+		scanned,
+		summary.FilesSeen,
+		summary.Inserted,
+		summary.Updated,
+		summary.Removed,
+		summary.Duration,
+	)
 	return summary, nil
 }
 
