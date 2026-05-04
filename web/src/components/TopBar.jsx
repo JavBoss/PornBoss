@@ -320,33 +320,31 @@ export default function TopBar({
               </div>
             ) : null}
             <div ref={directoryMenuRef} className="relative inline-flex">
-              <div className="inline-flex overflow-hidden rounded border border-blue-500 bg-white">
-                <button
-                  type="button"
-                  onClick={onOpenGlobalSettings}
-                  title={zh('全局设置', 'Global settings')}
-                  className="inline-flex h-9 items-center gap-1.5 px-3 text-sm font-medium text-blue-600 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                >
-                  <SettingsOutlinedIcon fontSize="small" />
-                  <span>{zh('全局设置', 'Global Settings')}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDirectoryMenuOpen((open) => !open)}
-                  aria-label={zh('选择启用目录', 'Choose enabled directories')}
-                  aria-haspopup="menu"
-                  aria-expanded={directoryMenuOpen}
-                  title={zh('选择启用目录', 'Choose enabled directories')}
-                  className="inline-flex h-9 w-9 items-center justify-center border-l border-blue-500 text-blue-600 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                >
-                  <KeyboardArrowDownRoundedIcon
-                    fontSize="small"
-                    className={
-                      directoryMenuOpen ? 'rotate-180 transition-transform' : 'transition-transform'
-                    }
-                  />
-                </button>
-              </div>
+              <Button
+                startIcon={<SettingsOutlinedIcon fontSize="small" />}
+                variant="outlined"
+                onClick={onOpenGlobalSettings}
+                title={zh('全局设置', 'Global settings')}
+                sx={{ pr: 5 }}
+              >
+                {zh('全局设置', 'Global Settings')}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setDirectoryMenuOpen((open) => !open)}
+                aria-label={zh('选择启用目录', 'Choose enabled directories')}
+                aria-haspopup="menu"
+                aria-expanded={directoryMenuOpen}
+                title={zh('选择启用目录', 'Choose enabled directories')}
+                className="absolute inset-y-px right-px inline-flex w-8 items-center justify-center rounded-r text-blue-600 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                <KeyboardArrowDownRoundedIcon
+                  fontSize="small"
+                  className={
+                    directoryMenuOpen ? 'rotate-180 transition-transform' : 'transition-transform'
+                  }
+                />
+              </button>
 
               {directoryMenuOpen ? (
                 <div
