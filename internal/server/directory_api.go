@@ -48,7 +48,7 @@ func createDirectory(c *gin.Context) {
 	}
 	go func(created models.Directory) {
 		ctx := context.Background()
-		if err := service.ScanDirectories(ctx); err != nil {
+		if _, err := service.SyncDirectory(ctx, created); err != nil {
 			if errors.Is(err, service.ErrDirectoryScanInProgress) {
 				return
 			}
@@ -102,8 +102,11 @@ func updateDirectory(c *gin.Context) {
 		return
 	}
 	go func(updated models.Directory) {
+		if updated.IsDelete {
+			return
+		}
 		ctx := context.Background()
-		if err := service.ScanDirectories(ctx); err != nil {
+		if _, err := service.SyncDirectory(ctx, updated); err != nil {
 			if errors.Is(err, service.ErrDirectoryScanInProgress) {
 				return
 			}
