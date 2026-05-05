@@ -52,7 +52,7 @@ Pornboss integrates mpv playback, so clicking a video can launch a lightweight, 
 - Plays the original local file through mpv, avoiding browser playback format limitations.
 - Supports playback options such as default volume, window size, and always-on-top behavior.
 - Supports custom hotkeys for actions such as seeking and volume adjustment.
-- Bundles the ModernZ OSC script, so mpv playback uses a more modern on-screen player UI by default.
+- Bundles the [ModernZ](https://github.com/Samillion/ModernZ) OSC script, so mpv playback uses a more modern on-screen player UI by default.
 - Supports taking screenshots at any moment during mpv playback, saved per video under `data/video/{video_id}/screenshot/`.
 - In both the video library and JAV library, the screenshot panel previews all mpv screenshots in timestamp order.
 - The screenshot panel supports enlarged previews, deleting screenshots, and resuming playback directly from a screenshot timestamp.
