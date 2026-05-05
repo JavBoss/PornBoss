@@ -17,6 +17,8 @@ var modernZRequiredFiles = []struct {
 	{source: "modernz.lua", target: filepath.Join("scripts", "modernz.lua")},
 	{source: "modernz.conf", target: filepath.Join("script-opts", "modernz.conf")},
 	{source: "modernz-icons.ttf", target: filepath.Join("fonts", "modernz-icons.ttf")},
+	{source: "thumbfast.lua", target: filepath.Join("scripts", "thumbfast.lua")},
+	{source: "thumbfast.conf", target: filepath.Join("script-opts", "thumbfast.conf")},
 }
 
 type modernZAssets struct {

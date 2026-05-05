@@ -55,6 +55,7 @@ func buildCommand(path string, options PlayOptions) (*exec.Cmd, error) {
 		args = append(args, "--vo=x11")
 	}
 	args = append(args, "--include="+mpvConfigPath)
+	args = append(args, "--script-opt=thumbfast-mpv_path="+mpvPath)
 	args = append(args, "--script="+modernZ.ScriptPath)
 	if screenshotArgs, err := buildPlaybackScreenshotArgs(options); err != nil {
 		return nil, err

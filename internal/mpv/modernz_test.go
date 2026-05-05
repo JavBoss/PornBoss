@@ -12,6 +12,8 @@ func TestEnsureModernZAssetsCopiesScriptOptionsAndFont(t *testing.T) {
 		"modernz.lua":       "-- test lua\n",
 		"modernz.conf":      "layout=modern\n",
 		"modernz-icons.ttf": "test font",
+		"thumbfast.lua":     "-- thumbfast lua\n",
+		"thumbfast.conf":    "max_height=200\n",
 	}
 	sourceDir := writeModernZTestAssets(t)
 
@@ -23,9 +25,11 @@ func TestEnsureModernZAssetsCopiesScriptOptionsAndFont(t *testing.T) {
 	}
 
 	expected := map[string]string{
-		filepath.Join(assets.ConfigDir, "scripts", "modernz.lua"):      files["modernz.lua"],
-		filepath.Join(assets.ConfigDir, "script-opts", "modernz.conf"): files["modernz.conf"],
-		filepath.Join(assets.ConfigDir, "fonts", "modernz-icons.ttf"):  files["modernz-icons.ttf"],
+		filepath.Join(assets.ConfigDir, "scripts", "modernz.lua"):        files["modernz.lua"],
+		filepath.Join(assets.ConfigDir, "script-opts", "modernz.conf"):   files["modernz.conf"],
+		filepath.Join(assets.ConfigDir, "fonts", "modernz-icons.ttf"):    files["modernz-icons.ttf"],
+		filepath.Join(assets.ConfigDir, "scripts", "thumbfast.lua"):      files["thumbfast.lua"],
+		filepath.Join(assets.ConfigDir, "script-opts", "thumbfast.conf"): files["thumbfast.conf"],
 		assets.ScriptPath: files["modernz.lua"],
 	}
 	for path, content := range expected {
@@ -76,6 +80,8 @@ func writeModernZTestAssets(t *testing.T) string {
 		"modernz.lua":       "-- test lua\n",
 		"modernz.conf":      "layout=modern\n",
 		"modernz-icons.ttf": "test font",
+		"thumbfast.lua":     "-- thumbfast lua\n",
+		"thumbfast.conf":    "max_height=200\n",
 	}
 	for name, content := range files {
 		if err := os.WriteFile(filepath.Join(sourceDir, name), []byte(content), 0o644); err != nil {
