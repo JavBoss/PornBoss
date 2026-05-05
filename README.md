@@ -1,4 +1,4 @@
-<p align="center"><strong>Pornboss has native English support. English users can read the English README here: <a href="./README.en.md">README.en.md</a>.</strong></p>
+<strong>Pornboss includes native English support. English-speaking users can start with the <a href="./README.en.md">English README</a>.</strong>
 
 <h1 align="center">Pornboss</h1>
 
