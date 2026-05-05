@@ -92,11 +92,15 @@ The release package includes a `config.toml` file in its root directory. By defa
 port = 17654
 ```
 
-### 3. Add Your Media Folders
+### 3. Set JAV Metadata Language
+
+Open `Global Settings` -> `JAV Metadata`, switch the metadata language to `English`, and save.
+
+### 4. Add Your Media Folders
 
 Open `Global Settings` -> `Directory Management`, then add the local folders that store your videos. Scanning runs in the background, and indexed videos are available immediately without waiting for the full scan to finish.
 
-### 4. Start Using It
+### 5. Start Using It
 
 - Manage general adult videos, short clips, and compilations in `Video` mode.
 - Browse JAV titles by code, title, tag, and actress in `JAV` mode.
