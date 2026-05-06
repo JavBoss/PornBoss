@@ -14,9 +14,6 @@ const (
 	providerUser        = 3
 )
 
-const videoLocationBackfillMarkerKey = "migration.video_locations.backfilled"
-const javIdolEnglishFlagsBackfillMarkerKey = "migration.jav_idol_english_flags.v3.backfilled"
-
 type sqlExecer interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
@@ -55,25 +52,6 @@ func addColumnIfMissing(ctx context.Context, tx *sql.Tx, table, column, decl str
 	))
 }
 
-func dropColumnIfExists(ctx context.Context, tx *sql.Tx, table, column string) error {
-	exists, err := columnExists(ctx, tx, table, column)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return nil
-	}
-	err = execDB(ctx, tx, fmt.Sprintf(
-		`ALTER TABLE %s DROP COLUMN %s`,
-		quoteIdentifier(table),
-		quoteIdentifier(column),
-	))
-	if ignorableSQLiteDropColumnErr(err) {
-		return nil
-	}
-	return err
-}
-
 func columnExists(ctx context.Context, tx *sql.Tx, table, column string) (bool, error) {
 	rows, err := tx.QueryContext(ctx, fmt.Sprintf(`PRAGMA table_info(%s)`, quoteIdentifier(table)))
 	if err != nil {
@@ -109,41 +87,12 @@ func rowsExist(ctx context.Context, tx *sql.Tx, query string, args ...any) (bool
 	return rows.Next(), rows.Err()
 }
 
-func configValueEqualsSQL(ctx context.Context, tx *sql.Tx, key, value string) (bool, error) {
-	var got string
-	err := tx.QueryRowContext(ctx, `SELECT value FROM config WHERE key = ?`, key).Scan(&got)
-	if err == sql.ErrNoRows {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return got == value, nil
-}
-
-func setConfigValueSQL(ctx context.Context, tx *sql.Tx, key, value string) error {
-	_, err := tx.ExecContext(ctx, `
-		INSERT INTO config (key, value, created_at, updated_at)
-		VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-		ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
-	`, key, value)
-	return err
-}
-
 func baseNameFromSlashPath(p string) string {
 	p = strings.TrimSpace(p)
 	if p == "" {
 		return ""
 	}
 	return filepath.Base(filepath.FromSlash(p))
-}
-
-func ignorableSQLiteDropColumnErr(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "no such column") || strings.Contains(msg, "duplicate column name")
 }
 
 func looksLikeJapaneseName(value string) bool {
