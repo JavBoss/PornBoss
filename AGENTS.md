@@ -22,6 +22,10 @@
 - Frontend: functional React components in PascalCase (`VideoGrid.jsx`), hooks/helpers camelCase. Keep styles in Tailwind/`index.css`; prefer colocated component styles. Format with `npm run format` / `npm run format:check`; lint with `npm run lint`.
 - Naming: API routes are RESTful (`/videos`, `/tags`, `/directories`); keep new endpoints consistent and document query params.
 
+## Database Migration Guidance
+- After every DB migration, verify that the actual database schema exactly matches the structs and GORM tags in `internal/models`, including tables, columns, column types, nullability/defaults, indexes, unique constraints, foreign keys, and join tables.
+- Treat any drift between migrated schema and model definitions as a migration bug. Update the migration or model definitions until they are fully aligned before considering the change complete.
+
 ## Testing Guidelines
 - Go: add table-driven `_test.go` files near the code under test; prefer integration tests around `internal/db` and handler tests via `httptest`. Use the repo-local `GOCACHE` path.
 - Frontend: no unit tests today; at minimum run `npm run lint` and `npm run build` before PRs. When adding tests, colocate under `web/src` using Jest/Vitest conventions and match component names.

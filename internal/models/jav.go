@@ -53,9 +53,9 @@ type JavTagMap struct {
 }
 
 type JavIdolMap struct {
-	JavID     int64     `gorm:"primaryKey"`
+	JavID     int64     `gorm:"primaryKey;index:idx_jav_idol_map_jav_idol_id_jav_id,priority:2"`
 	Jav       Jav       `gorm:"foreignKey:JavID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-	JavIdolID int64     `gorm:"primaryKey"`
+	JavIdolID int64     `gorm:"primaryKey;index:idx_jav_idol_map_jav_idol_id_jav_id,priority:1"`
 	JavIdol   JavIdol   `gorm:"foreignKey:JavIdolID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 }

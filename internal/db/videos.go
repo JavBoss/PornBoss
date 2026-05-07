@@ -209,7 +209,6 @@ func GetVideo(ctx context.Context, id int64) (*models.Video, error) {
 		Model(&models.Video{}).
 		Where("EXISTS (?)", activeVideoLocationSubquery(ctx)).
 		Preload("Tags").
-		Preload("DirectoryRef").
 		Scopes(preloadActiveLocations).
 		First(&video, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
