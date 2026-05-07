@@ -11,6 +11,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import { fetchJavIdolPreview } from '@/api'
 import { IdolCard, getIdolCardLayoutProps } from '@/components/JavIdolGrid'
 import { isUserJavTag } from '@/constants/jav'
+import { getJavDisplayTitle } from '@/utils/jav'
 import { directoryQueryIds, useStore } from '@/store'
 import { zh } from '@/utils/i18n'
 
@@ -215,7 +216,7 @@ function JavCard({
     ? zh(`${item.duration_min} 分钟`, `${item.duration_min} min`)
     : ''
   const codeText = item?.code?.trim()
-  const mainTitle = item?.title || item?.code || zh('未知标题', 'Untitled')
+  const mainTitle = getJavDisplayTitle(item, javMetadataLanguage)
   const titleText = [codeText, mainTitle].filter(Boolean).join(' ')
   const videos = item?.videos || []
   const openableVideos = videos.filter((video) =>

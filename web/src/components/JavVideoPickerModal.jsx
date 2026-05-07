@@ -1,4 +1,5 @@
 import { zh } from '@/utils/i18n'
+import { getJavDisplayTitle } from '@/utils/jav'
 
 export default function JavVideoPickerModal({
   open,
@@ -11,10 +12,12 @@ export default function JavVideoPickerModal({
   buildVideoFullPath,
   isVideoOpenable,
   onSelectVideo,
+  javMetadataLanguage = 'zh',
 }) {
   if (!open) return null
 
   const list = Array.isArray(choices) ? choices : []
+  const itemTitle = item ? getJavDisplayTitle(item, javMetadataLanguage) : ''
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
@@ -32,7 +35,7 @@ export default function JavVideoPickerModal({
         {item && (
           <div className="mb-2 text-xs text-gray-500">
             {item.code || zh('未知番号', 'Unknown code')}
-            {item.title ? ` · ${item.title}` : ''}
+            {itemTitle && itemTitle !== item.code ? ` · ${itemTitle}` : ''}
           </div>
         )}
         <div className="max-h-72 overflow-y-auto rounded border">

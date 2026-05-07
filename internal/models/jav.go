@@ -7,6 +7,7 @@ type Jav struct {
 	ID          int64     `json:"id" gorm:"primaryKey"`
 	Code        string    `json:"code" gorm:"uniqueIndex"`
 	Title       string    `json:"title"`
+	TitleEn     string    `json:"title_en"`
 	ReleaseUnix int64     `json:"release_unix"`
 	DurationMin int       `json:"duration_min"`
 	Provider    int       `json:"provider" gorm:"not null;default:0"`

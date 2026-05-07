@@ -23,6 +23,7 @@
 - Naming: API routes are RESTful (`/videos`, `/tags`, `/directories`); keep new endpoints consistent and document query params.
 
 ## Database Migration Guidance
+- Do not modify existing DB migration files. Add a new migration for every schema or data migration change, and use that new migration to reconcile schema details such as column order when needed.
 - After every DB migration, verify that the actual database schema exactly matches the structs and GORM tags in `internal/models`, including tables, columns, column types, nullability/defaults, indexes, unique constraints, foreign keys, and join tables.
 - Treat any drift between migrated schema and model definitions as a migration bug. Update the migration or model definitions until they are fully aligned before considering the change complete.
 
