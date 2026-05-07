@@ -313,6 +313,168 @@ func TestOpenMigratesLegacyGormSchemaPreservesVideoTags(t *testing.T) {
 	if afterCount != 1 {
 		t.Fatalf("migrated video_tag count = %d, want 1", afterCount)
 	}
+	assertVideoContentSchema(t, migrated)
+	assertModelIndexes(t, migrated)
+}
+
+func assertVideoContentSchema(t *testing.T, db *gorm.DB) {
+	t.Helper()
+
+	rows, err := db.Raw("PRAGMA table_info(video)").Rows()
+	if err != nil {
+		t.Fatalf("load video columns: %v", err)
+	}
+	defer rows.Close()
+
+	columns := map[string]bool{}
+	for rows.Next() {
+		var (
+			cid        int
+			name       string
+			colType    string
+			notNull    int
+			defaultVal any
+			primaryKey int
+		)
+		if err := rows.Scan(&cid, &name, &colType, &notNull, &defaultVal, &primaryKey); err != nil {
+			t.Fatalf("scan video column: %v", err)
+		}
+		columns[name] = true
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate video columns: %v", err)
+	}
+
+	wantColumns := []string{"id", "size", "fingerprint", "duration_sec", "play_count", "created_at", "updated_at"}
+	if len(columns) != len(wantColumns) {
+		t.Fatalf("unexpected video columns: got %#v want %v", columns, wantColumns)
+	}
+	for _, name := range wantColumns {
+		if !columns[name] {
+			t.Fatalf("missing video column %q in %#v", name, columns)
+		}
+	}
+	for _, name := range []string{"directory_id", "path", "filename", "modified_at", "jav_id", "hidden"} {
+		if columns[name] {
+			t.Fatalf("obsolete video column %q still exists", name)
+		}
+	}
+
+	indexRows, err := db.Raw("PRAGMA index_list(video)").Rows()
+	if err != nil {
+		t.Fatalf("load video indexes: %v", err)
+	}
+	defer indexRows.Close()
+
+	indexes := map[string]bool{}
+	for indexRows.Next() {
+		var (
+			seq     int
+			name    string
+			unique  int
+			origin  string
+			partial int
+		)
+		if err := indexRows.Scan(&seq, &name, &unique, &origin, &partial); err != nil {
+			t.Fatalf("scan video index: %v", err)
+		}
+		indexes[name] = true
+	}
+	if err := indexRows.Err(); err != nil {
+		t.Fatalf("iterate video indexes: %v", err)
+	}
+	if !indexes["idx_video_fingerprint"] {
+		t.Fatalf("missing idx_video_fingerprint in %#v", indexes)
+	}
+	for _, name := range []string{"idx_video_directory_id", "idx_video_path", "idx_video_jav_id", "idx_video_hidden", "idx_video_jav_id_visible"} {
+		if indexes[name] {
+			t.Fatalf("obsolete video index %q still exists", name)
+		}
+	}
+}
+
+func assertModelIndexes(t *testing.T, db *gorm.DB) {
+	t.Helper()
+
+	assertTableIndexes(t, db, "directory", []string{
+		"idx_directory_is_delete",
+		"idx_directory_missing",
+		"idx_directory_path",
+	})
+	assertTableIndexes(t, db, "jav", []string{
+		"idx_jav_code",
+	})
+	assertTableIndexes(t, db, "video", []string{
+		"idx_video_fingerprint",
+	})
+	assertTableIndexes(t, db, "video_location", []string{
+		"idx_video_location_directory_id",
+		"idx_video_location_directory_path",
+		"idx_video_location_filename",
+		"idx_video_location_is_delete",
+		"idx_video_location_jav_id",
+		"idx_video_location_jav_id_is_delete",
+		"idx_video_location_video_id",
+		"idx_video_location_video_id_jav_id",
+		"idx_video_location_visible_filename",
+		"idx_video_location_visible_path",
+	})
+	assertTableIndexes(t, db, "tag", []string{
+		"idx_tag_name",
+	})
+	assertTableIndexes(t, db, "jav_tag", []string{
+		"idx_jav_tag_name_source",
+		"idx_jav_tag_provider",
+	})
+	assertTableIndexes(t, db, "jav_idol", []string{
+		"idx_jav_idol_name_language",
+	})
+	assertTableIndexes(t, db, "config", nil)
+	assertTableIndexes(t, db, "video_tag", nil)
+	assertTableIndexes(t, db, "jav_tag_map", nil)
+	assertTableIndexes(t, db, "jav_idol_map", []string{
+		"idx_jav_idol_map_jav_idol_id_jav_id",
+	})
+}
+
+func assertTableIndexes(t *testing.T, db *gorm.DB, table string, want []string) {
+	t.Helper()
+
+	rows, err := db.Raw("PRAGMA index_list(" + table + ")").Rows()
+	if err != nil {
+		t.Fatalf("load %s indexes: %v", table, err)
+	}
+	defer rows.Close()
+
+	got := map[string]bool{}
+	for rows.Next() {
+		var (
+			seq     int
+			name    string
+			unique  int
+			origin  string
+			partial int
+		)
+		if err := rows.Scan(&seq, &name, &unique, &origin, &partial); err != nil {
+			t.Fatalf("scan %s index: %v", table, err)
+		}
+		if origin == "pk" {
+			continue
+		}
+		got[name] = true
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate %s indexes: %v", table, err)
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("unexpected %s indexes: got %#v want %v", table, got, want)
+	}
+	for _, name := range want {
+		if !got[name] {
+			t.Fatalf("missing %s index %q in %#v", table, name, got)
+		}
+	}
 }
 
 func createVideoLocationsForVideos(t *testing.T, db *gorm.DB, videos ...models.Video) {

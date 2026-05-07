@@ -1776,6 +1776,7 @@ export default function App() {
         buildVideoFullPath={buildVideoFullPath}
         isVideoOpenable={isVideoOpenable}
         onSelectVideo={handleSelectJavVideo}
+        javMetadataLanguage={config?.jav_metadata_language === 'en' ? 'en' : 'zh'}
       />
 
       <JavVideoPickerModal

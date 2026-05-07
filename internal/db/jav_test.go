@@ -154,6 +154,7 @@ func TestSaveJavInfoAppendsIdolsOnlyWhenLanguageMappingMissing(t *testing.T) {
 		Actors:   []string{"Nanami Misaki"},
 		Provider: jav.ProviderJavDatabase,
 	})
+	assertJavTitles(t, gdb, "AAA-001", "Japanese metadata refreshed", "English metadata")
 	assertJavIdolMaps(t, gdb, "AAA-001", map[string]bool{
 		"岬ななみ":          false,
 		"Nanami Misaki": true,
@@ -165,6 +166,7 @@ func TestSaveJavInfoAppendsIdolsOnlyWhenLanguageMappingMissing(t *testing.T) {
 		Actors:   []string{"Other Actress"},
 		Provider: jav.ProviderJavDatabase,
 	})
+	assertJavTitles(t, gdb, "AAA-001", "Japanese metadata refreshed", "English metadata refreshed")
 	assertJavIdolMaps(t, gdb, "AAA-001", map[string]bool{
 		"岬ななみ":          false,
 		"Nanami Misaki": true,
@@ -182,6 +184,7 @@ func TestSaveJavInfoAppendsIdolsOnlyWhenLanguageMappingMissing(t *testing.T) {
 		Actors:   []string{"Shared Name"},
 		Provider: jav.ProviderJavDatabase,
 	})
+	assertJavTitles(t, gdb, "BBB-001", "Shared-name metadata", "Shared-name metadata refreshed")
 	assertJavIdolLanguageCount(t, gdb, "Shared Name", 2)
 	assertJavIdolMapLanguages(t, gdb, "BBB-001", "Shared Name", []bool{false, true})
 
@@ -394,6 +397,77 @@ func TestSearchJavPreloadsOnlyCurrentLanguageIdols(t *testing.T) {
 		t.Fatalf("SearchJav en: %v", err)
 	}
 	assertSearchJavIdols(t, items, total, []string{"Nanami Misaki"})
+}
+
+func TestSearchJavUsesCurrentLanguageTitleField(t *testing.T) {
+	gdb := openTestDB(t)
+	ctx := context.Background()
+	now := time.Unix(1710000000, 0).UTC()
+	prevLang := jav.CurrentMetadataLanguage()
+	t.Cleanup(func() {
+		jav.SetMetadataLanguage(string(prevLang))
+	})
+
+	dir := models.Directory{Path: "/tmp/media"}
+	if err := gdb.Create(&dir).Error; err != nil {
+		t.Fatalf("create directory: %v", err)
+	}
+
+	javRec := models.Jav{
+		Code:      "TITLE-001",
+		Title:     "日本語タイトル",
+		TitleEn:   "English Title",
+		Provider:  int(jav.ProviderJavDatabase),
+		FetchedAt: now,
+	}
+	if err := gdb.Create(&javRec).Error; err != nil {
+		t.Fatalf("create jav: %v", err)
+	}
+	video := models.Video{
+		DirectoryID: dir.ID,
+		Path:        "title-001.mp4",
+		Filename:    "title-001.mp4",
+		Fingerprint: "fp-title",
+		JavID:       int64Ptr(javRec.ID),
+		DurationSec: 7200,
+		ModifiedAt:  now,
+	}
+	if err := gdb.Create(&video).Error; err != nil {
+		t.Fatalf("create video: %v", err)
+	}
+	createVideoLocationsForVideos(t, gdb, video)
+
+	jav.SetMetadataLanguage("zh")
+	items, total, err := SearchJav(ctx, nil, nil, "日本語", "code", 20, 0, nil, nil)
+	if err != nil {
+		t.Fatalf("SearchJav zh title: %v", err)
+	}
+	if total != 1 || len(items) != 1 || items[0].Title != "日本語タイトル" {
+		t.Fatalf("unexpected zh search result: total=%d items=%#v", total, items)
+	}
+	items, total, err = SearchJav(ctx, nil, nil, "English", "code", 20, 0, nil, nil)
+	if err != nil {
+		t.Fatalf("SearchJav zh english title: %v", err)
+	}
+	if total != 0 || len(items) != 0 {
+		t.Fatalf("zh search should not match title_en: total=%d items=%#v", total, items)
+	}
+
+	jav.SetMetadataLanguage("en")
+	items, total, err = SearchJav(ctx, nil, nil, "English", "code", 20, 0, nil, nil)
+	if err != nil {
+		t.Fatalf("SearchJav en title: %v", err)
+	}
+	if total != 1 || len(items) != 1 || items[0].TitleEn != "English Title" {
+		t.Fatalf("unexpected en search result: total=%d items=%#v", total, items)
+	}
+	items, total, err = SearchJav(ctx, nil, nil, "日本語", "code", 20, 0, nil, nil)
+	if err != nil {
+		t.Fatalf("SearchJav en japanese title: %v", err)
+	}
+	if total != 0 || len(items) != 0 {
+		t.Fatalf("en search should not match title: total=%d items=%#v", total, items)
+	}
 }
 
 func TestJavIdolAPIFiltersCurrentLanguageIdols(t *testing.T) {
@@ -947,6 +1021,18 @@ func assertJavIdolMaps(t *testing.T, db *gorm.DB, code string, want map[string]b
 		if row.IsEnglish != wantEnglish {
 			t.Fatalf("unexpected is_english for %q: got %t want %t", row.Name, row.IsEnglish, wantEnglish)
 		}
+	}
+}
+
+func assertJavTitles(t *testing.T, db *gorm.DB, code, wantTitle, wantTitleEn string) {
+	t.Helper()
+
+	var rec models.Jav
+	if err := db.Where("code = ?", code).First(&rec).Error; err != nil {
+		t.Fatalf("load jav %q: %v", code, err)
+	}
+	if rec.Title != wantTitle || rec.TitleEn != wantTitleEn {
+		t.Fatalf("unexpected titles for %q: title=%q title_en=%q want title=%q title_en=%q", code, rec.Title, rec.TitleEn, wantTitle, wantTitleEn)
 	}
 }
 

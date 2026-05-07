@@ -7,6 +7,7 @@ type Jav struct {
 	ID          int64     `json:"id" gorm:"primaryKey"`
 	Code        string    `json:"code" gorm:"uniqueIndex"`
 	Title       string    `json:"title"`
+	TitleEn     string    `json:"title_en"`
 	ReleaseUnix int64     `json:"release_unix"`
 	DurationMin int       `json:"duration_min"`
 	Provider    int       `json:"provider" gorm:"not null;default:0"`
@@ -53,9 +54,9 @@ type JavTagMap struct {
 }
 
 type JavIdolMap struct {
-	JavID     int64     `gorm:"primaryKey"`
+	JavID     int64     `gorm:"primaryKey;index:idx_jav_idol_map_jav_idol_id_jav_id,priority:2"`
 	Jav       Jav       `gorm:"foreignKey:JavID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-	JavIdolID int64     `gorm:"primaryKey"`
+	JavIdolID int64     `gorm:"primaryKey;index:idx_jav_idol_map_jav_idol_id_jav_id,priority:1"`
 	JavIdol   JavIdol   `gorm:"foreignKey:JavIdolID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 }

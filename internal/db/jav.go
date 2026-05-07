@@ -409,7 +409,11 @@ func buildJavFilter(ctx context.Context, actors []string, tagIDs []int64, search
 	q = q.Where("EXISTS (?)", validLocation)
 	if search != "" {
 		like := fmt.Sprintf("%%%s%%", search)
-		q = q.Where("code LIKE ? OR title LIKE ?", like, like)
+		titleColumn := "title"
+		if jav.CurrentMetadataLanguage() == jav.MetadataLanguageEnglish {
+			titleColumn = "title_en"
+		}
+		q = q.Where("code LIKE ? OR "+titleColumn+" LIKE ?", like, like)
 	}
 	if len(tagIDs) > 0 {
 		q = q.
@@ -878,11 +882,16 @@ func saveJavInfoTx(tx *gorm.DB, info *jav.Info, now ...time.Time) (*models.Jav, 
 	if javRec == nil {
 		javRec = &models.Jav{Code: info.Code}
 	}
+	provider := jav.ParseProvider(int(info.Provider))
 	javRec.Code = info.Code
-	javRec.Title = info.Title
+	if provider == jav.ProviderJavDatabase {
+		javRec.TitleEn = info.Title
+	} else {
+		javRec.Title = info.Title
+	}
 	javRec.ReleaseUnix = info.ReleaseUnix
 	javRec.DurationMin = info.DurationMin
-	javRec.Provider = int(jav.ParseProvider(int(info.Provider)))
+	javRec.Provider = int(provider)
 	javRec.FetchedAt = ts
 	if err := tx.Save(javRec).Error; err != nil {
 		return nil, fmt.Errorf("save jav: %w", err)
