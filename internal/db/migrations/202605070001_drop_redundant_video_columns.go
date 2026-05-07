@@ -12,7 +12,7 @@ func init() {
 }
 
 func dropRedundantVideoColumns(ctx context.Context, tx *sql.Tx) error {
-	if err := rebuildCanonicalTable(ctx, tx, videoContentTable); err != nil {
+	if err := rebuildVideoContentTable(ctx, tx); err != nil {
 		return err
 	}
 	return execStatements(ctx, tx,
@@ -20,24 +20,22 @@ func dropRedundantVideoColumns(ctx context.Context, tx *sql.Tx) error {
 	)
 }
 
-var videoContentTable = canonicalTable{
-	name: "video",
-	body: `(
-		id integer PRIMARY KEY AUTOINCREMENT,
-		size integer,
-		fingerprint text,
-		duration_sec integer,
-		play_count integer NOT NULL DEFAULT 0,
-		created_at datetime,
-		updated_at datetime
-	)`,
-	columns: columns(
-		"id", "integer",
-		"size", "integer",
-		"fingerprint", "text",
-		"duration_sec", "integer",
-		"play_count", "integer NOT NULL DEFAULT 0",
-		"created_at", "datetime",
-		"updated_at", "datetime",
-	),
+func rebuildVideoContentTable(ctx context.Context, tx *sql.Tx) error {
+	const columns = `"id", "size", "fingerprint", "duration_sec", "play_count", "created_at", "updated_at"`
+	return execStatements(ctx, tx,
+		`DROP TABLE IF EXISTS "__new_video"`,
+		`CREATE TABLE "__new_video" (
+			id integer PRIMARY KEY AUTOINCREMENT,
+			size integer,
+			fingerprint text,
+			duration_sec integer,
+			play_count integer NOT NULL DEFAULT 0,
+			created_at datetime,
+			updated_at datetime
+		)`,
+		`INSERT INTO "__new_video" (`+columns+`)
+		 SELECT `+columns+` FROM "video"`,
+		`DROP TABLE "video"`,
+		`ALTER TABLE "__new_video" RENAME TO "video"`,
+	)
 }
